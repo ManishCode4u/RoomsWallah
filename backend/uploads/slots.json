@@ -1,0 +1,37 @@
+[
+  {
+    "slotId": "hero",
+    "slotName": "Hero Banner",
+    "listingId": "6a787584d5afe031e2af9ec5",
+    "expiryDate": "2026-09-30",
+    "status": "Active"
+  },
+  {
+    "slotId": "home_card",
+    "slotName": "Home Promotion Card",
+    "listingId": null,
+    "expiryDate": "",
+    "status": "Empty"
+  },
+  {
+    "slotId": "top_rooms",
+    "slotName": "Top Rooms Promotion",
+    "listingId": null,
+    "expiryDate": "",
+    "status": "Empty"
+  },
+  {
+    "slotId": "middle_ad",
+    "slotName": "Middle Advertisement Banner",
+    "listingId": null,
+    "expiryDate": "",
+    "status": "Empty"
+  },
+  {
+    "slotId": "bottom_banner",
+    "slotName": "Bottom Banner",
+    "listingId": null,
+    "expiryDate": "",
+    "status": "Empty"
+  }
+]

@@ -47,7 +47,12 @@ app.use(helmet({
 }));
 
 // Configure CORS to dynamically allow localhost and local IP network origins for mobile testing
-const allowedOrigins = [CORS_ORIGIN, "http://localhost:3000", "http://127.0.0.1:3000"];
+const allowedOrigins = [
+  CORS_ORIGIN,
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "https://roomswallah.vercel.app"
+];
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like server-to-server or mobile apps)

@@ -4,7 +4,17 @@
  */
 export const getApiUrl = (path: string): string => {
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+  
+  let backendUrl = "https://roomswallah-backend.onrender.com";
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname.startsWith("192.168.")) {
+      backendUrl = "http://localhost:5000";
+    }
+  } else {
+    backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "https://roomswallah-backend.onrender.com";
+  }
+  
   return `${backendUrl}${cleanPath}`;
 };
 
@@ -13,7 +23,17 @@ export const getApiUrl = (path: string): string => {
  */
 export const getImageUrl = (url: string): string => {
   if (!url) return "";
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+  
+  let backendUrl = "https://roomswallah-backend.onrender.com";
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname.startsWith("192.168.")) {
+      backendUrl = "http://localhost:5000";
+    }
+  } else {
+    backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "https://roomswallah-backend.onrender.com";
+  }
+
   if (url.startsWith("http://localhost:5000/") || url.startsWith(`${backendUrl}/`)) {
     return url;
   }

@@ -40,7 +40,7 @@ import {
   Send,
   MoreVertical
 } from "lucide-react";
-import { mockProperties, PropertyListing } from "@/data/listings";
+import { PropertyListing } from "@/data/listings";
 import { getApiUrl, getImageUrl } from "@/data/api";
 import {
   mockOwners,

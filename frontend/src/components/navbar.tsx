@@ -46,7 +46,6 @@ export default function Navbar() {
   const [userState, setUserState] = useState("");
   const [userPincode, setUserPincode] = useState("");
   const [searchVal, setSearchVal] = useState("");
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [locationSuggestions, setLocationSuggestions] = useState<any[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
@@ -237,6 +236,15 @@ export default function Navbar() {
         setShowLocationDrawer(true);
       };
 
+      // Check if location permission is already allowed and auto-detect
+      if (navigator.permissions && navigator.geolocation) {
+        navigator.permissions.query({ name: "geolocation" as PermissionName }).then((result) => {
+          if (result.state === "granted") {
+            detectLocation();
+          }
+        });
+      }
+
       window.addEventListener("userCityUpdated", handleCityUpdate);
       window.addEventListener("storage", handleCityUpdate);
       window.addEventListener("openLocationDrawer", handleOpenLocationDrawer);
@@ -426,39 +434,14 @@ export default function Navbar() {
               <form 
                 onSubmit={(e) => {
                   e.preventDefault();
-                  router.push(`/rooms?city=${encodeURIComponent(searchVal.trim())}`);
+                  setShowLocationDrawer(true);
                 }}
-                className="relative flex items-center bg-[#F8FAFC]/75 hover:bg-white border border-[#ECECEC] rounded-xl h-12 pl-3 pr-1.5 flex-grow max-w-[600px] mx-4 transition-all duration-300 hover:shadow-soft focus-within:border-[#6C4CF1]/40 focus-within:shadow-[0px_4px_16px_rgba(108,76,241,0.06)] focus-within:bg-white"
+                onClick={() => setShowLocationDrawer(true)}
+                className="relative flex items-center bg-[#F8FAFC]/75 hover:bg-white border border-[#ECECEC] rounded-xl h-12 pl-3 pr-1.5 flex-grow max-w-[600px] mx-4 transition-all duration-300 hover:shadow-soft focus-within:border-[#6C4CF1]/40 focus-within:shadow-[0px_4px_16px_rgba(108,76,241,0.06)] focus-within:bg-white cursor-pointer"
               >
-                <input
-                  type="text"
-                  value={searchVal}
-                  onChange={(e) => setSearchVal(e.target.value)}
-                  onFocus={() => setIsSearchFocused(true)}
-                  onBlur={() => setIsSearchFocused(false)}
-                  className="bg-transparent text-[13.5px] font-normal text-[#1E2235] outline-none flex-grow border-none p-0 focus:ring-0 focus:outline-none z-10"
-                />
-
-                {/* Changing sliding placeholder overlay for desktop */}
-                {!searchVal && !isSearchFocused && (
-                  <div className="absolute left-3 right-12 top-0 bottom-0 pointer-events-none flex items-center overflow-hidden select-none gap-1">
-                    <span className="text-[13.5px] font-normal text-[#94A3B8]">Search</span>
-                    <div className="relative h-6 w-32 flex items-center overflow-hidden">
-                      <AnimatePresence mode="wait">
-                        <motion.span
-                          key={currentWordIndex}
-                          initial={{ y: 15, opacity: 0 }}
-                          animate={{ y: 0, opacity: 1 }}
-                          exit={{ y: -15, opacity: 0 }}
-                          transition={{ duration: 0.35, ease: "easeInOut" }}
-                          className="absolute text-[13.5px] font-normal text-[#94A3B8] truncate"
-                        >
-                          "{searchKeywords[currentWordIndex]}"
-                        </motion.span>
-                      </AnimatePresence>
-                    </div>
-                  </div>
-                )}
+                <div className="bg-transparent text-[13.5px] font-normal text-[#94A3B8] outline-none flex-grow border-none p-0 z-10 text-left select-none">
+                  {searchVal ? `"${searchVal}" in ${userCity}` : `Search "${searchKeywords[currentWordIndex]}" in ${userCity}`}
+                </div>
 
                 <button 
                   type="submit"
@@ -635,43 +618,19 @@ export default function Navbar() {
 
             {/* Bottom Row: Search Bar & Wishlist */}
             <div className="flex items-center gap-3 w-full px-1">
+              {/* Mobile Search Card */}
               <form 
                 onSubmit={(e) => {
                   e.preventDefault();
-                  router.push(`/rooms?city=${encodeURIComponent(searchVal.trim())}`);
+                  setShowLocationDrawer(true);
                 }}
-                className="relative flex items-center bg-white border border-black rounded-[4px] flex-grow h-11 px-3 shadow-xs"
+                onClick={() => setShowLocationDrawer(true)}
+                className="relative flex items-center bg-white border border-black rounded-[4px] flex-grow h-11 px-3 shadow-xs cursor-pointer"
               >
                 <Search className="w-4.5 h-4.5 text-black shrink-0" />
-                <input
-                  type="text"
-                  value={searchVal}
-                  onChange={(e) => setSearchVal(e.target.value)}
-                  onFocus={() => setIsSearchFocused(true)}
-                  onBlur={() => setIsSearchFocused(false)}
-                  className="bg-transparent text-sm font-normal text-black outline-none ml-2 flex-grow border-none p-0 focus:ring-0 focus:outline-none z-10"
-                />
-
-                 {/* Changing sliding placeholder overlay for mobile */}
-                {!searchVal && !isSearchFocused && (
-                  <div className="absolute left-9 right-9 top-0 bottom-0 pointer-events-none flex items-center overflow-hidden select-none gap-1">
-                    <span className="text-sm font-normal text-black/60">Search</span>
-                    <div className="relative h-5 w-24 flex items-center overflow-hidden">
-                      <AnimatePresence mode="wait">
-                        <motion.span
-                          key={currentWordIndex}
-                          initial={{ y: 15, opacity: 0 }}
-                          animate={{ y: 0, opacity: 1 }}
-                          exit={{ y: -15, opacity: 0 }}
-                          transition={{ duration: 0.35, ease: "easeInOut" }}
-                          className="absolute text-sm font-normal text-black/60 truncate"
-                        >
-                          "{searchKeywords[currentWordIndex]}"
-                        </motion.span>
-                      </AnimatePresence>
-                    </div>
-                  </div>
-                )}
+                <div className="bg-transparent text-sm font-normal text-black/60 outline-none ml-2 flex-grow border-none p-0 text-left select-none">
+                  {searchVal ? `"${searchVal}" in ${userCity}` : `Search "${searchKeywords[currentWordIndex]}"`}
+                </div>
               </form>
 
               {/* Wishlist/Saved Icon (Heart outline, black color) */}
@@ -857,25 +816,65 @@ export default function Navbar() {
               </h2>
             </div>
             {/* Search Input Box */}
-            <div className="p-4 bg-white border-b border-[#F0F2F5]/60 shrink-0 text-left">
-              <div className="relative flex items-center bg-white border border-black rounded-[4px] h-12 px-3 shadow-xs focus-within:border-black focus-within:border-2 transition-all">
-                <Search className="w-5 h-5 text-[#94A3B8] shrink-0" />
-                <input
-                  type="text"
-                  placeholder="Search city, area or locality"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-transparent text-sm font-normal text-[#1E2235] outline-none ml-2.5 flex-grow placeholder:text-[#94A3B8] border-none p-0 focus:ring-0 focus:outline-none"
-                />
-                {searchQuery && (
-                  <button 
-                    onClick={() => setSearchQuery("")}
-                    className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
-                  >
-                    ×
-                  </button>
-                )}
+            <div className="p-4 bg-white border-b border-[#F0F2F5]/60 shrink-0 text-left space-y-3.5">
+              {/* Box 1: Location Input Box */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Location (City/Area)</label>
+                <div className="relative flex items-center bg-white border border-black rounded-[4px] h-12 px-3 shadow-xs focus-within:border-black focus-within:border-2 transition-all">
+                  <MapPin className="w-5 h-5 text-[#6C4CF1] shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Search city, area or locality"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="bg-transparent text-sm font-normal text-[#1E2235] outline-none ml-2.5 flex-grow placeholder:text-[#94A3B8] border-none p-0 focus:ring-0 focus:outline-none"
+                  />
+                  {searchQuery && (
+                    <button 
+                      onClick={() => setSearchQuery("")}
+                      className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
               </div>
+
+              {/* Box 2: Search Input Box */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Find Rooms, PG, Hostels, Flats</label>
+                <div className="relative flex items-center bg-white border border-black rounded-[4px] h-12 px-3 shadow-xs focus-within:border-black focus-within:border-2 transition-all">
+                  <Search className="w-5 h-5 text-[#94A3B8] shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Type what you are looking for..."
+                    value={searchVal}
+                    onChange={(e) => setSearchVal(e.target.value)}
+                    className="bg-transparent text-sm font-normal text-[#1E2235] outline-none ml-2.5 flex-grow placeholder:text-[#94A3B8] border-none p-0 focus:ring-0 focus:outline-none"
+                  />
+                  {searchVal && (
+                    <button 
+                      onClick={() => setSearchVal("")}
+                      className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Search submit button */}
+              <button
+                type="button"
+                onClick={() => {
+                  const targetCity = searchQuery.trim() || userCity;
+                  router.push(`/rooms?city=${encodeURIComponent(targetCity)}&search=${encodeURIComponent(searchVal.trim())}`);
+                  setShowLocationDrawer(false);
+                }}
+                className="w-full bg-[#6C4CF1] hover:bg-[#5B3FE6] text-white text-xs font-bold py-2.5 rounded-[4px] uppercase tracking-wider shadow-sm transition-all text-center active:scale-98 cursor-pointer mt-1"
+              >
+                Search Properties
+              </button>
             </div>
 
             {/* Scrollable Body list */}

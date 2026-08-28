@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getApiUrl } from "@/data/api";
+
 import PropertyDetailsView from "@/components/property-details-view";
 
 interface PageProps {
@@ -8,6 +9,7 @@ interface PageProps {
 }
 
 async function getProperty(id: string) {
+
   try {
     const res = await fetch(getApiUrl(`/api/listings/${id}`), { cache: "no-store" });
     if (res.ok) {

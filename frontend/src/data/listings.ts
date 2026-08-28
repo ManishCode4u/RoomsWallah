@@ -25,9 +25,3 @@ export interface PropertyListing {
 
 export const mockProperties: PropertyListing[] = [];
 
-export const popularCities = [
-  { name: "Noida", count: "120+ Listings", image: "/assets/room1.png" },
-  { name: "Greater Noida", count: "80+ Listings", image: "/assets/room2.png" },
-  { name: "Delhi", count: "250+ Listings", image: "/assets/hostel1.png" },
-  { name: "Gurugram", count: "180+ Listings", image: "/assets/pg1.png" },
-];

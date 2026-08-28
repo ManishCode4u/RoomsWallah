@@ -84,6 +84,11 @@ app.use("/api/notifications", notificationRoutes);
 // Serve uploaded images statically
 app.use("/uploads", express.static("uploads"));
 
+// Lightweight health-check endpoint for Render / uptime monitoring (prevents server sleep)
+app.get("/health", (req: Request, res: Response) => {
+  res.status(200).json({ status: "OK" });
+});
+
 // Basic test route
 app.get("/api/health", (req: Request, res: Response) => {
   res.json({

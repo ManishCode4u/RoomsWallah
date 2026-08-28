@@ -34,12 +34,14 @@ import MobileNav from "@/components/mobile-nav";
 import Footer from "@/components/footer";
 import Hero from "@/components/hero";
 import Categories from "@/components/categories";
-import { mockProperties, PropertyListing } from "@/data/listings";
+import { PropertyListing } from "@/data/listings";
 import { getApiUrl, getImageUrl } from "@/data/api";
 
 
 export default function HomeLayout() {
-  const [mobileFilter, setMobileFilter] = useState("All"); // "All" | "Boys Only" | "Girls Only" | "Family / Couple"
+  const [propertyType, setPropertyType] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeSearchTerm, setActiveSearchTerm] = useState("");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [loadingLocation, setLoadingLocation] = useState(false);
@@ -172,7 +174,10 @@ export default function HomeLayout() {
       }
 
       const apiIds = new Set(apiListings.map((p) => p.id));
-      const combined = [...apiListings, ...localProps.filter((p) => !apiIds.has(p.id))];
+      const combined = [
+        ...apiListings, 
+        ...localProps.filter((p) => !apiIds.has(p.id))
+      ];
       setProperties(combined);
 
       // Load promoted listing IDs
@@ -376,40 +381,66 @@ export default function HomeLayout() {
     });
   }, [properties, promotedIds]);
 
-  // Filter properties based on chip selection and selected city, then slice to get top 8 matching ones
+  // Filter properties based on type selection, selected city, and search term, then slice to get top 8 matching ones
   const filteredFeatured = useMemo(() => {
     return sortedProperties
       .filter((prop: PropertyListing) => {
-        // Tag filter (All, Boys Only, etc.)
-        if (mobileFilter !== "All" && prop.tag !== mobileFilter) return false;
+        // Type filter (room, pg, hostel, flat)
+        if (propertyType !== "all" && prop.type !== propertyType) return false;
         
         // City filter
         if (selectedCity && selectedCity !== "India") {
           const propCity = (prop.city || "").trim().toLowerCase();
           const selCity = selectedCity.trim().toLowerCase();
-          return propCity.includes(selCity) || selCity.includes(propCity);
+          if (!propCity.includes(selCity) && !selCity.includes(propCity)) return false;
         }
+
+        // Search text filter
+        if (activeSearchTerm) {
+          const term = activeSearchTerm.toLowerCase().trim();
+          const matches = (
+            prop.title.toLowerCase().includes(term) ||
+            (prop.area || "").toLowerCase().includes(term) ||
+            (prop.city || "").toLowerCase().includes(term) ||
+            (prop.description || "").toLowerCase().includes(term)
+          );
+          if (!matches) return false;
+        }
+
         return true;
       })
       .slice(0, 8);
-  }, [sortedProperties, mobileFilter, selectedCity]);
+  }, [sortedProperties, propertyType, selectedCity, activeSearchTerm]);
 
-  // Filter properties based on chip selection and selected city, without slicing
+  // Filter properties based on type selection, selected city, and search term, without slicing
   const freshRecommendations = useMemo(() => {
     return sortedProperties
       .filter((prop: PropertyListing) => {
-        // Tag filter (All, Boys Only, etc.)
-        if (mobileFilter !== "All" && prop.tag !== mobileFilter) return false;
+        // Type filter (room, pg, hostel, flat)
+        if (propertyType !== "all" && prop.type !== propertyType) return false;
         
         // City filter
         if (selectedCity && selectedCity !== "India") {
           const propCity = (prop.city || "").trim().toLowerCase();
           const selCity = selectedCity.trim().toLowerCase();
-          return propCity.includes(selCity) || selCity.includes(propCity);
+          if (!propCity.includes(selCity) && !selCity.includes(propCity)) return false;
         }
+
+        // Search text filter
+        if (activeSearchTerm) {
+          const term = activeSearchTerm.toLowerCase().trim();
+          const matches = (
+            prop.title.toLowerCase().includes(term) ||
+            (prop.area || "").toLowerCase().includes(term) ||
+            (prop.city || "").toLowerCase().includes(term) ||
+            (prop.description || "").toLowerCase().includes(term)
+          );
+          if (!matches) return false;
+        }
+
         return true;
       });
-  }, [sortedProperties, mobileFilter, selectedCity]);
+  }, [sortedProperties, propertyType, selectedCity, activeSearchTerm]);
 
   return (
     <>
@@ -429,47 +460,26 @@ export default function HomeLayout() {
           }}
         />
         <Hero />
-        <Categories />
 
 
         <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-[36px] sm:py-[48px] md:py-[72px] space-y-[36px] sm:space-y-[48px] md:space-y-[72px]">
           {/* ========================================================================= */}
-          {/* FOR YOU SECTION (OLX STYLE ROW) */}
+          {/* RELATED PROPERTIES SECTION (OLX STYLE ROW) */}
           {/* ========================================================================= */}
           <section className="max-w-[1280px] mx-auto text-left px-4 md:px-0">
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center space-x-1.5">
-                <Sparkles className="w-5 h-5 text-pink-500 fill-pink-500 shrink-0" />
                 <h2 className="font-semibold text-lg md:text-xl text-[#1E2235]">
-                  For You
+                  Related Properties
                 </h2>
               </div>
               <Link
                 href="/rooms?type=all"
-                className="text-[14px] font-bold text-[#0A58CA] hover:underline cursor-pointer flex items-center"
+                className="text-[11px] sm:text-xs font-bold text-[#6C4CF1] hover:text-[#5B3FE6] transition-colors flex items-center gap-0.5 cursor-pointer"
               >
-                View All
+                <span>See All</span>
+                <ChevronRight className="w-3.5 h-3.5" />
               </Link>
-            </div>
-
-            {/* Horizontal Filter Chips */}
-            <div className="flex space-x-1.5 overflow-x-auto no-scrollbar pb-4">
-              {["All", "Boys Only", "Girls Only", "Family / Couple"].map((chip) => {
-                const isSelected = mobileFilter === chip;
-                return (
-                  <button
-                    key={chip}
-                    onClick={() => setMobileFilter(chip)}
-                    className={`flex items-center px-4 py-2 rounded-full text-[11px] font-semibold uppercase transition-all duration-250 whitespace-nowrap cursor-pointer ${
-                      isSelected
-                        ? "bg-[#6C4CF1] text-white animate-fade-in"
-                        : "bg-white text-[#6B7280] border border-[#ECECEC] hover:bg-[#F8FAFC]"
-                    }`}
-                  >
-                    <span>{chip}</span>
-                  </button>
-                );
-              })}
             </div>
 
             {/* Horizontal Scrollable Row */}
@@ -484,14 +494,13 @@ export default function HomeLayout() {
                     const isPromoted = promotedIds.has(prop.id);
                     const typePath = (prop.type || "").toLowerCase();
                     const detailsUrl = `/${typePath === "room" ? "rooms" : typePath === "hostel" ? "hostels" : typePath === "flat" ? "flats" : "pg"}/${prop.id}`;
+                    const isSaved = savedIds.includes(prop.id);
                     return (
                       <Link
                         key={prop.id}
                         href={detailsUrl}
-                        className={`block w-[160px] sm:w-[190px] md:w-[220px] shrink-0 rounded-[4px] transition-all duration-250 overflow-hidden text-left snap-start group cursor-pointer pointer-events-auto border ${
-                          isPromoted 
-                            ? "bg-amber-50/10 border-amber-400/80 shadow-md shadow-amber-500/5 hover:border-amber-500 hover:shadow-lg" 
-                            : "bg-white border-slate-200 hover:border-slate-300 shadow-xs hover:shadow-sm"
+                        className={`block w-[200px] sm:w-[230px] md:w-[260px] shrink-0 rounded-[6px] bg-white border border-neutral-100 shadow-xs hover:shadow-md hover:border-neutral-200/80 transition-all duration-300 overflow-hidden text-left snap-start group cursor-pointer relative ${
+                          isPromoted ? "ring-1 ring-amber-400" : ""
                         }`}
                       >
                         {/* Image Container */}
@@ -503,28 +512,71 @@ export default function HomeLayout() {
                             className="object-cover group-hover:scale-105 transition-transform duration-500"
                             sizes="(max-width: 768px) 35vw, 15vw"
                           />
+                          
+                          {/* Verified Badge */}
+                          <div className="absolute top-2.5 left-2.5 bg-[#10B981] text-white text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 z-10 shadow-sm">
+                            <CheckCircle className="w-2.5 h-2.5 text-white fill-white/20" />
+                            <span>Verified</span>
+                          </div>
+
+                          {/* Heart Button */}
+                          <button
+                            type="button"
+                            onClick={(e) => toggleSaveProperty(prop.id, e)}
+                            className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full flex items-center justify-center border shadow-xs cursor-pointer active:scale-95 transition-all z-20 ${
+                              isSaved
+                                ? "bg-red-50 border-red-100 text-red-500"
+                                : "bg-white border-black/10 text-neutral-400"
+                            }`}
+                          >
+                            <Heart className={`w-4 h-4 ${isSaved ? "fill-red-500 text-red-500" : ""}`} />
+                          </button>
+
+                          {/* Rent overlay on image */}
+                          <div className="absolute bottom-2.5 left-2.5 bg-black/60 backdrop-blur-xs text-white px-2.5 py-1 rounded-[4px] text-left z-10">
+                            <span className="text-[8px] font-bold block text-white/85 leading-none">Rent/mo</span>
+                            <span className="text-[13px] font-black block mt-0.5 leading-none">₹{prop.rent.toLocaleString("en-IN")}</span>
+                          </div>
+
                           {isPromoted && (
-                            <div className="absolute top-2.5 left-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[8px] font-black px-2 py-0.5 rounded-[4px] uppercase tracking-wider z-10 flex items-center gap-1 shadow-sm border border-amber-400/20">
-                              <Sparkles className="w-2.5 h-2.5 text-white fill-white/20 animate-pulse" />
-                              <span>Promoted</span>
+                            <div className="absolute bottom-2.5 right-2.5 bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider z-10">
+                              Ad
                             </div>
                           )}
                         </div>
-   
+
                         {/* Info Content Box */}
-                        <div className="p-2.5 flex-grow flex flex-col justify-between space-y-1">
+                        <div className="p-3 flex-grow flex flex-col justify-between space-y-1">
                           <div>
-                            <p className="font-bold text-[14px] sm:text-[15px] text-neutral-900 leading-none">
-                              ₹{prop.rent.toLocaleString("en-IN")}
-                            </p>
-                            <p className="text-[11px] sm:text-xs text-neutral-500 truncate mt-1.5 leading-tight">
+                            {/* Owner badge info */}
+                            <div className="flex items-center gap-1">
+                              <span className="text-[9px] font-bold text-[#10B981] bg-[#ECFDF5] px-1.5 py-0.5 rounded-sm">Verified</span>
+                              <span className="text-[9px] text-neutral-500 font-semibold truncate max-w-[130px]">• {prop.ownerName || prop.tag || "Owner"}</span>
+                            </div>
+
+                            {/* Title */}
+                            <h3 className="font-poppins font-bold text-[13px] sm:text-[14px] text-neutral-900 truncate mt-1 leading-tight">
                               {prop.title}
+                            </h3>
+
+                            {/* Sharing/Furnishing Subtitle */}
+                            <p className="text-[10px] text-neutral-500 mt-1 truncate">
+                              Rent: {prop.sharing || "Single"} • {prop.furnishing || "Semi-Furnished"}
                             </p>
-                            <div className="flex items-center space-x-1 text-neutral-400 mt-2.5 leading-none">
-                              <MapPin className="w-3 h-3 shrink-0" />
-                              <span className="text-[9px] uppercase tracking-wide truncate">
+
+                            {/* Location */}
+                            <div className="flex items-center space-x-1 text-neutral-400 mt-2.5">
+                              <MapPin className="w-3 h-3 text-[#6C4CF1] shrink-0" />
+                              <span className="text-[9px] font-bold uppercase tracking-wider truncate">
                                 {prop.area}, {prop.city}
                               </span>
+                            </div>
+                          </div>
+
+                          {/* Send Now Button */}
+                          <div className="mt-3.5">
+                            <div className="w-full bg-[#6C4CF1] group-hover:bg-[#5B3FE6] text-white text-[10px] font-bold py-2 rounded-[6px] text-center transition-all uppercase tracking-wider shadow-sm">
+                              View Details
                             </div>
                           </div>
                         </div>
@@ -559,10 +611,19 @@ export default function HomeLayout() {
           {/* FRESH RECOMMENDATIONS (OLX STYLE GRID) */}
           {/* ========================================================================= */}
           <section className="max-w-[1280px] mx-auto text-left space-y-6 pt-4">
-            <div className="space-y-1">
-              <h2 className="font-semibold text-lg md:text-xl text-[#1E2235] tracking-tight">
-                Fresh recommendations
-              </h2>
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center space-x-1.5">
+                <h2 className="font-semibold text-lg md:text-xl text-[#1E2235] tracking-tight">
+                  All Property
+                </h2>
+              </div>
+              <Link
+                href="/rooms?type=all"
+                className="text-[11px] sm:text-xs font-bold text-[#6C4CF1] hover:text-[#5B3FE6] transition-colors flex items-center gap-0.5 cursor-pointer"
+              >
+                <span>See All</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
 
             {/* Grid Layout: 2 columns on mobile, 3 on tablet, 4 on desktop */}
@@ -579,10 +640,8 @@ export default function HomeLayout() {
                       <Link
                         key={prop.id}
                         href={detailsUrl}
-                        className={`block transition-all duration-250 overflow-hidden text-left group cursor-pointer pointer-events-auto relative border rounded-[4px] ${
-                          isPromoted 
-                            ? "bg-amber-50/10 border-amber-400/80 shadow-md shadow-amber-500/5 hover:border-amber-500 hover:shadow-lg" 
-                            : "bg-white border-slate-200 hover:border-slate-300 shadow-xs hover:shadow-sm"
+                        className={`block rounded-[6px] bg-white border border-neutral-100 shadow-xs hover:shadow-md hover:border-neutral-200/80 transition-all duration-300 overflow-hidden text-left group cursor-pointer relative ${
+                          isPromoted ? "ring-1 ring-amber-400" : ""
                         }`}
                       >
                         {/* Image Container */}
@@ -595,10 +654,17 @@ export default function HomeLayout() {
                             sizes="(max-width: 768px) 45vw, 20vw"
                           />
                           
+                          {/* Verified Badge */}
+                          <div className="absolute top-2.5 left-2.5 bg-[#10B981] text-white text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 z-10 shadow-sm">
+                            <CheckCircle className="w-2.5 h-2.5 text-white fill-white/20" />
+                            <span>Verified</span>
+                          </div>
+
                           {/* Floating Heart Icon Button (Wishlist) */}
                           <button
+                            type="button"
                             onClick={(e) => toggleSaveProperty(prop.id, e)}
-                            className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center border shadow-xs cursor-pointer active:scale-95 transition-all z-20 ${
+                            className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full flex items-center justify-center border shadow-xs cursor-pointer active:scale-95 transition-all z-20 ${
                               isSaved
                                 ? "bg-red-50 border-red-100 text-red-500"
                                 : "bg-white border-black/10 text-neutral-400"
@@ -607,10 +673,15 @@ export default function HomeLayout() {
                             <Heart className={`w-4 h-4 ${isSaved ? "fill-red-500 text-red-500" : ""}`} />
                           </button>
 
+                          {/* Rent overlay on image */}
+                          <div className="absolute bottom-2.5 left-2.5 bg-black/60 backdrop-blur-xs text-white px-2.5 py-1 rounded-[4px] text-left z-10">
+                            <span className="text-[8px] font-bold block text-white/85 leading-none">Rent/mo</span>
+                            <span className="text-[13px] font-black block mt-0.5 leading-none">₹{prop.rent.toLocaleString("en-IN")}</span>
+                          </div>
+
                           {isPromoted && (
-                            <div className="absolute top-2.5 left-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[8px] font-black px-2 py-0.5 rounded-[4px] uppercase tracking-wider z-10 flex items-center gap-1 shadow-sm border border-amber-400/20">
-                              <Sparkles className="w-2.5 h-2.5 text-white fill-white/20 animate-pulse" />
-                              <span>Promoted</span>
+                            <div className="absolute bottom-2.5 right-2.5 bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider z-10">
+                              Ad
                             </div>
                           )}
                         </div>
@@ -618,17 +689,35 @@ export default function HomeLayout() {
                         {/* Info Content Box */}
                         <div className="p-3 flex-grow flex flex-col justify-between space-y-1">
                           <div>
-                            <p className="font-poppins font-bold text-[15px] sm:text-[16px] text-neutral-900 leading-none">
-                              ₹{prop.rent.toLocaleString("en-IN")}
-                            </p>
-                            <p className="text-[11px] sm:text-xs text-neutral-500 truncate mt-1.5 leading-tight">
+                            {/* Owner badge info */}
+                            <div className="flex items-center gap-1">
+                              <span className="text-[9px] font-bold text-[#10B981] bg-[#ECFDF5] px-1.5 py-0.5 rounded-sm">Verified</span>
+                              <span className="text-[9px] text-neutral-500 font-semibold truncate max-w-[130px]">• {prop.ownerName || prop.tag || "Owner"}</span>
+                            </div>
+
+                            {/* Title */}
+                            <h3 className="font-poppins font-bold text-[13px] sm:text-[14px] text-neutral-900 truncate mt-1 leading-tight">
                               {prop.title}
+                            </h3>
+
+                            {/* Sharing/Furnishing Subtitle */}
+                            <p className="text-[10px] text-neutral-500 mt-1 truncate">
+                              Rent: {prop.sharing || "Single"} • {prop.furnishing || "Semi-Furnished"}
                             </p>
-                            <div className="flex items-center space-x-1 text-neutral-400 mt-3.5 leading-none">
-                              <MapPin className="w-3 h-3 shrink-0" />
-                              <span className="text-[9px] uppercase tracking-wide truncate">
+
+                            {/* Location */}
+                            <div className="flex items-center space-x-1 text-neutral-400 mt-2.5">
+                              <MapPin className="w-3 h-3 text-[#6C4CF1] shrink-0" />
+                              <span className="text-[9px] font-bold uppercase tracking-wider truncate">
                                 {prop.area}, {prop.city}
                               </span>
+                            </div>
+                          </div>
+
+                          {/* Send Now Button */}
+                          <div className="mt-3.5">
+                            <div className="w-full bg-[#6C4CF1] group-hover:bg-[#5B3FE6] text-white text-[10px] font-bold py-2 rounded-[6px] text-center transition-all uppercase tracking-wider shadow-sm">
+                              View Details
                             </div>
                           </div>
                         </div>

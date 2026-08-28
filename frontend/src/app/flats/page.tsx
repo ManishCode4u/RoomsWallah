@@ -19,7 +19,7 @@ import { motion } from "framer-motion";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import MobileNav from "@/components/mobile-nav";
-import { mockProperties, PropertyListing } from "@/data/listings";
+import { PropertyListing } from "@/data/listings";
 import { getApiUrl, getImageUrl } from "@/data/api";
 
 const MotionLink = motion.create(Link);

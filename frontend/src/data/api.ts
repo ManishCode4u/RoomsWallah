@@ -1,7 +1,6 @@
 /**
  * Dynamically resolves the API base URL.
- * In a browser, it uses the current host's IP/domain to connect to port 5000,
- * which enables testing on physical mobile devices connected to the same Wi-Fi network.
+ * Connects directly to the backend URL (Render in production, localhost:5000 in development).
  */
 export const getApiUrl = (path: string): string => {
   const cleanPath = path.startsWith("/") ? path : `/${path}`;

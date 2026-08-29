@@ -555,11 +555,11 @@ export default function Navbar() {
                 <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#6C4CF1] to-[#8E75FF] flex items-center justify-center text-white shadow-md shadow-[#6C4CF1]/20 group-hover:scale-105 transition-transform duration-300">
                   <Home className="w-5 h-5 stroke-[2.5]" />
                 </div>
-                <span className="relative inline-flex items-center font-poppins font-black text-xl tracking-tight text-white select-none">
-                  <span className="relative inline-block">
+                <span className="relative inline-flex items-center font-poppins font-black text-xl tracking-tight select-none">
+                  <span className="relative inline-block text-[#1E2235]">
                     R
                     <svg 
-                      className="absolute -bottom-[5px] left-[1px] w-[2.2em] h-[0.4em] text-white" 
+                      className="absolute -bottom-[5px] left-[1px] w-[2.2em] h-[0.4em] text-[#1E2235]" 
                       viewBox="0 0 100 20" 
                       fill="none" 
                       stroke="currentColor" 
@@ -569,7 +569,8 @@ export default function Navbar() {
                       <path d="M 5 2 C 10 18, 70 18, 95 2" />
                     </svg>
                   </span>
-                  <span>oomsWallah</span>
+                  <span className="text-[#1E2235]">ooms</span>
+                  <span className="text-[#6C4CF1]">Wallah</span>
                 </span>
               </Link>
 
@@ -742,11 +743,11 @@ export default function Navbar() {
                   <div className="w-7 h-7 rounded-lg bg-[#6C4CF1] flex items-center justify-center text-white shadow-sm shadow-[#6C4CF1]/20">
                     <Home className="w-4.5 h-4.5 stroke-[2.5]" />
                   </div>
-                  <span className="relative inline-flex items-center font-poppins font-black text-lg tracking-tight text-white select-none">
-                    <span className="relative inline-block">
+                  <span className="relative inline-flex items-center font-poppins font-black text-lg tracking-tight select-none">
+                    <span className="relative inline-block text-[#1E2235]">
                       R
                       <svg 
-                        className="absolute -bottom-[5px] left-[1px] w-[2.2em] h-[0.4em] text-white" 
+                        className="absolute -bottom-[5px] left-[1px] w-[2.2em] h-[0.4em] text-[#1E2235]" 
                         viewBox="0 0 100 20" 
                         fill="none" 
                         stroke="currentColor" 
@@ -756,7 +757,8 @@ export default function Navbar() {
                         <path d="M 5 2 C 10 18, 70 18, 95 2" />
                       </svg>
                     </span>
-                    <span>oomsWallah</span>
+                    <span className="text-[#1E2235]">ooms</span>
+                    <span className="text-[#6C4CF1]">Wallah</span>
                   </span>
                 </Link>
 
@@ -838,11 +840,11 @@ export default function Navbar() {
                 <div className="w-8.5 h-8.5 rounded-lg bg-primary flex items-center justify-center text-white shadow-sm">
                   <Home className="w-4.5 h-4.5" />
                 </div>
-                <span className="relative inline-flex items-center font-poppins font-black text-lg tracking-tight text-white select-none">
-                  <span className="relative inline-block">
+                <span className="relative inline-flex items-center font-poppins font-black text-lg tracking-tight select-none">
+                  <span className="relative inline-block text-[#1E2235]">
                     R
                     <svg 
-                      className="absolute -bottom-[5px] left-[1px] w-[2.2em] h-[0.4em] text-white" 
+                      className="absolute -bottom-[5px] left-[1px] w-[2.2em] h-[0.4em] text-[#1E2235]" 
                       viewBox="0 0 100 20" 
                       fill="none" 
                       stroke="currentColor" 
@@ -852,7 +854,8 @@ export default function Navbar() {
                       <path d="M 5 2 C 10 18, 70 18, 95 2" />
                     </svg>
                   </span>
-                  <span>oomsWallah</span>
+                  <span className="text-[#1E2235]">ooms</span>
+                  <span className="text-[#6C4CF1]">Wallah</span>
                 </span>
               </Link>
               <button

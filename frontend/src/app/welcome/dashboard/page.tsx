@@ -1014,11 +1014,11 @@ export default function HostDashboard() {
               <div className="w-9.5 h-9.5 rounded-xl bg-[#6C4CF1] flex items-center justify-center text-white shrink-0 shadow-sm">
                 <Home className="w-5 h-5" />
               </div>
-              <span className="relative inline-flex items-center font-poppins font-bold text-xl tracking-tight text-white select-none">
-                <span className="relative inline-block">
+              <span className="relative inline-flex items-center font-poppins font-bold text-xl tracking-tight select-none">
+                <span className="relative inline-block text-[#1E2235]">
                   R
                   <svg 
-                    className="absolute -bottom-[5px] left-[1px] w-[2.2em] h-[0.4em] text-white" 
+                    className="absolute -bottom-[5px] left-[1px] w-[2.2em] h-[0.4em] text-[#1E2235]" 
                     viewBox="0 0 100 20" 
                     fill="none" 
                     stroke="currentColor" 
@@ -1028,7 +1028,8 @@ export default function HostDashboard() {
                     <path d="M 5 2 C 10 18, 70 18, 95 2" />
                   </svg>
                 </span>
-                <span>oomsWallah</span>
+                <span className="text-[#1E2235]">ooms</span>
+                <span className="text-blue-600">Wallah</span>
               </span>
             </Link>
           </div>

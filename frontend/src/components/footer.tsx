@@ -28,8 +28,8 @@ export default function Footer() {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#6C4CF1] to-[#8E75FF] flex items-center justify-center text-white shadow-md shadow-[#6C4CF1]/20 group-hover:scale-105 transition-transform duration-300 shrink-0">
                 <Home className="w-5.5 h-5.5 stroke-[2.5]" />
               </div>
-              <span className="relative inline-flex items-center font-poppins font-black text-2xl tracking-tight text-white select-none">
-                <span className="relative inline-block">
+              <span className="relative inline-flex items-center font-poppins font-black text-2xl tracking-tight select-none">
+                <span className="relative inline-block text-white">
                   R
                   <svg 
                     className="absolute -bottom-[5px] left-[1px] w-[2.2em] h-[0.4em] text-white" 
@@ -42,7 +42,8 @@ export default function Footer() {
                     <path d="M 5 2 C 10 18, 70 18, 95 2" />
                   </svg>
                 </span>
-                <span>oomsWallah</span>
+                <span className="text-white">ooms</span>
+                <span className="text-[#6C4CF1]">Wallah</span>
               </span>
             </Link>
             

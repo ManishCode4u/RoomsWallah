@@ -32,7 +32,7 @@ export default function Footer() {
                 <span className="relative inline-block text-white">
                   R
                   <svg 
-                    className="absolute -bottom-[5px] left-[1px] w-[2.2em] h-[0.4em] text-white" 
+                    className="absolute -bottom-[1px] left-[1px] w-[2.2em] h-[0.4em] text-white" 
                     viewBox="0 0 100 20" 
                     fill="none" 
                     stroke="currentColor" 

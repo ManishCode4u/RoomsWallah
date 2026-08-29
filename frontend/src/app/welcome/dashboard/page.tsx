@@ -1018,7 +1018,7 @@ export default function HostDashboard() {
                 <span className="relative inline-block text-[#1E2235]">
                   R
                   <svg 
-                    className="absolute -bottom-[5px] left-[1px] w-[2.2em] h-[0.4em] text-[#1E2235]" 
+                    className="absolute -bottom-[1px] left-[1px] w-[2.2em] h-[0.4em] text-[#1E2235]" 
                     viewBox="0 0 100 20" 
                     fill="none" 
                     stroke="currentColor" 

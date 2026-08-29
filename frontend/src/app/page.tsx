@@ -75,6 +75,44 @@ export default function HomeLayout() {
     videoUrl: string;
   } | null>(null);
 
+  // Sync selectedCity with URL search params and localStorage Updates
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      // 1. Sync from URL search params on mount
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlCity = urlParams.get("city");
+      if (urlCity) {
+        localStorage.setItem("roomswallah_user_city", urlCity);
+        const urlState = urlParams.get("state");
+        if (urlState) localStorage.setItem("roomswallah_user_state", urlState);
+        const urlArea = urlParams.get("area");
+        if (urlArea) localStorage.setItem("roomswallah_user_area", urlArea);
+        const urlPincode = urlParams.get("pincode");
+        if (urlPincode) localStorage.setItem("roomswallah_user_pincode", urlPincode);
+        setSelectedCity(urlCity);
+      } else {
+        // 2. Sync from localStorage if no URL params
+        const savedCity = localStorage.getItem("roomswallah_user_city");
+        if (savedCity) {
+          setSelectedCity(savedCity);
+        }
+      }
+
+      // 3. Listen to active city updates dispatched from navbar
+      const handleCityChange = () => {
+        const updatedCity = localStorage.getItem("roomswallah_user_city");
+        if (updatedCity) {
+          setSelectedCity(updatedCity);
+        }
+      };
+
+      window.addEventListener("userCityUpdated", handleCityChange);
+      return () => {
+        window.removeEventListener("userCityUpdated", handleCityChange);
+      };
+    }
+  }, []);
+
   useEffect(() => {
     const fetchPromotionsAndCities = async () => {
       try {

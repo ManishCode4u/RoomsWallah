@@ -40,7 +40,21 @@ export default function Navbar() {
   const [isSavedActive, setIsSavedActive] = useState(false);
   const pathname = usePathname();
   const isSearchPage = ["/rooms", "/pg", "/hostels", "/flats"].includes(pathname);
-  const [activeSearchTab, setActiveSearchTab] = useState<"search" | "location" | null>(null);
+  const [showLocationDrawer, setShowLocationDrawer] = useState(false);
+  const [showSearchDrawer, setShowSearchDrawer] = useState(false);
+  const [addresses, setAddresses] = useState<any[]>([]);
+  const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState("");
+  const [editLine1, setEditLine1] = useState("");
+  const [editLine2, setEditLine2] = useState("");
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newLabel, setNewLabel] = useState("");
+  const [newLine1, setNewLine1] = useState("");
+  const [newLine2, setNewLine2] = useState("");
+  const [newCity, setNewCity] = useState("");
+  const [newArea, setNewArea] = useState("");
+  const [newState, setNewState] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [userCity, setUserCity] = useState("Greater Noida");
@@ -93,8 +107,84 @@ export default function Navbar() {
           setRecentSearches(JSON.parse(saved));
         } catch (e) {}
       }
+
+      // Load saved addresses
+      const savedAddrs = localStorage.getItem("roomswallah_user_addresses");
+      if (savedAddrs) {
+        try {
+          setAddresses(JSON.parse(savedAddrs));
+        } catch (e) {}
+      } else {
+        const initialAddresses = [
+          {
+            id: "addr-1",
+            label: "Home",
+            selected: true,
+            distance: "2.5 km",
+            icon: "Home",
+            addressLine1: "Flat 402, Building C, Sector 62,",
+            addressLine2: "Noida, Uttar Pradesh 201301",
+            city: "Noida",
+            area: "Sector 62",
+            state: "Uttar Pradesh"
+          },
+          {
+            id: "addr-2",
+            label: "Office",
+            selected: false,
+            distance: "8.1 km",
+            icon: "MapPin",
+            addressLine1: "Tower B, Cyber City, Sector 62,",
+            addressLine2: "Noida, Uttar Pradesh 201301",
+            city: "Noida",
+            area: "Sector 62",
+            state: "Uttar Pradesh"
+          }
+        ];
+        setAddresses(initialAddresses);
+        localStorage.setItem("roomswallah_user_addresses", JSON.stringify(initialAddresses));
+      }
     }
   }, []);
+
+  const handleDeleteAddress = (id: string) => {
+    const updated = addresses.filter(item => item.id !== id);
+    setAddresses(updated);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("roomswallah_user_addresses", JSON.stringify(updated));
+    }
+    setActiveDropdownId(null);
+  };
+
+  const handleEditAddress = (id: string) => {
+    const item = addresses.find(addr => addr.id === id);
+    if (item) {
+      setEditingAddressId(id);
+      setEditLabel(item.label);
+      setEditLine1(item.addressLine1);
+      setEditLine2(item.addressLine2);
+    }
+    setActiveDropdownId(null);
+  };
+
+  const saveEditedAddress = (id: string) => {
+    const updated = addresses.map(item => {
+      if (item.id === id) {
+        return {
+          ...item,
+          label: editLabel,
+          addressLine1: editLine1,
+          addressLine2: editLine2
+        };
+      }
+      return item;
+    });
+    setAddresses(updated);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("roomswallah_user_addresses", JSON.stringify(updated));
+    }
+    setEditingAddressId(null);
+  };
 
   useEffect(() => {
     if (!searchQuery || searchQuery.trim().length < 2) {
@@ -150,6 +240,11 @@ export default function Navbar() {
           const res = await fetch(
             getApiUrl(`/api/location/reverse?lat=${latitude}&lon=${longitude}`)
           );
+          
+          if (!res.ok) {
+            throw new Error("Reverse geocoding response error");
+          }
+          
           const data = await res.json();
           const matchedCity = data.matchedCity || "Greater Noida";
           const matchedArea = data.area || "";
@@ -166,40 +261,61 @@ export default function Navbar() {
           localStorage.setItem("roomswallah_user_display_name", displayName);
           localStorage.setItem("roomswallah_location_handled", "true");
 
+          // Save current location into saved addresses list
+          const currentAddr = {
+            id: "addr-" + Date.now(),
+            label: "Current Location",
+            selected: true,
+            distance: "0.0 km",
+            icon: "MapPin",
+            addressLine1: matchedArea || matchedCity,
+            addressLine2: `${matchedCity}, ${matchedState} ${matchedPincode}`,
+            city: matchedCity,
+            area: matchedArea || matchedCity,
+            state: matchedState
+          };
+
+          setAddresses((prev) => {
+            const updated = prev.map(addr => ({ ...addr, selected: false }));
+            const finalAddresses = [currentAddr, ...updated];
+            localStorage.setItem("roomswallah_user_addresses", JSON.stringify(finalAddresses));
+            return finalAddresses;
+          });
+
           window.dispatchEvent(new Event("userCityUpdated"));
           setUserCity(matchedCity);
           setUserState(matchedState);
           setUserPincode(matchedPincode);
-          setActiveSearchTab(null);
+          setShowLocationDrawer(false);
+          setShowSearchDrawer(false);
 
           router.push(`/?city=${encodeURIComponent(matchedCity)}&area=${encodeURIComponent(matchedArea)}&state=${encodeURIComponent(matchedState)}&pincode=${matchedPincode}`);
         } catch (err) {
           console.error("Error geocoding location:", err);
-          localStorage.setItem("roomswallah_user_city", "Greater Noida");
-          localStorage.setItem("roomswallah_user_state", "Uttar Pradesh");
-          localStorage.setItem("roomswallah_user_pincode", "201310");
-          localStorage.setItem("roomswallah_location_handled", "true");
-          window.dispatchEvent(new Event("userCityUpdated"));
-          setUserCity("Greater Noida");
-          setUserState("Uttar Pradesh");
-          setUserPincode("201310");
-          setActiveSearchTab(null);
+          alert("Unable to detect your current location. Please try again or search manually.");
         } finally {
           setLoadingLocation(false);
         }
       },
       (err) => {
         console.error("Geolocation error:", err);
-        localStorage.setItem("roomswallah_user_city", "Greater Noida");
-        localStorage.setItem("roomswallah_user_state", "Uttar Pradesh");
-        localStorage.setItem("roomswallah_user_pincode", "201310");
-        localStorage.setItem("roomswallah_location_handled", "true");
-        window.dispatchEvent(new Event("userCityUpdated"));
-        setUserCity("Greater Noida");
-        setUserState("Uttar Pradesh");
-        setUserPincode("201310");
-        setActiveSearchTab(null);
+        let errorMsg = "Unable to detect your current location. Please try again or search manually.";
+        
+        if (err.code === err.PERMISSION_DENIED) {
+          errorMsg = "Location permission was denied. Please allow location access in your browser settings or search for your location manually.";
+        } else if (err.code === err.POSITION_UNAVAILABLE) {
+          errorMsg = "Unable to detect your current location. Please try again or search manually.";
+        } else if (err.code === err.TIMEOUT) {
+          errorMsg = "Location detection timed out. Please try again.";
+        }
+        
+        alert(errorMsg);
         setLoadingLocation(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
       }
     );
   };
@@ -240,7 +356,8 @@ export default function Navbar() {
     setUserState(state);
     setUserPincode(pincode);
     setSearchQuery("");
-    setActiveSearchTab(null);
+    setShowLocationDrawer(false);
+    setShowSearchDrawer(false);
 
     router.push(`/?city=${encodeURIComponent(city)}&area=${encodeURIComponent(area)}&state=${encodeURIComponent(state)}&pincode=${pincode}`);
   };
@@ -264,17 +381,10 @@ export default function Navbar() {
       };
 
       const handleOpenLocationDrawer = () => {
-        setActiveSearchTab("location");
+        setShowLocationDrawer(true);
       };
 
-      // Check if location permission is already allowed and auto-detect
-      if (navigator.permissions && navigator.geolocation) {
-        navigator.permissions.query({ name: "geolocation" as PermissionName }).then((result) => {
-          if (result.state === "granted") {
-            detectLocation();
-          }
-        });
-      }
+
 
       window.addEventListener("userCityUpdated", handleCityUpdate);
       window.addEventListener("storage", handleCityUpdate);
@@ -452,7 +562,7 @@ export default function Navbar() {
 
               {/* Location Selector (Premium soft shadow & border - Responsive width to prevent overlap) */}
               <div 
-                onClick={() => setActiveSearchTab("location")} 
+                onClick={() => setShowLocationDrawer(true)} 
                 className="flex items-center space-x-2 text-[#1E2235] cursor-pointer bg-[#F8FAFC]/75 hover:bg-white border border-[#ECECEC] hover:border-[#6C4CF1]/20 hover:shadow-soft px-3.5 h-12 rounded-xl transition-all duration-300 w-[180px] lg:w-[240px] shrink-0"
               >
                 <span className="text-[13.5px] font-normal font-poppins truncate flex-grow text-left">
@@ -463,7 +573,7 @@ export default function Navbar() {
 
               {/* Search Bar Input (Polished with regular weight text and responsive width) */}
               <div 
-                onClick={() => setActiveSearchTab("search")}
+                onClick={() => setShowSearchDrawer(true)}
                 className="relative flex items-center bg-[#F8FAFC]/75 hover:bg-white border border-[#ECECEC] rounded-xl h-12 pl-3 pr-1.5 flex-grow max-w-[600px] mx-4 transition-all duration-300 hover:shadow-soft cursor-pointer"
               >
                 <div className="bg-transparent text-[13.5px] font-normal text-[#94A3B8] outline-none flex-grow border-none p-0 z-10 text-left select-none">
@@ -625,7 +735,7 @@ export default function Navbar() {
                 </Link>
 
                 {/* Location selector */}
-                <div onClick={() => setActiveSearchTab("location")} className="flex items-center space-x-1 text-[#1E2235]/90 cursor-pointer">
+                <div onClick={() => setShowLocationDrawer(true)} className="flex items-center space-x-1 text-[#1E2235]/90 cursor-pointer">
                   <span className="text-xs font-semibold font-poppins">
                     {userState ? `${userCity}, ${userState}` : userCity}
                   </span>
@@ -647,7 +757,7 @@ export default function Navbar() {
             <div className="flex items-center gap-3 w-full px-1">
               {/* Mobile Search Card */}
               <div 
-                onClick={() => setActiveSearchTab("search")}
+                onClick={() => setShowSearchDrawer(true)}
                 className="relative flex items-center bg-white border border-black rounded-[4px] flex-grow h-11 px-3 shadow-xs cursor-pointer animate-fadeIn"
               >
                 <Search className="w-4.5 h-4.5 text-black shrink-0" />
@@ -677,300 +787,637 @@ export default function Navbar() {
       {/* Mobile Drawer (Reference 3 inspired) */}
       <AnimatePresence>
         {isOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.4 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsOpen(false)}
-              className="fixed inset-0 bg-black z-50 backdrop-blur-xs"
-            />
+          <motion.div
+            key="menu-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.4 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsOpen(false)}
+            className="fixed inset-0 bg-black z-50 backdrop-blur-xs"
+          />
+        )}
 
-            {/* Drawer */}
-            <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ duration: 0.28, ease: "easeOut" }}
-              className="fixed inset-y-0 right-0 w-[85vw] sm:w-[320px] bg-white z-50 shadow-2xl flex flex-col justify-between overflow-hidden rounded-l-[32px]"
-            >
-              {/* Header */}
-              <div className="p-5 border-b border-border flex items-center justify-between">
-                <Link href="/" onClick={() => setIsOpen(false)} className="flex items-center space-x-2 shrink-0">
-                  <div className="w-8.5 h-8.5 rounded-lg bg-primary flex items-center justify-center text-white shadow-sm">
-                    <Home className="w-4.5 h-4.5" />
-                  </div>
-                  <span className="font-poppins font-black text-lg tracking-tight text-[#1E2235]">
-                    Rooms<span className="text-[#6C4CF1]">Wallah</span>
-                  </span>
-                </Link>
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="w-8 h-8 rounded-full hover:bg-black/5 active:scale-90 transition-all border border-border flex items-center justify-center"
-                >
-                  <X className="w-4 h-4 text-muted" />
-                </button>
-              </div>
-
-              {/* Navigation Links with subtext and styled icons (Matching Image 3) */}
-              <div className="flex-1 py-4 px-4 overflow-y-auto space-y-1 no-scrollbar">
-                {(() => {
-                  const dynamicDrawerItems = [...drawerItems];
-                  if (isUserLoggedIn) {
-                    dynamicDrawerItems.push({
-                      name: "User Profile",
-                      subtext: "View saved & reported listings",
-                      href: "/welcome/user-dashboard",
-                      icon: User,
-                      iconColor: "text-rose-600",
-                      bgColor: "bg-rose-50",
-                      hasArrow: true,
-                    });
-                  }
-                  return dynamicDrawerItems.map((item) => {
-                    const isActive = pathname === item.href;
-                    const Icon = item.icon;
-                    return (
-                      <Link
-                        key={item.name}
-                        href={item.href}
-                        onClick={() => setIsOpen(false)}
-                        className={`flex items-center justify-between p-2.5 rounded-2xl transition-all ${
-                          isActive
-                            ? "bg-primary-light/50 text-primary font-bold"
-                            : "text-foreground hover:bg-black/5"
-                        }`}
-                      >
-                        <div className="flex items-center space-x-3.5">
-                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${item.bgColor} ${item.iconColor}`}>
-                            <Icon className="w-4.5 h-4.5" />
-                          </div>
-                          <div className="flex flex-col text-left">
-                            <span className="text-[11px] font-bold text-foreground flex items-center gap-1.5">
-                              {item.name}
-                              {item.badge && (
-                                <span className="bg-primary text-white text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase leading-none">
-                                  {item.badge}
-                                </span>
-                              )}
-                            </span>
-                            <span className="text-[9px] text-muted font-semibold mt-0.5">
-                              {item.subtext}
-                            </span>
-                          </div>
-                        </div>
-                        {item.hasArrow && <ChevronRight className="w-4 h-4 text-muted/60" />}
-                      </Link>
-                    );
-                  });
-                })()}
-              </div>
-
-              {/* Bottom Action Box & Skyline Graphic */}
-              <div className="p-4 border-t border-border bg-[#F5F3FF]/70 relative flex flex-col justify-between overflow-hidden min-h-[140px]">
-                {/* City skyline illustration at the very bottom */}
-                <div className="absolute bottom-0 left-0 right-0 h-10 opacity-30 pointer-events-none z-0">
-                  <svg className="w-full h-full text-primary" viewBox="0 0 300 40" fill="currentColor">
-                    <rect x="10" y="20" width="12" height="20" />
-                    <rect x="25" y="10" width="16" height="30" />
-                    <rect x="45" y="25" width="10" height="15" />
-                    <rect x="58" y="15" width="14" height="25" />
-                    <rect x="75" y="28" width="8" height="12" />
-                    <rect x="85" y="22" width="12" height="18" />
-                    <rect x="100" y="5" width="18" height="35" />
-                    <rect x="122" y="25" width="10" height="15" />
-                    <rect x="135" y="18" width="15" height="22" />
-                    <rect x="155" y="28" width="8" height="12" />
-                    <rect x="165" y="22" width="12" height="18" />
-                    <rect x="180" y="12" width="16" height="28" />
-                    <rect x="200" y="25" width="10" height="15" />
-                    <rect x="212" y="18" width="14" height="22" />
-                    <rect x="230" y="8" width="18" height="32" />
-                    <rect x="252" y="22" width="10" height="18" />
-                    <rect x="265" y="15" width="12" height="25" />
-                    <rect x="280" y="28" width="8" height="12" />
-                  </svg>
+        {isOpen && (
+          <motion.div
+            key="menu-drawer"
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ duration: 0.28, ease: "easeOut" }}
+            className="fixed inset-y-0 right-0 w-[85vw] sm:w-[320px] bg-white z-50 shadow-2xl flex flex-col justify-between overflow-hidden rounded-l-[32px]"
+          >
+            {/* Header */}
+            <div className="p-5 border-b border-border flex items-center justify-between">
+              <Link href="/" onClick={() => setIsOpen(false)} className="flex items-center space-x-2 shrink-0">
+                <div className="w-8.5 h-8.5 rounded-lg bg-primary flex items-center justify-center text-white shadow-sm">
+                  <Home className="w-4.5 h-4.5" />
                 </div>
+                <span className="font-poppins font-black text-lg tracking-tight text-[#1E2235]">
+                  Rooms<span className="text-[#6C4CF1]">Wallah</span>
+                </span>
+              </Link>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="w-8 h-8 rounded-full hover:bg-black/5 active:scale-90 transition-all border border-border flex items-center justify-center"
+              >
+                <X className="w-4 h-4 text-muted" />
+              </button>
+            </div>
 
-                {/* List Your Room Card */}
-                <Link
-                  href={isHostLoggedIn ? "/welcome/dashboard" : isUserLoggedIn ? "/welcome/user-dashboard" : "/welcome"}
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center justify-between p-3.5 rounded-2xl bg-white border border-border/80 shadow-soft hover:shadow-md transition-all relative z-10 w-full text-left"
-                >
-                  <div className="flex flex-col">
-                    <span className="text-[11px] font-bold text-foreground">
-                      {isHostLoggedIn ? "Host Dashboard" : isUserLoggedIn ? "User Profile Dashboard" : "List Your Room"}
-                    </span>
-                    <span className="text-[9px] text-muted font-medium mt-0.5 max-w-[150px]">
-                      {isHostLoggedIn ? "Manage listings & profile panel" : isUserLoggedIn ? "View saved properties & reports" : "Reach thousands of students and tenants"}
-                    </span>
-                  </div>
-                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white active:scale-95 transition-all">
-                    <Plus className="w-4.5 h-4.5" />
-                  </div>
-                </Link>
+            {/* Navigation Links with subtext and styled icons (Matching Image 3) */}
+            <div className="flex-1 py-4 px-4 overflow-y-auto space-y-1 no-scrollbar">
+              {(() => {
+                const dynamicDrawerItems = [...drawerItems];
+                if (isUserLoggedIn) {
+                  dynamicDrawerItems.push({
+                    name: "User Profile",
+                    subtext: "View saved & reported listings",
+                    href: "/welcome/user-dashboard",
+                    icon: User,
+                    iconColor: "text-rose-600",
+                    bgColor: "bg-rose-50",
+                    hasArrow: true,
+                  });
+                }
+                return dynamicDrawerItems.map((item) => {
+                  const isActive = pathname === item.href;
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      onClick={() => setIsOpen(false)}
+                      className={`flex items-center justify-between p-2.5 rounded-2xl transition-all ${
+                        isActive
+                          ? "bg-primary-light/50 text-primary font-bold"
+                          : "text-foreground hover:bg-black/5"
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3.5">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${item.bgColor} ${item.iconColor}`}>
+                          <Icon className="w-4.5 h-4.5" />
+                        </div>
+                        <div className="flex flex-col text-left">
+                          <span className="text-[11px] font-bold text-foreground flex items-center gap-1.5">
+                            {item.name}
+                            {item.badge && (
+                              <span className="bg-primary text-white text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase leading-none">
+                                {item.badge}
+                              </span>
+                            )}
+                          </span>
+                          <span className="text-[9px] text-muted font-semibold mt-0.5">
+                            {item.subtext}
+                          </span>
+                        </div>
+                      </div>
+                      {item.hasArrow && <ChevronRight className="w-4 h-4 text-muted/60" />}
+                    </Link>
+                  );
+                });
+              })()}
+            </div>
+
+            {/* Bottom Action Box & Skyline Graphic */}
+            <div className="p-4 border-t border-border bg-[#F5F3FF]/70 relative flex flex-col justify-between overflow-hidden min-h-[140px]">
+              {/* City skyline illustration at the very bottom */}
+              <div className="absolute bottom-0 left-0 right-0 h-10 opacity-30 pointer-events-none z-0">
+                <svg className="w-full h-full text-primary" viewBox="0 0 300 40" fill="currentColor">
+                  <rect x="10" y="20" width="12" height="20" />
+                  <rect x="25" y="10" width="16" height="30" />
+                  <rect x="45" y="25" width="10" height="15" />
+                  <rect x="58" y="15" width="14" height="25" />
+                  <rect x="75" y="28" width="8" height="12" />
+                  <rect x="85" y="22" width="12" height="18" />
+                  <rect x="100" y="5" width="18" height="35" />
+                  <rect x="122" y="25" width="10" height="15" />
+                  <rect x="135" y="18" width="15" height="22" />
+                  <rect x="155" y="28" width="8" height="12" />
+                  <rect x="165" y="22" width="12" height="18" />
+                  <rect x="180" y="12" width="16" height="28" />
+                  <rect x="200" y="25" width="10" height="15" />
+                  <rect x="212" y="18" width="14" height="22" />
+                  <rect x="230" y="8" width="18" height="32" />
+                  <rect x="252" y="22" width="10" height="18" />
+                  <rect x="265" y="15" width="12" height="25" />
+                  <rect x="280" y="28" width="8" height="12" />
+                </svg>
               </div>
-            </motion.div>
-          </>
+
+              {/* List Your Room Card */}
+              <Link
+                href={isHostLoggedIn ? "/welcome/dashboard" : isUserLoggedIn ? "/welcome/user-dashboard" : "/welcome"}
+                onClick={() => setIsOpen(false)}
+                className="flex items-center justify-between p-3.5 rounded-2xl bg-white border border-border/80 shadow-soft hover:shadow-md transition-all relative z-10 w-full text-left"
+              >
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-bold text-foreground">
+                    {isHostLoggedIn ? "Host Dashboard" : isUserLoggedIn ? "User Profile Dashboard" : "List Your Room"}
+                  </span>
+                  <span className="text-[9px] text-muted font-medium mt-0.5 max-w-[150px]">
+                    {isHostLoggedIn ? "Manage listings & profile panel" : isUserLoggedIn ? "View saved properties & reports" : "Reach thousands of students and tenants"}
+                  </span>
+                </div>
+                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white active:scale-95 transition-all">
+                  <Plus className="w-4.5 h-4.5" />
+                </div>
+              </Link>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
-      {/* Click outside backdrop to close dropdown */}
-      {activeSearchTab && (
-        <div 
-          className="fixed inset-0 bg-black/15 z-30 transition-opacity" 
-          onClick={() => setActiveSearchTab(null)} 
-        />
-      )}
-
-      {/* Floating Dropdown Search Card */}
+      {/* Select Your Location Drawer */}
       <AnimatePresence>
-        {activeSearchTab && (
-          <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.98 }}
-            transition={{ duration: 0.2 }}
-            className="absolute top-full left-1/2 -translate-x-1/2 w-[calc(100%-24px)] max-w-[550px] bg-white border border-[#ECECEC] rounded-2xl shadow-xl mt-2.5 p-4 z-40 text-left space-y-4"
+        {showLocationDrawer && (
+          <motion.div 
+            initial={{ opacity: 0, y: "100%" }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: "100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 220 }}
+            className="fixed inset-0 z-[100000] bg-[#F8FAFC] flex flex-col"
           >
-            {/* Conditional fields rendering based on activeSearchTab */}
-            {activeSearchTab === "search" && (
-              /* Find Rooms Input Box */
+            {/* Header row */}
+            <div className="flex items-center space-x-4 px-4 py-4 bg-white border-b border-[#F0F2F5]/80 shrink-0 text-left">
+              <button 
+                onClick={() => setShowLocationDrawer(false)}
+                className="p-1.5 rounded-full hover:bg-slate-100 active:scale-95 transition-all text-slate-800 cursor-pointer"
+              >
+                <ArrowLeft className="w-5.5 h-5.5" />
+              </button>
+              <h2 className="font-poppins font-bold text-lg text-slate-800">
+                Select Your Location
+              </h2>
+            </div>
+
+            {/* Scrollable Body */}
+            <div className="flex-grow overflow-y-auto bg-slate-50/50 p-4 space-y-4">
+              
+              {/* Search bar input */}
+              <div className="relative flex items-center bg-white border border-[#E2E8F0] rounded-2xl h-12 px-4.5 shadow-sm focus-within:border-[#6C4CF1]/40 focus-within:shadow-[0px_4px_16px_rgba(108,76,241,0.04)] transition-all">
+                <input
+                  type="text"
+                  placeholder="Search an area or address"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="bg-transparent text-sm font-normal text-slate-800 outline-none flex-grow placeholder:text-[#94A3B8] border-none p-0 focus:ring-0 focus:outline-none"
+                />
+                <Search className="w-5 h-5 text-slate-400 shrink-0 ml-2" />
+              </div>
+
+              {/* Location suggestions (if search query is typed) */}
+              {searchQuery.trim() ? (
+                <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden divide-y divide-slate-100 shadow-sm">
+                  {loadingSuggestions ? (
+                    <div className="flex items-center justify-center py-6">
+                      <div className="w-5 h-5 border-2 border-[#6C4CF1] border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : locationSuggestions.length > 0 ? (
+                    locationSuggestions.map((sug, idx) => (
+                      <div 
+                        key={idx}
+                        onClick={() => handleSelectLocation(sug)}
+                        className="flex items-center space-x-3 px-4 py-3.5 hover:bg-slate-50 cursor-pointer text-left transition-colors"
+                      >
+                        <MapPin className="w-4.5 h-4.5 text-[#6C4CF1] shrink-0" />
+                        <div className="flex flex-col flex-1 min-w-0">
+                          <span className="text-sm font-semibold text-slate-800 truncate">{sug.displayName}</span>
+                          <span className="text-[10px] text-slate-400 font-medium mt-0.5">
+                            City: {sug.city} {sug.pincode ? `| Pin: ${sug.pincode}` : ""}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div 
+                      onClick={() => handleSelectLocation(searchQuery.trim())}
+                      className="flex items-center space-x-3 px-4 py-3.5 hover:bg-slate-50 cursor-pointer text-left transition-colors text-[#6C4CF1]"
+                    >
+                      <MapPin className="w-4.5 h-4.5 shrink-0" />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold">Select "{searchQuery.trim()}"</span>
+                        <span className="text-[10px] text-slate-400 mt-0.5">Use typed custom location</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {/* Two Buttons Side by Side */}
+                  <div className="grid grid-cols-2 gap-3 shrink-0 animate-fadeIn">
+                    <button
+                      onClick={detectLocation}
+                      disabled={loadingLocation}
+                      className="flex items-center justify-center space-x-2 bg-white border border-[#E2E8F0] hover:border-[#6C4CF1]/20 hover:shadow-xs py-3 px-2 rounded-xl text-xs sm:text-sm font-bold text-slate-700 active:scale-95 transition-all cursor-pointer"
+                    >
+                      {loadingLocation ? (
+                        <div className="w-4 h-4 border-2 border-[#10B981] border-t-transparent rounded-full animate-spin shrink-0" />
+                      ) : (
+                        <Locate className="w-4.5 h-4.5 text-[#10B981] shrink-0" />
+                      )}
+                      <span className="truncate">{loadingLocation ? "Detecting location..." : "Use Current Location"}</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setShowAddForm(prev => !prev);
+                      }}
+                      className={`flex items-center justify-center space-x-2 border py-3 px-2 rounded-xl text-xs sm:text-sm font-bold active:scale-95 transition-all cursor-pointer ${showAddForm ? 'bg-[#6C4CF1] border-[#6C4CF1] text-white' : 'bg-white border-[#E2E8F0] text-slate-700 hover:border-[#6C4CF1]/20'}`}
+                    >
+                      <Plus className={`w-4.5 h-4.5 shrink-0 ${showAddForm ? 'text-white' : 'text-[#10B981]'}`} />
+                      <span className="truncate">Add New Address</span>
+                    </button>
+                  </div>
+
+                  {/* Add New Address Form (State-driven inputs for all address components) */}
+                  {showAddForm && (
+                    <div className="bg-white border border-[#E2E8F0] rounded-2xl p-4.5 space-y-3.5 text-left shadow-soft animate-fadeIn">
+                      <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                        <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">New Address Details</span>
+                      </div>
+                      
+                      <div className="space-y-2.5">
+                        <input
+                          type="text"
+                          placeholder="Label (e.g. Work, Gym, Friend's Place)"
+                          value={newLabel}
+                          onChange={(e) => setNewLabel(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-[#6C4CF1]/40 transition-all"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Address Line 1 (Flat/Building, Street)"
+                          value={newLine1}
+                          onChange={(e) => setNewLine1(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-[#6C4CF1]/40 transition-all"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Address Line 2 (Locality, Sector, Landmark)"
+                          value={newLine2}
+                          onChange={(e) => setNewLine2(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-[#6C4CF1]/40 transition-all"
+                        />
+                        <div className="grid grid-cols-3 gap-2">
+                          <input
+                            type="text"
+                            placeholder="City"
+                            value={newCity}
+                            onChange={(e) => setNewCity(e.target.value)}
+                            className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-[#6C4CF1]/40 transition-all"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Area"
+                            value={newArea}
+                            onChange={(e) => setNewArea(e.target.value)}
+                            className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-[#6C4CF1]/40 transition-all"
+                          />
+                          <input
+                            type="text"
+                            placeholder="State"
+                            value={newState}
+                            onChange={(e) => setNewState(e.target.value)}
+                            className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-[#6C4CF1]/40 transition-all"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex space-x-2 pt-1">
+                        <button
+                          onClick={() => {
+                            if (!newLabel || !newCity) {
+                              alert("Please enter at least Address Label and City.");
+                              return;
+                            }
+                            const newAddr = {
+                              id: "addr-" + Date.now(),
+                              label: newLabel,
+                              selected: true,
+                              distance: "1.2 km",
+                              icon: "MapPin",
+                              addressLine1: newLine1,
+                              addressLine2: newLine2,
+                              city: newCity,
+                              area: newArea || newCity,
+                              state: newState || "Uttar Pradesh"
+                            };
+
+                            const updated = addresses.map(addr => ({ ...addr, selected: false }));
+                            const finalAddresses = [newAddr, ...updated];
+                            setAddresses(finalAddresses);
+                            localStorage.setItem("roomswallah_user_addresses", JSON.stringify(finalAddresses));
+
+                            // Select this new address as current location
+                            localStorage.setItem("roomswallah_user_city", newAddr.city);
+                            localStorage.setItem("roomswallah_user_state", newAddr.state);
+                            localStorage.setItem("roomswallah_user_display_name", `${newAddr.area}, ${newAddr.city}`);
+                            localStorage.setItem("roomswallah_location_handled", "true");
+                            window.dispatchEvent(new Event("userCityUpdated"));
+                            setUserCity(newAddr.city);
+                            setUserState(newAddr.state);
+                            setShowLocationDrawer(false);
+                            
+                            // Reset inputs
+                            setNewLabel("");
+                            setNewLine1("");
+                            setNewLine2("");
+                            setNewCity("");
+                            setNewArea("");
+                            setNewState("");
+                            setShowAddForm(false);
+
+                            router.push(`/?city=${encodeURIComponent(newAddr.city)}&area=${encodeURIComponent(newAddr.area)}&state=${encodeURIComponent(newAddr.state)}`);
+                          }}
+                          className="bg-[#6C4CF1] hover:bg-[#5B3FE6] text-white text-[11px] font-bold px-4 py-2 rounded-xl transition-all active:scale-95 cursor-pointer"
+                        >
+                          Add Address
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowAddForm(false);
+                          }}
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-600 text-[11px] font-bold px-4 py-2 rounded-xl transition-all active:scale-95 cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* SAVED ADDRESSES Title */}
+                  <div className="text-left pt-2">
+                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block mb-2.5">
+                      SAVED ADDRESSES
+                    </span>
+
+                    {/* Address List */}
+                    <div className="space-y-3">
+                      {addresses.length === 0 ? (
+                        <div className="text-center py-6 bg-slate-50 border border-slate-100 rounded-2xl text-slate-400 text-xs">
+                          No saved addresses found.
+                        </div>
+                      ) : (
+                        addresses.map((item, idx) => {
+                          const ItemIcon = item.icon === "Home" ? Home : MapPin;
+                          const isEditing = editingAddressId === item.id;
+                          return (
+                            <div 
+                              key={item.id || idx}
+                              onClick={() => {
+                                if (isEditing) return; // Prevent selection click while editing
+                                
+                                // Mark this address as selected
+                                const updated = addresses.map(addr => ({
+                                  ...addr,
+                                  selected: addr.id === item.id
+                                }));
+                                setAddresses(updated);
+                                localStorage.setItem("roomswallah_user_addresses", JSON.stringify(updated));
+
+                                localStorage.setItem("roomswallah_user_city", item.city);
+                                localStorage.setItem("roomswallah_user_state", item.state);
+                                localStorage.setItem("roomswallah_user_display_name", `${item.area}, ${item.city}`);
+                                localStorage.setItem("roomswallah_location_handled", "true");
+                                window.dispatchEvent(new Event("userCityUpdated"));
+                                setUserCity(item.city);
+                                setUserState(item.state);
+                                setShowLocationDrawer(false);
+                                router.push(`/?city=${encodeURIComponent(item.city)}&area=${encodeURIComponent(item.area)}&state=${encodeURIComponent(item.state)}`);
+                              }}
+                              className={`flex items-start space-x-3 p-4 bg-white border ${item.selected ? 'border-[#6C4CF1]/40 shadow-xs' : 'border-[#E2E8F0] hover:border-[#6C4CF1]/20'} hover:shadow-xs rounded-2xl cursor-pointer transition-all relative text-left`}
+                            >
+                              <div className="flex flex-col items-center bg-slate-50 border border-slate-100 rounded-xl p-2 shrink-0 w-12.5">
+                                <ItemIcon className="w-4.5 h-4.5 text-slate-500" />
+                                <span className="text-[9px] font-black text-slate-500 mt-1.5 truncate w-full text-center">
+                                  {item.distance}
+                                </span>
+                              </div>
+
+                              <div className="flex-grow min-w-0 pr-6 space-y-1">
+                                {isEditing ? (
+                                  <div className="space-y-2 mt-1 w-full" onClick={(e) => e.stopPropagation()}>
+                                    <input
+                                      type="text"
+                                      value={editLabel}
+                                      onChange={(e) => setEditLabel(e.target.value)}
+                                      className="w-full bg-slate-50 border border-slate-200 rounded-md px-2 py-1 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C4CF1]"
+                                      placeholder="Address Name (e.g. Home)"
+                                    />
+                                    <input
+                                      type="text"
+                                      value={editLine1}
+                                      onChange={(e) => setEditLine1(e.target.value)}
+                                      className="w-full bg-slate-50 border border-slate-200 rounded-md px-2 py-1 text-xs text-slate-600 focus:outline-none focus:border-[#6C4CF1]"
+                                      placeholder="Address Line 1"
+                                    />
+                                    <input
+                                      type="text"
+                                      value={editLine2}
+                                      onChange={(e) => setEditLine2(e.target.value)}
+                                      className="w-full bg-slate-50 border border-slate-200 rounded-md px-2 py-1 text-xs text-slate-600 focus:outline-none focus:border-[#6C4CF1]"
+                                      placeholder="Address Line 2"
+                                    />
+                                    <div className="flex space-x-2 pt-1">
+                                      <button
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          saveEditedAddress(item.id);
+                                        }}
+                                        className="bg-[#6C4CF1] hover:bg-[#5B3FE6] text-white text-[10px] font-bold px-3 py-1.5 rounded-md transition-all active:scale-95"
+                                      >
+                                        Save
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          setEditingAddressId(null);
+                                        }}
+                                        className="bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold px-3 py-1.5 rounded-md transition-all active:scale-95"
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="flex items-center space-x-2">
+                                      <span className="text-[13.5px] font-bold text-slate-800 font-poppins">{item.label}</span>
+                                      {item.selected && (
+                                        <span className="bg-[#E6F4EA] text-[#137333] text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider scale-90 origin-left">
+                                          SELECTED
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-[11px] font-medium text-slate-500 leading-tight">
+                                      {item.addressLine1}
+                                    </p>
+                                    <p className="text-[11px] font-medium text-slate-400 leading-tight truncate">
+                                      {item.addressLine2}
+                                    </p>
+                                  </>
+                                )}
+                              </div>
+
+                              {!isEditing && (
+                                <div className="absolute top-4 right-3 z-30">
+                                  <button 
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      setActiveDropdownId(activeDropdownId === item.id ? null : item.id);
+                                    }}
+                                    className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-50 active:scale-90 transition-all cursor-pointer"
+                                  >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                    </svg>
+                                  </button>
+
+                                  {activeDropdownId === item.id && (
+                                    <div className="absolute right-0 mt-1 w-24 bg-white border border-[#E2E8F0] rounded-lg shadow-md z-40 py-1 text-left">
+                                      <button
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          handleEditAddress(item.id);
+                                        }}
+                                        className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition-colors font-semibold"
+                                      >
+                                        Edit
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          handleDeleteAddress(item.id);
+                                        }}
+                                        className="w-full text-left px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors font-semibold"
+                                      >
+                                        Delete
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Dedicated Search Drawer */}
+      <AnimatePresence>
+        {showSearchDrawer && (
+          <motion.div 
+            initial={{ opacity: 0, y: "100%" }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: "100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 220 }}
+            className="fixed inset-0 z-[100000] bg-[#F8FAFC] flex flex-col"
+          >
+            {/* Header row */}
+            <div className="flex items-center space-x-4 px-4 py-4 bg-white border-b border-[#F0F2F5] shadow-xs shrink-0 text-left">
+              <button 
+                onClick={() => setShowSearchDrawer(false)}
+                className="p-1.5 rounded-full hover:bg-slate-100 active:scale-95 transition-all text-[#1E2235] cursor-pointer"
+              >
+                <ArrowLeft className="w-5.5 h-5.5" />
+              </button>
+              <h2 className="font-poppins font-bold text-lg text-slate-800">
+                Search
+              </h2>
+            </div>
+
+            {/* Search Input Box */}
+            <div className="p-4 bg-white border-b border-[#F0F2F5]/60 shrink-0 text-left space-y-3.5">
+              {/* Box 1: Search Input Box (Find Rooms, PG, Flats) */}
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Find Rooms, PG, Hostels, Flats</label>
-                <div className="relative flex items-center bg-white border border-slate-200 rounded-xl h-11 px-3 focus-within:border-[#6C4CF1] transition-all">
-                  <Search className="w-4.5 h-4.5 text-slate-400 shrink-0" />
+                <div className="relative flex items-center bg-white border border-[#E2E8F0] rounded-xl h-12 px-4 shadow-sm focus-within:border-[#6C4CF1]/40 focus-within:shadow-[0px_4px_16px_rgba(108,76,241,0.04)] transition-all">
+                  <Search className="w-5 h-5 text-slate-400 shrink-0" />
                   <input
                     type="text"
-                    placeholder="Find Rooms, PG, Hostels, Flats..."
+                    placeholder="Search keywords..."
                     value={searchVal}
                     onChange={(e) => setSearchVal(e.target.value)}
-                    className="bg-transparent text-sm font-normal text-[#1E2235] outline-none ml-2 flex-grow placeholder:text-slate-400 border-none p-0 focus:ring-0 focus:outline-none"
+                    className="bg-transparent text-sm font-normal text-slate-800 outline-none ml-3 flex-grow placeholder:text-[#94A3B8] border-none p-0 focus:ring-0 focus:outline-none"
                   />
                   {searchVal && (
                     <button 
                       onClick={() => setSearchVal("")}
-                      className="w-4.5 h-4.5 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
+                      className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
                     >
                       ×
                     </button>
                   )}
                 </div>
               </div>
-            )}
 
-            {/* Location Input Box (visible in both search and location tabs) */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Location (City/Area)</label>
-              <div className="relative flex items-center bg-white border border-slate-200 rounded-xl h-11 px-3 focus-within:border-[#6C4CF1] transition-all">
-                <MapPin className="w-4.5 h-4.5 text-[#6C4CF1] shrink-0" />
-                <input
-                  type="text"
-                  placeholder="Search city, area or locality"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-transparent text-sm font-normal text-[#1E2235] outline-none ml-2 flex-grow placeholder:text-slate-400 border-none p-0 focus:ring-0 focus:outline-none"
-                />
-                {searchQuery && (
-                  <button 
-                    onClick={() => setSearchQuery("")}
-                    className="w-4.5 h-4.5 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
+              {/* Search submit button */}
+              <button
+                type="button"
+                onClick={() => {
+                  const targetCity = userCity;
+                  const targetSearch = searchVal.trim();
+
+                  if (targetSearch) {
+                    addRecentSearch(targetSearch);
+                  }
+
+                  router.push(`/rooms?city=${encodeURIComponent(targetCity)}&search=${encodeURIComponent(targetSearch)}`);
+                  setShowSearchDrawer(false);
+                }}
+                className="w-full bg-[#6C4CF1] hover:bg-[#5B3FE6] text-white text-xs font-bold py-2.5 rounded-[4px] uppercase tracking-wider shadow-sm transition-all text-center active:scale-98 cursor-pointer mt-1"
+              >
+                Search Properties
+              </button>
             </div>
 
-            {/* Location Suggestions (Autocomplete) */}
-            {searchQuery.trim() && (
-              <div className="max-h-[160px] overflow-y-auto border border-slate-100 rounded-xl bg-slate-50/50">
-                {loadingSuggestions ? (
-                  <div className="flex items-center justify-center py-4">
-                    <div className="w-5 h-5 border-2 border-[#6C4CF1] border-t-transparent rounded-full animate-spin" />
-                  </div>
-                ) : locationSuggestions.length > 0 ? (
-                  locationSuggestions.map((sug, idx) => (
-                    <div 
-                      key={idx}
-                      onClick={() => handleSelectLocation(sug)}
-                      className="flex items-center space-x-2.5 px-3 py-2.5 hover:bg-slate-100 cursor-pointer border-b border-[#F0F2F5]/40 text-left"
+            {/* Recent Searches */}
+            <div className="flex-grow overflow-y-auto pb-8 bg-slate-50/50">
+              {recentSearches.length > 0 && (
+                <div className="flex flex-col px-5 pt-4 text-left">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Recent searches</span>
+                    <button 
+                      type="button"
+                      onClick={clearRecentSearches}
+                      className="text-xs font-bold text-[#0A58CA] hover:underline cursor-pointer"
                     >
-                      <MapPin className="w-4 h-4 text-neutral-400 shrink-0" />
-                      <div className="flex flex-col">
-                        <span className="text-xs font-bold text-[#1E2235]">{sug.displayName}</span>
-                        <span className="text-[9px] text-[#94A3B8] font-medium">
-                          City: {sug.city} {sug.pincode ? `| Pincode: ${sug.pincode}` : ""}
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div 
-                    onClick={() => handleSelectLocation(searchQuery.trim())}
-                    className="flex items-center space-x-2.5 px-3 py-2.5 hover:bg-slate-100 cursor-pointer text-left"
-                  >
-                    <MapPin className="w-4 h-4 text-[#0A58CA] shrink-0" />
-                    <div className="flex flex-col">
-                      <span className="text-xs font-bold text-[#0A58CA]">Select "{searchQuery.trim()}"</span>
-                      <span className="text-[9px] text-[#94A3B8] font-medium">Use custom location name</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Recent Searches (only visible in "search" tab when searchQuery is empty) */}
-            {activeSearchTab === "search" && !searchQuery.trim() && recentSearches.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Recent searches</span>
-                  <button 
-                    onClick={clearRecentSearches}
-                    className="text-[10px] font-bold text-[#0A58CA] hover:underline cursor-pointer"
-                  >
-                    Clear
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {recentSearches.map((term, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => {
-                        setSearchVal(term);
-                        const targetCity = searchQuery.trim() || userCity;
-                        addRecentSearch(term);
-                        router.push(`/rooms?city=${encodeURIComponent(targetCity)}&search=${encodeURIComponent(term)}`);
-                        setActiveSearchTab(null);
-                      }}
-                      className="flex items-center space-x-1 px-2.5 py-1 bg-slate-50 border border-slate-200/60 rounded-full text-[11px] font-medium text-slate-600 hover:bg-slate-100 transition-all cursor-pointer"
-                    >
-                      <Clock className="w-3 h-3 text-slate-400 shrink-0" />
-                      <span>{term}</span>
+                      Clear
                     </button>
-                  ))}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {recentSearches.map((term, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setSearchVal(term);
+                          const targetCity = userCity;
+                          addRecentSearch(term);
+                          router.push(`/rooms?city=${encodeURIComponent(targetCity)}&search=${encodeURIComponent(term)}`);
+                          setShowSearchDrawer(false);
+                        }}
+                        className="flex items-center space-x-1.5 px-3 py-1.5 bg-white border border-[#E2E8F0] rounded-full text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer shadow-xs active:scale-95"
+                      >
+                        <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span>{term}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <button
-              type="button"
-              onClick={() => {
-                const targetCity = searchQuery.trim() || userCity;
-                const targetSearch = searchVal.trim();
-                if (targetSearch) {
-                  addRecentSearch(targetSearch);
-                }
-                router.push(`/rooms?city=${encodeURIComponent(targetCity)}&search=${encodeURIComponent(targetSearch)}`);
-                setActiveSearchTab(null);
-              }}
-              className="w-full bg-[#6C4CF1] hover:bg-[#5B3FE6] text-white text-xs font-bold py-2.5 rounded-xl uppercase tracking-wider shadow-sm transition-all text-center active:scale-98 cursor-pointer"
-            >
-              Search Properties
-            </button>
-
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

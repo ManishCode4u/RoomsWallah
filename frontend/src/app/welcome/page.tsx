@@ -102,6 +102,32 @@ export default function WelcomePage() {
       localStorage.removeItem("roomswallah_owners");
       localStorage.removeItem("roomswallah_advertisements");
 
+      // Capture Google login redirect queries
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlToken = urlParams.get("token");
+      if (urlToken) {
+        localStorage.setItem("owner_token", urlToken);
+        localStorage.setItem("owner_logged_in", "true");
+        
+        const urlName = urlParams.get("owner_name");
+        if (urlName) localStorage.setItem("owner_name", decodeURIComponent(urlName));
+        
+        const urlEmail = urlParams.get("owner_email");
+        if (urlEmail) localStorage.setItem("owner_email", decodeURIComponent(urlEmail));
+        
+        const urlPhone = urlParams.get("owner_phone");
+        if (urlPhone) {
+          localStorage.setItem("owner_phone", decodeURIComponent(urlPhone));
+          localStorage.setItem("owner_whatsapp", decodeURIComponent(urlPhone));
+        }
+
+        // Clean query parameters from URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        router.push("/welcome/dashboard");
+        return;
+      }
+
       if (localStorage.getItem("owner_logged_in") === "true") {
         router.push("/welcome/dashboard");
         return;

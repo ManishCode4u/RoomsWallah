@@ -204,6 +204,39 @@ export default function HostDashboard() {
   };
 
   useEffect(() => {
+    // Capture Google login credentials from URL parameters if redirected
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlToken = urlParams.get("token");
+      if (urlToken) {
+        localStorage.setItem("owner_token", urlToken);
+        localStorage.setItem("owner_logged_in", "true");
+        
+        const urlName = urlParams.get("owner_name");
+        if (urlName) {
+          localStorage.setItem("owner_name", decodeURIComponent(urlName));
+          setProfileName(decodeURIComponent(urlName));
+        }
+        
+        const urlEmail = urlParams.get("owner_email");
+        if (urlEmail) {
+          localStorage.setItem("owner_email", decodeURIComponent(urlEmail));
+          setProfileEmail(decodeURIComponent(urlEmail));
+        }
+        
+        const urlPhone = urlParams.get("owner_phone");
+        if (urlPhone) {
+          localStorage.setItem("owner_phone", decodeURIComponent(urlPhone));
+          localStorage.setItem("owner_whatsapp", decodeURIComponent(urlPhone));
+          setProfilePhone(decodeURIComponent(urlPhone));
+          setProfileWhatsApp(decodeURIComponent(urlPhone));
+        }
+
+        // Clean URL parameters from display
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+
     const checkAuth = async () => {
       try {
         const res = await ownerFetch(getApiUrl("/api/auth/me"), {

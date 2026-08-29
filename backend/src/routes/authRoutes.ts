@@ -71,8 +71,8 @@ router.get(
 
     // Redirect to frontend dashboard or profile step based on completion status
     const targetUrl = owner.profileCompleted
-      ? `${process.env.CORS_ORIGIN || "http://localhost:3000"}/welcome/dashboard`
-      : `${process.env.CORS_ORIGIN || "http://localhost:3000"}/welcome?step=profile`;
+      ? `${process.env.CORS_ORIGIN || "http://localhost:3000"}/welcome/dashboard?token=${token}&owner_name=${encodeURIComponent(owner.fullName)}&owner_email=${encodeURIComponent(owner.email)}&owner_phone=${encodeURIComponent(owner.mobile || "")}`
+      : `${process.env.CORS_ORIGIN || "http://localhost:3000"}/welcome?step=profile&token=${token}&owner_name=${encodeURIComponent(owner.fullName)}&owner_email=${encodeURIComponent(owner.email)}&owner_phone=${encodeURIComponent(owner.mobile || "")}`;
 
     res.redirect(targetUrl);
   }

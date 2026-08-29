@@ -1014,8 +1014,21 @@ export default function HostDashboard() {
               <div className="w-9.5 h-9.5 rounded-xl bg-[#6C4CF1] flex items-center justify-center text-white shrink-0 shadow-sm">
                 <Home className="w-5 h-5" />
               </div>
-              <span className="font-poppins font-bold text-xl text-[#1E2235] tracking-tight">
-                Rooms<span className="text-blue-600">Wallah</span>
+              <span className="relative inline-flex items-center font-poppins font-bold text-xl tracking-tight text-white select-none">
+                <span className="relative inline-block">
+                  R
+                  <svg 
+                    className="absolute -bottom-[5px] left-[1px] w-[2.2em] h-[0.4em] text-white" 
+                    viewBox="0 0 100 20" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="4" 
+                    strokeLinecap="round"
+                  >
+                    <path d="M 5 2 C 10 18, 70 18, 95 2" />
+                  </svg>
+                </span>
+                <span>oomsWallah</span>
               </span>
             </Link>
           </div>

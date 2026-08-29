@@ -40,7 +40,7 @@ export default function Navbar() {
   const [isSavedActive, setIsSavedActive] = useState(false);
   const pathname = usePathname();
   const isSearchPage = ["/rooms", "/pg", "/hostels", "/flats"].includes(pathname);
-  const [showLocationDrawer, setShowLocationDrawer] = useState(false);
+  const [activeSearchTab, setActiveSearchTab] = useState<"search" | "location" | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [userCity, setUserCity] = useState("Greater Noida");
@@ -56,26 +56,7 @@ export default function Navbar() {
   const [userName, setUserName] = useState("");
   const [userAvatar, setUserAvatar] = useState("🦊");
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
-  const [drawerListings, setDrawerListings] = useState<any[]>([]);
 
-  useEffect(() => {
-    if (showLocationDrawer) {
-      const fetchListings = async () => {
-        try {
-          const res = await fetch(getApiUrl("/api/listings"));
-          if (res.ok) {
-            const data = await res.json();
-            if (Array.isArray(data)) {
-              setDrawerListings(data.slice(0, 4));
-            }
-          }
-        } catch (e) {
-          console.error("Error fetching listings for drawer:", e);
-        }
-      };
-      fetchListings();
-    }
-  }, [showLocationDrawer]);
 
   const addRecentSearch = (term: string) => {
     if (!term || !term.trim()) return;
@@ -189,7 +170,7 @@ export default function Navbar() {
           setUserCity(matchedCity);
           setUserState(matchedState);
           setUserPincode(matchedPincode);
-          setShowLocationDrawer(false);
+          setActiveSearchTab(null);
 
           router.push(`/?city=${encodeURIComponent(matchedCity)}&area=${encodeURIComponent(matchedArea)}&state=${encodeURIComponent(matchedState)}&pincode=${matchedPincode}`);
         } catch (err) {
@@ -202,7 +183,7 @@ export default function Navbar() {
           setUserCity("Greater Noida");
           setUserState("Uttar Pradesh");
           setUserPincode("201310");
-          setShowLocationDrawer(false);
+          setActiveSearchTab(null);
         } finally {
           setLoadingLocation(false);
         }
@@ -217,7 +198,7 @@ export default function Navbar() {
         setUserCity("Greater Noida");
         setUserState("Uttar Pradesh");
         setUserPincode("201310");
-        setShowLocationDrawer(false);
+        setActiveSearchTab(null);
         setLoadingLocation(false);
       }
     );
@@ -259,7 +240,7 @@ export default function Navbar() {
     setUserState(state);
     setUserPincode(pincode);
     setSearchQuery("");
-    setShowLocationDrawer(false);
+    setActiveSearchTab(null);
 
     router.push(`/?city=${encodeURIComponent(city)}&area=${encodeURIComponent(area)}&state=${encodeURIComponent(state)}&pincode=${pincode}`);
   };
@@ -283,7 +264,7 @@ export default function Navbar() {
       };
 
       const handleOpenLocationDrawer = () => {
-        setShowLocationDrawer(true);
+        setActiveSearchTab("location");
       };
 
       // Check if location permission is already allowed and auto-detect
@@ -471,7 +452,7 @@ export default function Navbar() {
 
               {/* Location Selector (Premium soft shadow & border - Responsive width to prevent overlap) */}
               <div 
-                onClick={() => setShowLocationDrawer(true)} 
+                onClick={() => setActiveSearchTab("location")} 
                 className="flex items-center space-x-2 text-[#1E2235] cursor-pointer bg-[#F8FAFC]/75 hover:bg-white border border-[#ECECEC] hover:border-[#6C4CF1]/20 hover:shadow-soft px-3.5 h-12 rounded-xl transition-all duration-300 w-[180px] lg:w-[240px] shrink-0"
               >
                 <span className="text-[13.5px] font-normal font-poppins truncate flex-grow text-left">
@@ -481,13 +462,9 @@ export default function Navbar() {
               </div>
 
               {/* Search Bar Input (Polished with regular weight text and responsive width) */}
-              <form 
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  setShowLocationDrawer(true);
-                }}
-                onClick={() => setShowLocationDrawer(true)}
-                className="relative flex items-center bg-[#F8FAFC]/75 hover:bg-white border border-[#ECECEC] rounded-xl h-12 pl-3 pr-1.5 flex-grow max-w-[600px] mx-4 transition-all duration-300 hover:shadow-soft focus-within:border-[#6C4CF1]/40 focus-within:shadow-[0px_4px_16px_rgba(108,76,241,0.06)] focus-within:bg-white cursor-pointer"
+              <div 
+                onClick={() => setActiveSearchTab("search")}
+                className="relative flex items-center bg-[#F8FAFC]/75 hover:bg-white border border-[#ECECEC] rounded-xl h-12 pl-3 pr-1.5 flex-grow max-w-[600px] mx-4 transition-all duration-300 hover:shadow-soft cursor-pointer"
               >
                 <div className="bg-transparent text-[13.5px] font-normal text-[#94A3B8] outline-none flex-grow border-none p-0 z-10 text-left select-none">
                   {searchVal ? `"${searchVal}" in ${userCity}` : `Search "${searchKeywords[currentWordIndex]}" in ${userCity}`}
@@ -499,7 +476,7 @@ export default function Navbar() {
                 >
                   <Search className="w-4.5 h-4.5 text-white stroke-[2.5]" />
                 </button>
-              </form>
+              </div>
 
               {/* Right Side Actions: Saved & Sell Button */}
               <div className="flex items-center space-x-5 lg:space-x-6 shrink-0">
@@ -648,7 +625,7 @@ export default function Navbar() {
                 </Link>
 
                 {/* Location selector */}
-                <div onClick={() => setShowLocationDrawer(true)} className="flex items-center space-x-1 text-[#1E2235]/90 cursor-pointer">
+                <div onClick={() => setActiveSearchTab("location")} className="flex items-center space-x-1 text-[#1E2235]/90 cursor-pointer">
                   <span className="text-xs font-semibold font-poppins">
                     {userState ? `${userCity}, ${userState}` : userCity}
                   </span>
@@ -669,19 +646,15 @@ export default function Navbar() {
             {/* Bottom Row: Search Bar & Wishlist */}
             <div className="flex items-center gap-3 w-full px-1">
               {/* Mobile Search Card */}
-              <form 
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  setShowLocationDrawer(true);
-                }}
-                onClick={() => setShowLocationDrawer(true)}
-                className="relative flex items-center bg-white border border-black rounded-[4px] flex-grow h-11 px-3 shadow-xs cursor-pointer"
+              <div 
+                onClick={() => setActiveSearchTab("search")}
+                className="relative flex items-center bg-white border border-black rounded-[4px] flex-grow h-11 px-3 shadow-xs cursor-pointer animate-fadeIn"
               >
                 <Search className="w-4.5 h-4.5 text-black shrink-0" />
                 <div className="bg-transparent text-sm font-normal text-black/60 outline-none ml-2 flex-grow border-none p-0 text-left select-none">
                   {searchVal ? `"${searchVal}" in ${userCity}` : `Search "${searchKeywords[currentWordIndex]}"`}
                 </div>
-              </form>
+              </div>
 
               {/* Wishlist/Saved Icon (Heart outline, black color) */}
               <Link
@@ -843,251 +816,161 @@ export default function Navbar() {
           </>
         )}
       </AnimatePresence>
-      {/* Custom full-screen Location selection drawer overlay (matches OLX style) */}
+      {/* Click outside backdrop to close dropdown */}
+      {activeSearchTab && (
+        <div 
+          className="fixed inset-0 bg-black/15 z-30 transition-opacity" 
+          onClick={() => setActiveSearchTab(null)} 
+        />
+      )}
+
+      {/* Floating Dropdown Search Card */}
       <AnimatePresence>
-        {showLocationDrawer && (
-          <motion.div 
-            initial={{ opacity: 0, y: "100%" }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: "100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 220 }}
-            className="fixed inset-0 z-[100000] bg-[#F8FAFC] flex flex-col"
+        {activeSearchTab && (
+          <motion.div
+            initial={{ opacity: 0, y: -10, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.98 }}
+            transition={{ duration: 0.2 }}
+            className="absolute top-full left-1/2 -translate-x-1/2 w-[calc(100%-24px)] max-w-[550px] bg-white border border-[#ECECEC] rounded-2xl shadow-xl mt-2.5 p-4 z-40 text-left space-y-4"
           >
-            {/* Header row */}
-            <div className="flex items-center space-x-4 px-4 py-4 bg-white border-b border-[#F0F2F5] shadow-xs shrink-0 text-left">
-              <button 
-                onClick={() => setShowLocationDrawer(false)}
-                className="p-1 rounded-full hover:bg-slate-100 active:scale-95 transition-all text-[#1E2235] cursor-pointer"
-              >
-                <ArrowLeft className="w-6 h-6 text-[#1E2235]" />
-              </button>
-              <h2 className="font-poppins font-black text-base text-[#1E2235] tracking-wide uppercase">
-                Location
-              </h2>
-            </div>
-            {/* Search Input Box */}
-            <div className="p-4 bg-white border-b border-[#F0F2F5]/60 shrink-0 text-left space-y-3.5">
-              {/* Box 1: Search Input Box (Find Rooms, PG, Flats) */}
+            {/* Conditional fields rendering based on activeSearchTab */}
+            {activeSearchTab === "search" && (
+              /* Find Rooms Input Box */
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Find Rooms, PG, Hostels, Flats</label>
-                <div className="relative flex items-center bg-white border border-black rounded-[4px] h-12 px-3 shadow-xs focus-within:border-black focus-within:border-2 transition-all">
-                  <Search className="w-5 h-5 text-[#94A3B8] shrink-0" />
+                <div className="relative flex items-center bg-white border border-slate-200 rounded-xl h-11 px-3 focus-within:border-[#6C4CF1] transition-all">
+                  <Search className="w-4.5 h-4.5 text-slate-400 shrink-0" />
                   <input
                     type="text"
                     placeholder="Find Rooms, PG, Hostels, Flats..."
                     value={searchVal}
                     onChange={(e) => setSearchVal(e.target.value)}
-                    className="bg-transparent text-sm font-normal text-[#1E2235] outline-none ml-2.5 flex-grow placeholder:text-[#94A3B8] border-none p-0 focus:ring-0 focus:outline-none"
+                    className="bg-transparent text-sm font-normal text-[#1E2235] outline-none ml-2 flex-grow placeholder:text-slate-400 border-none p-0 focus:ring-0 focus:outline-none"
                   />
                   {searchVal && (
                     <button 
                       onClick={() => setSearchVal("")}
-                      className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
+                      className="w-4.5 h-4.5 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
                     >
                       ×
                     </button>
                   )}
                 </div>
               </div>
+            )}
 
-              {/* Box 2: Location Input Box (Search city, area or locality) */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Location (City/Area)</label>
-                <div className="relative flex items-center bg-white border border-black rounded-[4px] h-12 px-3 shadow-xs focus-within:border-black focus-within:border-2 transition-all">
-                  <MapPin className="w-5 h-5 text-[#6C4CF1] shrink-0" />
-                  <input
-                    type="text"
-                    placeholder="Search city, area or locality"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="bg-transparent text-sm font-normal text-[#1E2235] outline-none ml-2.5 flex-grow placeholder:text-[#94A3B8] border-none p-0 focus:ring-0 focus:outline-none"
-                  />
-                  {searchQuery && (
-                    <button 
-                      onClick={() => setSearchQuery("")}
-                      className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
+            {/* Location Input Box (visible in both search and location tabs) */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Location (City/Area)</label>
+              <div className="relative flex items-center bg-white border border-slate-200 rounded-xl h-11 px-3 focus-within:border-[#6C4CF1] transition-all">
+                <MapPin className="w-4.5 h-4.5 text-[#6C4CF1] shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Search city, area or locality"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="bg-transparent text-sm font-normal text-[#1E2235] outline-none ml-2 flex-grow placeholder:text-slate-400 border-none p-0 focus:ring-0 focus:outline-none"
+                />
+                {searchQuery && (
+                  <button 
+                    onClick={() => setSearchQuery("")}
+                    className="w-4.5 h-4.5 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
+                  >
+                    ×
+                  </button>
+                )}
               </div>
-
-              {/* Search submit button */}
-              <button
-                type="button"
-                onClick={() => {
-                  const targetCity = searchQuery.trim() || userCity;
-                  const targetSearch = searchVal.trim();
-
-                  if (targetSearch) {
-                    addRecentSearch(targetSearch);
-                  }
-
-                  router.push(`/rooms?city=${encodeURIComponent(targetCity)}&search=${encodeURIComponent(targetSearch)}`);
-                  setShowLocationDrawer(false);
-                }}
-                className="w-full bg-[#6C4CF1] hover:bg-[#5B3FE6] text-white text-xs font-bold py-2.5 rounded-[4px] uppercase tracking-wider shadow-sm transition-all text-center active:scale-98 cursor-pointer mt-1"
-              >
-                Search Properties
-              </button>
             </div>
 
-            {/* Scrollable Body list */}
-            <div className="flex-grow overflow-y-auto pb-8">
-              
-              {/* If searchQuery is entered, render suggestions */}
-              {searchQuery.trim() ? (
-                <div className="flex flex-col">
-                  {loadingSuggestions ? (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                    </div>
-                  ) : locationSuggestions.length > 0 ? (
-                    locationSuggestions.map((sug, idx) => (
-                      <div 
-                        key={idx}
-                        onClick={() => handleSelectLocation(sug)}
-                        className="flex items-center space-x-3.5 px-5 py-4 bg-white hover:bg-slate-50 cursor-pointer border-b border-[#F0F2F5]/40 text-left"
-                      >
-                        <MapPin className="w-5 h-5 text-neutral-400 shrink-0" />
-                        <div className="flex flex-col">
-                          <span className="text-[14.5px] font-semibold text-[#1E2235] font-poppins">{sug.displayName}</span>
-                          <span className="text-[10px] text-[#94A3B8] font-medium mt-0.5">
-                            City: {sug.city} {sug.pincode ? `| Pincode: ${sug.pincode}` : ""}
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
+            {/* Location Suggestions (Autocomplete) */}
+            {searchQuery.trim() && (
+              <div className="max-h-[160px] overflow-y-auto border border-slate-100 rounded-xl bg-slate-50/50">
+                {loadingSuggestions ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="w-5 h-5 border-2 border-[#6C4CF1] border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : locationSuggestions.length > 0 ? (
+                  locationSuggestions.map((sug, idx) => (
                     <div 
-                      onClick={() => handleSelectLocation(searchQuery.trim())}
-                      className="flex items-center space-x-3.5 px-5 py-4 bg-white hover:bg-slate-50 cursor-pointer border-b border-[#F0F2F5]/40 text-left"
+                      key={idx}
+                      onClick={() => handleSelectLocation(sug)}
+                      className="flex items-center space-x-2.5 px-3 py-2.5 hover:bg-slate-100 cursor-pointer border-b border-[#F0F2F5]/40 text-left"
                     >
-                      <MapPin className="w-5 h-5 text-[#0A58CA] shrink-0" />
+                      <MapPin className="w-4 h-4 text-neutral-400 shrink-0" />
                       <div className="flex flex-col">
-                        <span className="text-[14px] font-bold text-[#0A58CA] font-poppins">Select "{searchQuery.trim()}"</span>
-                        <span className="text-[10px] text-[#94A3B8] font-medium mt-0.5">Use custom location name</span>
+                        <span className="text-xs font-bold text-[#1E2235]">{sug.displayName}</span>
+                        <span className="text-[9px] text-[#94A3B8] font-medium">
+                          City: {sug.city} {sug.pincode ? `| Pincode: ${sug.pincode}` : ""}
+                        </span>
                       </div>
                     </div>
-                  )}
-                </div>
-              ) : (
-                <>
-                  {/* Recent Searches */}
-                  {recentSearches.length > 0 && (
-                    <div className="flex flex-col px-5 pt-4 text-left">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Recent searches</span>
-                        <button 
-                          onClick={clearRecentSearches}
-                          className="text-xs font-bold text-[#0A58CA] hover:underline cursor-pointer"
-                        >
-                          Clear
-                        </button>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {recentSearches.map((term, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => {
-                              setSearchVal(term);
-                              const targetCity = searchQuery.trim() || userCity;
-                              addRecentSearch(term);
-                              router.push(`/rooms?city=${encodeURIComponent(targetCity)}&search=${encodeURIComponent(term)}`);
-                              setShowLocationDrawer(false);
-                            }}
-                            className="flex items-center space-x-1.5 px-3 py-1.5 bg-white border border-[#E2E8F0] rounded-full text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer shadow-xs active:scale-95"
-                          >
-                            <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            <span>{term}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Popular Categories */}
-                  <div className="flex flex-col px-5 pt-6 text-left">
-                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">
-                      Popular Categories
-                    </h3>
-                    <div className="grid grid-cols-4 gap-3.5">
-                      {[
-                        { label: "Rooms", href: "/rooms?type=room", icon: Bed, color: "text-[#FF5A5F] bg-[#FFF0F0] border-[#FF5A5F]/15" },
-                        { label: "PG", href: "/pg", icon: Building, color: "text-[#8B5CF6] bg-[#F5F3FF] border-[#8B5CF6]/15" },
-                        { label: "Hostels", href: "/hostels", icon: Home, color: "text-[#F59E0B] bg-[#FFFBEB] border-[#F59E0B]/15" },
-                        { label: "Flats", href: "/flats", icon: Building2, color: "text-[#10B981] bg-[#ECFDF5] border-[#10B981]/15" }
-                      ].map((cat, idx) => {
-                        const Icon = cat.icon;
-                        return (
-                          <div
-                            key={idx}
-                            onClick={() => {
-                              router.push(cat.href);
-                              setShowLocationDrawer(false);
-                            }}
-                            className="flex flex-col items-center cursor-pointer group active:scale-95 transition-all"
-                          >
-                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center border transition-all duration-300 ${cat.color} group-hover:shadow-md`}>
-                              <Icon className="w-5 h-5 shrink-0" />
-                            </div>
-                            <span className="text-[10px] sm:text-xs font-semibold text-slate-600 mt-2 truncate w-full text-center group-hover:text-[#6C4CF1]">
-                              {cat.label}
-                            </span>
-                          </div>
-                        );
-                      })}
+                  ))
+                ) : (
+                  <div 
+                    onClick={() => handleSelectLocation(searchQuery.trim())}
+                    className="flex items-center space-x-2.5 px-3 py-2.5 hover:bg-slate-100 cursor-pointer text-left"
+                  >
+                    <MapPin className="w-4 h-4 text-[#0A58CA] shrink-0" />
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-[#0A58CA]">Select "{searchQuery.trim()}"</span>
+                      <span className="text-[9px] text-[#94A3B8] font-medium">Use custom location name</span>
                     </div>
                   </div>
+                )}
+              </div>
+            )}
 
-                  {/* Trending Properties (Homepage listings inside the drawer) */}
-                  {drawerListings.length > 0 && (
-                    <div className="flex flex-col px-5 pt-6 text-left pb-6">
-                      <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">
-                        Trending Properties
-                      </h3>
-                      <div className="grid grid-cols-2 gap-3.5">
-                        {drawerListings.map((prop: any) => {
-                          const typePath = (prop.type || "").toLowerCase();
-                          const detailsUrl = `/${typePath === "room" ? "rooms" : typePath === "hostel" ? "hostels" : typePath === "flat" ? "flats" : "pg"}/${prop._id || prop.id}`;
-                          return (
-                            <div
-                              key={prop._id || prop.id}
-                              onClick={() => {
-                                router.push(detailsUrl);
-                                setShowLocationDrawer(false);
-                              }}
-                              className="flex flex-col bg-white border border-[#E2E8F0] rounded-xl overflow-hidden cursor-pointer group active:scale-[0.98] transition-all shadow-xs hover:shadow-md"
-                            >
-                              <div className="aspect-[4/3] w-full relative bg-slate-100 overflow-hidden shrink-0">
-                                <img
-                                  src={getImageUrl(prop.image)}
-                                  alt={prop.title}
-                                  className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
-                                />
-                              </div>
-                              <div className="p-2 text-left space-y-1">
-                                <div className="text-xs font-extrabold text-[#6C4CF1]">
-                                  ₹{prop.rent?.toLocaleString("en-IN")}
-                                </div>
-                                <div className="text-[11px] font-bold text-[#1E2235] truncate">
-                                  {prop.title}
-                                </div>
-                                <div className="text-[9px] font-medium text-[#94A3B8] truncate">
-                                  {prop.area || prop.city}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
+            {/* Recent Searches (only visible in "search" tab when searchQuery is empty) */}
+            {activeSearchTab === "search" && !searchQuery.trim() && recentSearches.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Recent searches</span>
+                  <button 
+                    onClick={clearRecentSearches}
+                    className="text-[10px] font-bold text-[#0A58CA] hover:underline cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {recentSearches.map((term, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setSearchVal(term);
+                        const targetCity = searchQuery.trim() || userCity;
+                        addRecentSearch(term);
+                        router.push(`/rooms?city=${encodeURIComponent(targetCity)}&search=${encodeURIComponent(term)}`);
+                        setActiveSearchTab(null);
+                      }}
+                      className="flex items-center space-x-1 px-2.5 py-1 bg-slate-50 border border-slate-200/60 rounded-full text-[11px] font-medium text-slate-600 hover:bg-slate-100 transition-all cursor-pointer"
+                    >
+                      <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                      <span>{term}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
-            </div>
+            {/* Submit Button */}
+            <button
+              type="button"
+              onClick={() => {
+                const targetCity = searchQuery.trim() || userCity;
+                const targetSearch = searchVal.trim();
+                if (targetSearch) {
+                  addRecentSearch(targetSearch);
+                }
+                router.push(`/rooms?city=${encodeURIComponent(targetCity)}&search=${encodeURIComponent(targetSearch)}`);
+                setActiveSearchTab(null);
+              }}
+              className="w-full bg-[#6C4CF1] hover:bg-[#5B3FE6] text-white text-xs font-bold py-2.5 rounded-xl uppercase tracking-wider shadow-sm transition-all text-center active:scale-98 cursor-pointer"
+            >
+              Search Properties
+            </button>
+
           </motion.div>
         )}
       </AnimatePresence>

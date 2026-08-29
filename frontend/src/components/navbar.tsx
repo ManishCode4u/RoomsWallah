@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { getApiUrl } from "@/data/api";
+import { getApiUrl, getImageUrl } from "@/data/api";
 import {
   Menu,
   X,
@@ -56,6 +56,26 @@ export default function Navbar() {
   const [userName, setUserName] = useState("");
   const [userAvatar, setUserAvatar] = useState("🦊");
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [drawerListings, setDrawerListings] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (showLocationDrawer) {
+      const fetchListings = async () => {
+        try {
+          const res = await fetch(getApiUrl("/api/listings"));
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data)) {
+              setDrawerListings(data.slice(0, 4));
+            }
+          }
+        } catch (e) {
+          console.error("Error fetching listings for drawer:", e);
+        }
+      };
+      fetchListings();
+    }
+  }, [showLocationDrawer]);
 
   const addRecentSearch = (term: string) => {
     if (!term || !term.trim()) return;
@@ -983,6 +1003,84 @@ export default function Navbar() {
                             <span>{term}</span>
                           </button>
                         ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Popular Categories */}
+                  <div className="flex flex-col px-5 pt-6 text-left">
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">
+                      Popular Categories
+                    </h3>
+                    <div className="grid grid-cols-4 gap-3.5">
+                      {[
+                        { label: "Rooms", href: "/rooms?type=room", icon: Bed, color: "text-[#FF5A5F] bg-[#FFF0F0] border-[#FF5A5F]/15" },
+                        { label: "PG", href: "/pg", icon: Building, color: "text-[#8B5CF6] bg-[#F5F3FF] border-[#8B5CF6]/15" },
+                        { label: "Hostels", href: "/hostels", icon: Home, color: "text-[#F59E0B] bg-[#FFFBEB] border-[#F59E0B]/15" },
+                        { label: "Flats", href: "/flats", icon: Building2, color: "text-[#10B981] bg-[#ECFDF5] border-[#10B981]/15" }
+                      ].map((cat, idx) => {
+                        const Icon = cat.icon;
+                        return (
+                          <div
+                            key={idx}
+                            onClick={() => {
+                              router.push(cat.href);
+                              setShowLocationDrawer(false);
+                            }}
+                            className="flex flex-col items-center cursor-pointer group active:scale-95 transition-all"
+                          >
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center border transition-all duration-300 ${cat.color} group-hover:shadow-md`}>
+                              <Icon className="w-5 h-5 shrink-0" />
+                            </div>
+                            <span className="text-[10px] sm:text-xs font-semibold text-slate-600 mt-2 truncate w-full text-center group-hover:text-[#6C4CF1]">
+                              {cat.label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Trending Properties (Homepage listings inside the drawer) */}
+                  {drawerListings.length > 0 && (
+                    <div className="flex flex-col px-5 pt-6 text-left pb-6">
+                      <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">
+                        Trending Properties
+                      </h3>
+                      <div className="grid grid-cols-2 gap-3.5">
+                        {drawerListings.map((prop: any) => {
+                          const typePath = (prop.type || "").toLowerCase();
+                          const detailsUrl = `/${typePath === "room" ? "rooms" : typePath === "hostel" ? "hostels" : typePath === "flat" ? "flats" : "pg"}/${prop._id || prop.id}`;
+                          return (
+                            <div
+                              key={prop._id || prop.id}
+                              onClick={() => {
+                                router.push(detailsUrl);
+                                setShowLocationDrawer(false);
+                              }}
+                              className="flex flex-col bg-white border border-[#E2E8F0] rounded-xl overflow-hidden cursor-pointer group active:scale-[0.98] transition-all shadow-xs hover:shadow-md"
+                            >
+                              <div className="aspect-[4/3] w-full relative bg-slate-100 overflow-hidden shrink-0">
+                                <img
+                                  src={getImageUrl(prop.image)}
+                                  alt={prop.title}
+                                  className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
+                                />
+                              </div>
+                              <div className="p-2 text-left space-y-1">
+                                <div className="text-xs font-extrabold text-[#6C4CF1]">
+                                  ₹{prop.rent?.toLocaleString("en-IN")}
+                                </div>
+                                <div className="text-[11px] font-bold text-[#1E2235] truncate">
+                                  {prop.title}
+                                </div>
+                                <div className="text-[9px] font-medium text-[#94A3B8] truncate">
+                                  {prop.area || prop.city}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

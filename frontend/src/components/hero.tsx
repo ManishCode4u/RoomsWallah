@@ -70,10 +70,10 @@ export default function Hero() {
           </p>
 
           {/* Find Room Button */}
-          <div className="pt-2">
+          <div className="pt-4 sm:pt-5">
             <Link
               href="/rooms"
-              className="inline-flex items-center justify-center bg-[#F1A310] hover:bg-[#D68F0C] text-slate-900 text-xs sm:text-sm font-extrabold px-6 py-2.5 rounded-xl shadow-md active:scale-95 transition-all cursor-pointer"
+              className="inline-flex items-center justify-center bg-[#F5B01A] hover:bg-[#E09D0D] text-slate-900 text-xs sm:text-sm font-extrabold px-7 py-3 rounded-full shadow-md active:scale-95 transition-all cursor-pointer"
             >
               Find Rooms
             </Link>

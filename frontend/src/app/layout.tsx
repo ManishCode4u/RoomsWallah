@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     siteName: "RoomsWallah",
     images: [
       {
-        url: "/assets/logo.png",
+        url: `${siteUrl}/assets/logo.png`,
         width: 512,
         height: 512,
         alt: "RoomsWallah Logo",
@@ -54,7 +54,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "RoomsWallah – Find Rooms, Flats, PGs & Hostels Near You",
     description: "Find rooms, flats, PGs and hostels near you on RoomsWallah. Browse property listings, explore locations and connect directly with property owners.",
-    images: ["/assets/logo.png"],
+    images: [`${siteUrl}/assets/logo.png`],
   },
 };
 

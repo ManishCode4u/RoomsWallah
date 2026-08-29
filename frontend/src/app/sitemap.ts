@@ -23,8 +23,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Fetch properties dynamically from backend API for dynamic routes
   try {
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-    const res = await fetch(`${backendUrl}/api/listings`, { cache: "no-store" });
+    const res = await fetch(getApiUrl("/api/listings"), { cache: "no-store" });
     if (res.ok) {
       const listings = await res.json();
       if (Array.isArray(listings)) {

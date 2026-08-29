@@ -15,6 +15,9 @@ export const getApiUrl = (path: string): string => {
     backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "https://roomswallah-backend.onrender.com";
   }
   
+  // Normalize by removing trailing slash(es)
+  backendUrl = backendUrl.replace(/\/+$/, "");
+  
   return `${backendUrl}${cleanPath}`;
 };
 
@@ -33,6 +36,9 @@ export const getImageUrl = (url: string): string => {
   } else {
     backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "https://roomswallah-backend.onrender.com";
   }
+
+  // Normalize by removing trailing slash(es)
+  backendUrl = backendUrl.replace(/\/+$/, "");
 
   if (url.startsWith("http://localhost:5000/") || url.startsWith(`${backendUrl}/`)) {
     return url;

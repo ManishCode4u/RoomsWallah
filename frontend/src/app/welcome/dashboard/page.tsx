@@ -86,7 +86,7 @@ export default function HostDashboard() {
   const [boostRequests, setBoostRequests] = useState<any[]>([]);
   const [promotedListingIds, setPromotedListingIds] = useState<string[]>([]);
   const [boostingListing, setBoostingListing] = useState<Listing | null>(null);
-  const [checkoutStep, setCheckoutStep] = useState<"list" | "plans" | "payment">("list");
+  const [checkoutStep, setCheckoutStep] = useState<"list" | "plans" | "payment" | "submitting" | "success">("list");
   const [selectedPlan, setSelectedPlan] = useState<"basic" | "premium">("basic");
   const [screenshotFileUrl, setScreenshotFileUrl] = useState<string>("");
   const [isUploadingScreenshot, setIsUploadingScreenshot] = useState(false);
@@ -394,6 +394,8 @@ export default function HostDashboard() {
       return;
     }
 
+    setCheckoutStep("submitting");
+
     try {
       const planName = selectedPlan === "basic" ? "Quick Boost (₹19)" : "Ultra Boost (₹49)";
       const planAmt = selectedPlan === "basic" ? 19 : 49;
@@ -413,23 +415,22 @@ export default function HostDashboard() {
 
       const data = await res.json();
       if (res.ok) {
-        alert("Verification screenshot submitted successfully! Your listing will be boosted shortly after payment verification.");
         // Refresh boost requests
         const resRequests = await ownerFetch(getApiUrl("/api/listings/boost-requests/my-requests"), { credentials: "include" });
         if (resRequests.ok) {
           const reqs = await resRequests.json();
           setBoostRequests(reqs);
         }
-        setBoostingListing(null);
-        setCheckoutStep("list");
         setScreenshotFileUrl("");
-        setShowBoostModal(false);
+        setCheckoutStep("success");
       } else {
         alert(data.message || "Failed to submit verification request.");
+        setCheckoutStep("payment");
       }
     } catch (err) {
       console.error("Failed to submit verification screenshot:", err);
       alert("Error submitting request. Please try again.");
+      setCheckoutStep("payment");
     }
   };
 
@@ -2759,17 +2760,19 @@ export default function HostDashboard() {
           <div className="bg-white rounded-[28px] max-w-lg w-full max-h-[85vh] overflow-y-auto border border-[#ECECEC] shadow-2xl p-6 sm:p-7 relative space-y-6">
             
             {/* Close Button */}
-            <button 
-              onClick={() => {
-                setShowBoostModal(false);
-                setBoostingListing(null);
-                setCheckoutStep("list");
-                setScreenshotFileUrl("");
-              }}
-              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 border border-[#ECECEC] flex items-center justify-center text-[#1E2235] cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            {checkoutStep !== "submitting" && checkoutStep !== "success" && (
+              <button 
+                onClick={() => {
+                  setShowBoostModal(false);
+                  setBoostingListing(null);
+                  setCheckoutStep("list");
+                  setScreenshotFileUrl("");
+                }}
+                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 border border-[#ECECEC] flex items-center justify-center text-[#1E2235] cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
 
             {/* Step 1: Select Property to Boost */}
             {checkoutStep === "list" && (
@@ -3107,6 +3110,57 @@ export default function HostDashboard() {
                     Submit Verification
                   </button>
                 </div>
+              </div>
+            )}
+
+            {/* Step 4: Submitting State */}
+            {checkoutStep === "submitting" && (
+              <div className="flex flex-col items-center justify-center py-10 space-y-5 text-center animate-fade-in">
+                <div className="relative w-16 h-16">
+                  <div className="absolute inset-0 rounded-full border-4 border-slate-100 border-t-[#6C4CF1] animate-spin"></div>
+                  <div className="absolute inset-2 rounded-full bg-[#6C4CF1]/5 flex items-center justify-center">
+                    <Sparkles className="w-6 h-6 text-[#6C4CF1] animate-pulse" />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <h4 className="font-poppins font-black text-lg text-[#1E2235]">Submitting Receipt</h4>
+                  <p className="text-xs text-[#94A3B8] font-bold uppercase tracking-wider">Please do not close this modal</p>
+                  <p className="text-xs text-slate-500 font-medium max-w-xs mx-auto pt-1 leading-normal">
+                    We are uploading and attaching your payment screenshot to this listing verification request.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Step 5: Success State */}
+            {checkoutStep === "success" && (
+              <div className="flex flex-col items-center justify-center py-6 space-y-5 text-center animate-scale-in">
+                <div className="relative">
+                  <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center border-4 border-emerald-100 relative z-10">
+                    <Check className="w-8 h-8 text-emerald-500 stroke-[3]" />
+                  </div>
+                  <div className="absolute -top-1 -left-1 w-2.5 h-2.5 bg-amber-400 rounded-full animate-bounce"></div>
+                  <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-blue-400 rounded-full animate-ping"></div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <h4 className="font-poppins font-black text-xl text-[#1E2235] tracking-tight">Thank You!</h4>
+                  <p className="text-[#6C4CF1] font-bold text-[10px] uppercase tracking-widest">Verification request submitted</p>
+                  <p className="text-xs text-slate-600 max-w-sm font-medium leading-relaxed pt-1.5">
+                    Your verification screenshot has been submitted successfully. Our team will verify your payment details, and your listing will be <span className="font-bold text-[#1E2235]">boosted within 1 hour</span>.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setShowBoostModal(false);
+                    setBoostingListing(null);
+                    setCheckoutStep("list");
+                  }}
+                  className="w-full bg-[#1E2235] hover:bg-[#2A2E45] text-white font-poppins font-semibold py-3.5 rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-md transition-all duration-200"
+                >
+                  Back to Dashboard
+                </button>
               </div>
             )}
 

@@ -27,7 +27,8 @@ import {
   MapPin,
   ArrowLeft,
   Locate,
-  User
+  User,
+  Clock
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -54,6 +55,27 @@ export default function Navbar() {
   const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
   const [userName, setUserName] = useState("");
   const [userAvatar, setUserAvatar] = useState("🦊");
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+
+  const addRecentSearch = (term: string) => {
+    if (!term || !term.trim()) return;
+    const cleanTerm = term.trim();
+    setRecentSearches((prev) => {
+      const filtered = prev.filter((t) => t.toLowerCase() !== cleanTerm.toLowerCase());
+      const updated = [cleanTerm, ...filtered].slice(0, 5);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("roomswallah_recent_searches", JSON.stringify(updated));
+      }
+      return updated;
+    });
+  };
+
+  const clearRecentSearches = () => {
+    setRecentSearches([]);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("roomswallah_recent_searches");
+    }
+  };
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -62,6 +84,14 @@ export default function Navbar() {
       setIsUserLoggedIn(localStorage.getItem("user_logged_in") === "true");
       setUserName(localStorage.getItem("user_name") || "User");
       setUserAvatar(localStorage.getItem("user_avatar") || "🦊");
+
+      // Load recent searches
+      const saved = localStorage.getItem("roomswallah_recent_searches");
+      if (saved) {
+        try {
+          setRecentSearches(JSON.parse(saved));
+        } catch (e) {}
+      }
     }
   }, []);
 
@@ -817,7 +847,30 @@ export default function Navbar() {
             </div>
             {/* Search Input Box */}
             <div className="p-4 bg-white border-b border-[#F0F2F5]/60 shrink-0 text-left space-y-3.5">
-              {/* Box 1: Location Input Box */}
+              {/* Box 1: Search Input Box (Find Rooms, PG, Flats) */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Find Rooms, PG, Hostels, Flats</label>
+                <div className="relative flex items-center bg-white border border-black rounded-[4px] h-12 px-3 shadow-xs focus-within:border-black focus-within:border-2 transition-all">
+                  <Search className="w-5 h-5 text-[#94A3B8] shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Find Rooms, PG, Hostels, Flats..."
+                    value={searchVal}
+                    onChange={(e) => setSearchVal(e.target.value)}
+                    className="bg-transparent text-sm font-normal text-[#1E2235] outline-none ml-2.5 flex-grow placeholder:text-[#94A3B8] border-none p-0 focus:ring-0 focus:outline-none"
+                  />
+                  {searchVal && (
+                    <button 
+                      onClick={() => setSearchVal("")}
+                      className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Box 2: Location Input Box (Search city, area or locality) */}
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Location (City/Area)</label>
                 <div className="relative flex items-center bg-white border border-black rounded-[4px] h-12 px-3 shadow-xs focus-within:border-black focus-within:border-2 transition-all">
@@ -840,35 +893,18 @@ export default function Navbar() {
                 </div>
               </div>
 
-              {/* Box 2: Search Input Box */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Find Rooms, PG, Hostels, Flats</label>
-                <div className="relative flex items-center bg-white border border-black rounded-[4px] h-12 px-3 shadow-xs focus-within:border-black focus-within:border-2 transition-all">
-                  <Search className="w-5 h-5 text-[#94A3B8] shrink-0" />
-                  <input
-                    type="text"
-                    placeholder="Type what you are looking for..."
-                    value={searchVal}
-                    onChange={(e) => setSearchVal(e.target.value)}
-                    className="bg-transparent text-sm font-normal text-[#1E2235] outline-none ml-2.5 flex-grow placeholder:text-[#94A3B8] border-none p-0 focus:ring-0 focus:outline-none"
-                  />
-                  {searchVal && (
-                    <button 
-                      onClick={() => setSearchVal("")}
-                      className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              </div>
-
               {/* Search submit button */}
               <button
                 type="button"
                 onClick={() => {
                   const targetCity = searchQuery.trim() || userCity;
-                  router.push(`/rooms?city=${encodeURIComponent(targetCity)}&search=${encodeURIComponent(searchVal.trim())}`);
+                  const targetSearch = searchVal.trim();
+
+                  if (targetSearch) {
+                    addRecentSearch(targetSearch);
+                  }
+
+                  router.push(`/rooms?city=${encodeURIComponent(targetCity)}&search=${encodeURIComponent(targetSearch)}`);
                   setShowLocationDrawer(false);
                 }}
                 className="w-full bg-[#6C4CF1] hover:bg-[#5B3FE6] text-white text-xs font-bold py-2.5 rounded-[4px] uppercase tracking-wider shadow-sm transition-all text-center active:scale-98 cursor-pointer mt-1"
@@ -918,47 +954,38 @@ export default function Navbar() {
                 </div>
               ) : (
                 <>
-                  {/* Use current location GPS */}
-                  <div 
-                    onClick={detectLocation}
-                    className="flex items-center space-x-3.5 px-5 py-4 bg-white cursor-pointer active:bg-slate-50 border-b border-[#F0F2F5]/40 text-left"
-                  >
-                    {loadingLocation ? (
-                      <div className="w-5.5 h-5.5 border-2 border-[#0A58CA] border-t-transparent rounded-full animate-spin shrink-0" />
-                    ) : (
-                      <Locate className="w-5.5 h-5.5 text-[#0A58CA] shrink-0" />
-                    )}
-                    <div className="flex flex-col">
-                      <span className="text-[14px] font-bold text-[#0A58CA] font-poppins">
-                        {loadingLocation ? "Locating..." : "Use current location"}
-                      </span>
-                      <span className="text-[11px] text-[#94A3B8] font-semibold mt-0.5">
-                        {loadingLocation ? "Detecting location coordinates" : "Detect automatically via GPS"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* POPULAR LOCATIONS */}
-                  <div className="flex flex-col">
-                    <h3 className="text-[10px] sm:text-[11px] text-[#94A3B8] font-black uppercase tracking-wider px-5 pt-5 pb-2 text-left bg-[#F8FAFC]">
-                      Popular Locations
-                    </h3>
-                    {[
-                      { displayName: "Greater Noida, Uttar Pradesh", city: "Greater Noida", state: "Uttar Pradesh" },
-                      { displayName: "Patna, Bihar", city: "Patna", state: "Bihar" },
-                      { displayName: "Delhi, India", city: "Delhi", state: "Delhi" },
-                      { displayName: "Noida, Uttar Pradesh", city: "Noida", state: "Uttar Pradesh" }
-                    ].map((loc, idx) => (
-                      <div 
-                        key={idx}
-                        onClick={() => handleSelectLocation(loc)}
-                        className="flex items-center space-x-3.5 px-5 py-3.5 bg-white hover:bg-slate-50 active:bg-slate-100 cursor-pointer border-b border-[#F0F2F5]/40 text-left"
-                      >
-                        <MapPin className="w-4.5 h-4.5 text-[#94A3B8] shrink-0" />
-                        <span className="text-[13.5px] font-bold text-[#1E2235]">{loc.displayName}</span>
+                  {/* Recent Searches */}
+                  {recentSearches.length > 0 && (
+                    <div className="flex flex-col px-5 pt-4 text-left">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Recent searches</span>
+                        <button 
+                          onClick={clearRecentSearches}
+                          className="text-xs font-bold text-[#0A58CA] hover:underline cursor-pointer"
+                        >
+                          Clear
+                        </button>
                       </div>
-                    ))}
-                  </div>
+                      <div className="flex flex-wrap gap-2">
+                        {recentSearches.map((term, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              setSearchVal(term);
+                              const targetCity = searchQuery.trim() || userCity;
+                              addRecentSearch(term);
+                              router.push(`/rooms?city=${encodeURIComponent(targetCity)}&search=${encodeURIComponent(term)}`);
+                              setShowLocationDrawer(false);
+                            }}
+                            className="flex items-center space-x-1.5 px-3 py-1.5 bg-white border border-[#E2E8F0] rounded-full text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer shadow-xs active:scale-95"
+                          >
+                            <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span>{term}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 

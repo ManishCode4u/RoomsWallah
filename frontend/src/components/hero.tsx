@@ -73,7 +73,7 @@ export default function Hero() {
           <div className="pt-4 sm:pt-5">
             <Link
               href="/rooms"
-              className="inline-flex items-center justify-center bg-[#F5B01A] hover:bg-[#E09D0D] text-slate-900 text-xs sm:text-sm font-extrabold px-7 py-3 rounded-full shadow-md active:scale-95 transition-all cursor-pointer"
+              className="inline-flex items-center justify-center bg-[#F5B01A] hover:bg-[#E09D0D] text-slate-900 text-xs sm:text-sm font-extrabold px-7 py-3 rounded-none shadow-md active:scale-95 transition-all cursor-pointer"
             >
               Find Rooms
             </Link>

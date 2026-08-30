@@ -2,6 +2,18 @@
  * Dynamically resolves the API base URL.
  * Connects directly to the backend URL (Render in production, localhost:5000 in development).
  */
+function isValidBackendUrl(url: string | undefined): boolean {
+  if (!url) return false;
+  const isProd = process.env.NODE_ENV === "production";
+  if (isProd && (url.includes("localhost") || url.includes("127.0.0.1"))) {
+    return false;
+  }
+  if (url.includes("github.com") || url.includes("git")) {
+    return false;
+  }
+  return true;
+}
+
 export const getApiUrl = (path: string): string => {
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   
@@ -13,9 +25,8 @@ export const getApiUrl = (path: string): string => {
     }
   } else {
     const envUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-    const isLocalDev = process.env.NODE_ENV === "development";
-    if (envUrl && (!envUrl.includes("localhost") && !envUrl.includes("127.0.0.1") || isLocalDev)) {
-      backendUrl = envUrl;
+    if (isValidBackendUrl(envUrl)) {
+      backendUrl = envUrl!;
     } else {
       backendUrl = "https://roomswallah-backend.onrender.com";
     }
@@ -41,9 +52,8 @@ export const getImageUrl = (url: string): string => {
     }
   } else {
     const envUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-    const isLocalDev = process.env.NODE_ENV === "development";
-    if (envUrl && (!envUrl.includes("localhost") && !envUrl.includes("127.0.0.1") || isLocalDev)) {
-      backendUrl = envUrl;
+    if (isValidBackendUrl(envUrl)) {
+      backendUrl = envUrl!;
     } else {
       backendUrl = "https://roomswallah-backend.onrender.com";
     }

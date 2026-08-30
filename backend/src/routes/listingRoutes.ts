@@ -10,7 +10,8 @@ import {
   submitBoostRequest,
   getMyBoostRequests,
   createInquiry,
-  getMyInquiries
+  getMyInquiries,
+  reportListing
 } from "../controllers/listingController.js";
 import { protect, profileCompletedOnly } from "../middleware/authMiddleware.js";
 
@@ -43,6 +44,10 @@ router.route("/:id/boost")
 // Register a new tenant inquiry for a listing (Publicly accessible)
 router.route("/:id/inquiry")
   .post(createInquiry);
+
+// Report a listing (Publicly accessible)
+router.route("/:id/report")
+  .post(reportListing);
 
 // Parameterized routes: public read, authenticated update and delete
 router.route("/:id")

@@ -17,7 +17,9 @@ import {
   sendNotificationFromAdmin,
   adminLogin,
   adminLogout,
-  getAdminMe
+  getAdminMe,
+  getAdminReports,
+  deleteReportByAdmin
 } from "../controllers/adminController.js";
 import { protectAdmin } from "../middleware/authMiddleware.js";
 
@@ -71,5 +73,11 @@ router.route("/boost-requests/:id")
 
 router.route("/notifications")
   .post(sendNotificationFromAdmin);
+
+router.route("/reports")
+  .get(getAdminReports);
+
+router.route("/reports/:id")
+  .delete(deleteReportByAdmin);
 
 export default router;

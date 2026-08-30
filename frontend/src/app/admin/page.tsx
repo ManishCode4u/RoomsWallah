@@ -111,11 +111,12 @@ export default function AdminPage() {
   // Load / Sync state with localStorage
   const fetchData = async () => {
     try {
-      const [resListings, resOwners, resPromos, resBoosts] = await Promise.all([
+      const [resListings, resOwners, resPromos, resBoosts, resReports] = await Promise.all([
         adminFetch(getApiUrl("/api/admin/listings")),
         adminFetch(getApiUrl("/api/admin/owners")),
         adminFetch(getApiUrl("/api/promotions?includeInactive=true")),
-        adminFetch(getApiUrl("/api/admin/boost-requests"))
+        adminFetch(getApiUrl("/api/admin/boost-requests")),
+        adminFetch(getApiUrl("/api/admin/reports"))
       ]);
 
       let apiListings: PropertyListing[] = [];
@@ -196,6 +197,11 @@ export default function AdminPage() {
       if (resBoosts.ok) {
         const boostsData = await resBoosts.json();
         setAdminBoostRequests(boostsData || []);
+      }
+
+      if (resReports && resReports.ok) {
+        const reportsData = await resReports.json();
+        setReports(reportsData || []);
       }
     } catch (err) {
       console.error("Error loading admin data from backend:", err);
@@ -1113,20 +1119,33 @@ export default function AdminPage() {
   };
 
   // Report actions
-  const resolveReport = (id: string, action: "delete" | "blacklist" | "ignore", listingId?: string, ownerName?: string) => {
-    if (action === "delete" && listingId) {
-      deleteProperty(listingId);
-    } else if (action === "blacklist" && ownerName) {
-      const owner = owners.find((o) => o.name === ownerName);
-      if (owner) {
-        toggleBlacklistOwner(owner.id, owner.name);
-      } else {
-        alert("Owner profile not found.");
-      }
-    }
+  const resolveReport = async (id: string, action: "delete" | "blacklist" | "ignore", listingId?: string, ownerName?: string) => {
+    try {
+      const res = await adminFetch(getApiUrl(`/api/admin/reports/${id}`), {
+        method: "DELETE"
+      });
 
-    // Mark report resolved or delete it
-    saveReports(reports.filter((r) => r.id !== id));
+      if (!res.ok) {
+        throw new Error("Failed to delete report on backend");
+      }
+
+      if (action === "delete" && listingId) {
+        deleteProperty(listingId);
+      } else if (action === "blacklist" && ownerName) {
+        const owner = owners.find((o) => o.name === ownerName);
+        if (owner) {
+          toggleBlacklistOwner(owner.id, owner.name);
+        } else {
+          alert("Owner profile not found.");
+        }
+      }
+
+      // Mark report resolved or delete it
+      saveReports(reports.filter((r) => r.id !== id));
+    } catch (err) {
+      console.error("Error resolving report:", err);
+      alert("Failed to resolve/delete report on backend");
+    }
   };
 
   // Save General settings

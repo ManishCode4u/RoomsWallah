@@ -4,6 +4,7 @@ import { createListingSchema } from "../validations/listingValidation.js";
 import Notification from "../models/Notification.js";
 import BoostRequest from "../models/BoostRequest.js";
 import { Inquiry } from "../models/Inquiry.js";
+import Report from "../models/Report.js";
 import fs from "fs";
 import path from "path";
 import mongoose from "mongoose";
@@ -775,6 +776,44 @@ export const getMyInquiries = async (req: Request, res: Response): Promise<void>
   } catch (error) {
     res.status(500).json({
       message: "Server Error fetching inquiries",
+      error: (error as Error).message
+    });
+  }
+};
+
+// @desc    Report a listing
+// @route   POST /api/listings/:id/report
+// @access  Public
+export const reportListing = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { reason, message } = req.body;
+    if (!reason) {
+      res.status(400).json({ message: "Reason for reporting is required" });
+      return;
+    }
+
+    const listing = await Listing.findById(req.params.id);
+    if (!listing) {
+      res.status(404).json({ message: "Listing not found" });
+      return;
+    }
+
+    const report = await Report.create({
+      listingId: listing._id as any,
+      listingTitle: listing.title,
+      ownerName: listing.ownerName || "Property Owner",
+      reason,
+      message: message || ""
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Listing reported successfully to Admin",
+      report
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Server Error reporting listing",
       error: (error as Error).message
     });
   }

@@ -4,6 +4,7 @@ import { Listing } from "../models/Listing.js";
 import Promotion from "../models/Promotion.js";
 import Notification from "../models/Notification.js";
 import BoostRequest from "../models/BoostRequest.js";
+import Report from "../models/Report.js";
 import fs from "fs";
 import path from "path";
 import jwt from "jsonwebtoken";
@@ -624,6 +625,54 @@ export const getAdminMe = async (req: Request, res: Response): Promise<void> => 
       avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin"
     }
   });
+};
+
+// @desc    Get all listing reports for admin
+// @route   GET /api/admin/reports
+// @access  Private (Admin Only)
+export const getAdminReports = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const reports = await Report.find({}).sort({ createdAt: -1 });
+    
+    // Map dates to localized string formats to match frontend layout expectation
+    const formattedReports = reports.map(r => {
+      const json = r.toJSON();
+      return {
+        ...json,
+        date: new Date(r.createdAt).toLocaleDateString("en-IN")
+      };
+    });
+
+    res.status(200).json(formattedReports);
+  } catch (error) {
+    res.status(500).json({
+      message: "Server Error fetching reports",
+      error: (error as Error).message
+    });
+  }
+};
+
+// @desc    Delete or resolve a report
+// @route   DELETE /api/admin/reports/:id
+// @access  Private (Admin Only)
+export const deleteReportByAdmin = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const report = await Report.findByIdAndDelete(req.params.id);
+    if (!report) {
+      res.status(404).json({ message: "Report not found" });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Report resolved/deleted successfully"
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Server Error deleting report",
+      error: (error as Error).message
+    });
+  }
 };
 
 

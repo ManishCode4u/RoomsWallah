@@ -758,8 +758,26 @@ export default function PropertyDetailsView({
                   Cancel
                 </button>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     try {
+                      // Post report to backend database
+                      const response = await fetch(getApiUrl(`/api/listings/${property.id}/report`), {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                          reason: reportReason,
+                          message: reportMessage
+                        })
+                      });
+
+                      if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || "Failed to submit report to backend");
+                      }
+
+                      // Also maintain local storage for user dashboard backward compatibility
                       const reps = localStorage.getItem("roomswallah_reports") || "[]";
                       let parsedReps = JSON.parse(reps);
                       const newReport = {
@@ -779,7 +797,7 @@ export default function PropertyDetailsView({
                       setShowReportModal(false);
                     } catch (e) {
                       console.error("Failed to submit report:", e);
-                      alert("Error submitting report.");
+                      alert("Error submitting report. Please try again.");
                     }
                   }}
                   className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3.5 rounded-2xl text-xs uppercase tracking-wider cursor-pointer shadow-md active:scale-98 transition-all duration-200"

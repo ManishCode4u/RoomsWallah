@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
@@ -68,6 +68,8 @@ export default function HostDashboard() {
   // Notifications states
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
+  const knownNotificationIds = useRef<Set<string>>(new Set());
+  const isFirstNotificationFetch = useRef(true);
 
   // Inquiries state
   const [inquiries, setInquiries] = useState<any[]>([]);
@@ -122,7 +124,48 @@ export default function HostDashboard() {
       });
       if (res.ok) {
         const data = await res.json();
-        setNotifications(data || []);
+        const newNotifications = data || [];
+        
+        // Handle native browser notifications
+        if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+          const unreadNew = newNotifications.filter(
+            (n: any) => !n.read && !knownNotificationIds.current.has(n._id || n.id)
+          );
+          
+          if (!isFirstNotificationFetch.current && unreadNew.length > 0) {
+            unreadNew.forEach((n: any) => {
+              const notificationTitle = "RoomsWallah - New Notification";
+              const notificationOptions = {
+                body: n.message || "You have a new update on RoomsWallah.",
+                icon: "/favicon.ico"
+              };
+              
+              try {
+                const notification = new Notification(notificationTitle, notificationOptions);
+                notification.onclick = (e) => {
+                  e.preventDefault();
+                  window.focus();
+                  const msgLower = (n.message || "").toLowerCase();
+                  if (msgLower.includes("inquiry") || msgLower.includes("lead") || msgLower.includes("contact")) {
+                    setActiveScreen("inquiries");
+                  } else {
+                    setActiveScreen("dashboard");
+                  }
+                };
+              } catch (e) {
+                console.error("Failed to trigger browser notification:", e);
+              }
+            });
+          }
+        }
+
+        // Store all incoming notification IDs in known list to prevent duplicate triggers
+        newNotifications.forEach((n: any) => {
+          knownNotificationIds.current.add(n._id || n.id);
+        });
+        
+        isFirstNotificationFetch.current = false;
+        setNotifications(newNotifications);
       }
     } catch (err) {
       console.error("Failed to fetch notifications:", err);
@@ -256,6 +299,15 @@ export default function HostDashboard() {
             localStorage.setItem("owner_email", owner.email || "");
             if (owner.mobile) localStorage.setItem("owner_phone", owner.mobile);
             if (owner.mobile) localStorage.setItem("owner_whatsapp", owner.mobile);
+
+            // Request Notification Permission only if we are authenticated and "Notification" is supported
+            if (typeof window !== "undefined" && "Notification" in window) {
+              if (Notification.permission === "default") {
+                Notification.requestPermission().then((permission) => {
+                  console.log("Notification permission prompt result:", permission);
+                });
+              }
+            }
           }
         } else {
           // If not authenticated, clear local storage and redirect to login
@@ -359,6 +411,23 @@ export default function HostDashboard() {
     };
     fetchGuide();
   }, [router]);
+
+  const fetchNotificationsRef = useRef(fetchNotifications);
+  useEffect(() => {
+    fetchNotificationsRef.current = fetchNotifications;
+  });
+
+  // Request browser Notification permission and set up polling
+  useEffect(() => {
+    // Poll notifications every 30 seconds
+    const intervalId = setInterval(() => {
+      fetchNotificationsRef.current();
+    }, 30000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, []);
 
   // Close 3-dot menu and notifications dropdown when clicking outside
   useEffect(() => {

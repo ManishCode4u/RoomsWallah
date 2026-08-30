@@ -395,7 +395,7 @@ export default function HostDashboard() {
       formData.append("image", file);
 
       try {
-        const res = await ownerFetch(getApiUrl("/api/upload"), {
+        const res = await ownerFetch(getApiUrl("/api/upload/receipt"), {
           method: "POST",
           credentials: "include",
           body: formData
@@ -404,7 +404,8 @@ export default function HostDashboard() {
         if (res.ok) {
           const data = await res.json();
           if (data && data.imageUrl) {
-            setScreenshotFileUrl(getApiUrl(data.imageUrl));
+            const url = data.imageUrl.startsWith("http") ? data.imageUrl : getApiUrl(data.imageUrl);
+            setScreenshotFileUrl(url);
           }
         } else {
           const errData = await res.json();

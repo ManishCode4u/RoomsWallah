@@ -2812,7 +2812,7 @@ export default function AdminPage() {
                                 <td className="px-6 py-4.5">
                                   {req.screenshot ? (
                                     <a 
-                                      href={req.screenshot} 
+                                      href={getImageUrl(req.screenshot)} 
                                       target="_blank" 
                                       rel="noreferrer"
                                       className="inline-flex items-center space-x-1.5 text-xs font-bold text-[#6C4CF1] hover:underline"

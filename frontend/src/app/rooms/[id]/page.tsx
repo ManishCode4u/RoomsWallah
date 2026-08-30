@@ -63,7 +63,16 @@ export default async function Page({ params }: PageProps) {
   const property = await getProperty(id);
 
   if (!property) {
-    notFound();
+    const url = getApiUrl(`/api/listings/${id}`);
+    return (
+      <div className="p-10 text-center space-y-4 bg-slate-900 text-white min-h-screen flex flex-col justify-center items-center">
+        <h1 className="text-2xl font-bold text-red-400">Debug Listing Fetch Error</h1>
+        <p className="text-slate-300">Listing ID: <code className="bg-slate-800 px-2 py-1 rounded">{id}</code></p>
+        <p className="text-slate-300">Resolved API URL: <code className="bg-slate-800 px-2 py-1 rounded">{url}</code></p>
+        <p className="text-slate-300">NODE_ENV: <code className="bg-slate-800 px-2 py-1 rounded">{process.env.NODE_ENV}</code></p>
+        <p className="text-slate-300">NEXT_PUBLIC_BACKEND_URL: <code className="bg-slate-800 px-2 py-1 rounded">{process.env.NEXT_PUBLIC_BACKEND_URL || "undefined"}</code></p>
+      </div>
+    );
   }
 
   return (

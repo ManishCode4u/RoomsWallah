@@ -540,6 +540,7 @@ export default function HostDashboard() {
   // Form states
   const [propertyType, setPropertyType] = useState<"room" | "pg" | "hostel">("room");
   const [pgName, setPgName] = useState("");
+  const [genderPreference, setGenderPreference] = useState<"Boys Only" | "Girls Only" | "Family / Couple" | "Anyone">("Anyone");
   const [description, setDescription] = useState("");
   const [address, setAddress] = useState("");
   const [area, setArea] = useState("");
@@ -762,6 +763,7 @@ export default function HostDashboard() {
     setRent("");
     setDeposit("");
     setFoodFacility("Yes");
+    setGenderPreference("Anyone");
     setSelectedFacilities(["Wi-Fi", "AC", "Food", "Geyser", "RO Water"]);
     setCustomFacilities([]);
     setSelectedFurniture(["Bed", "Study Table", "Chair"]);
@@ -810,6 +812,7 @@ export default function HostDashboard() {
     setPincode(itemToEdit.pincode || "");
     setDeposit(itemToEdit.deposit ? String(itemToEdit.deposit) : "");
     setFoodFacility(itemToEdit.foodFacility || "Yes");
+    setGenderPreference(itemToEdit.genderPreference || itemToEdit.tag || "Anyone");
     setRules(itemToEdit.rules || "");
 
     if (itemToEdit.sharing) {
@@ -857,7 +860,8 @@ export default function HostDashboard() {
       ownerName: profileName || "Owner",
       ownerPhone: profilePhone || "9876543210",
       ownerWhatsApp: profileWhatsApp || profilePhone || "9876543210",
-      tag: hostType === "Owner" ? "Boys Only" : hostType === "Broker" ? "Girls Only" : "Family",
+      tag: genderPreference,
+      genderPreference: genderPreference,
       furnishing: selectedFurniture.length > 0 ? "Semi Furnished" : "Unfurnished",
       sharing: `${roomType} Room`,
       address: address,
@@ -905,6 +909,7 @@ export default function HostDashboard() {
         ownerPhone: payload.ownerPhone,
         ownerWhatsApp: payload.ownerWhatsApp,
         tag: payload.tag,
+        genderPreference: payload.genderPreference,
         rating: 4.8,
         furnishing: payload.furnishing,
         sharing: payload.sharing,
@@ -1818,6 +1823,39 @@ export default function HostDashboard() {
                                 {isSelected && <span className="w-2 h-2 bg-[#6C4CF1] rounded-full"></span>}
                               </span>
                               <span>{facility}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs sm:text-sm font-semibold uppercase text-slate-600 tracking-wide block">
+                        Preferred Tenant / Living Preference <span className="text-red-500">*</span>
+                      </label>
+                      <div className="flex flex-wrap gap-2.5 pt-1.5">
+                        {[
+                          { key: "Boys Only", label: "Boys Only" },
+                          { key: "Girls Only", label: "Girls Only" },
+                          { key: "Family / Couple", label: "Family / Couple" },
+                          { key: "Anyone", label: "Anyone" }
+                        ].map((pref) => {
+                          const isSelected = genderPreference === pref.key;
+                          return (
+                            <button
+                              key={pref.key}
+                              type="button"
+                              onClick={() => setGenderPreference(pref.key as any)}
+                              className={`px-5 py-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all flex items-center space-x-2.5 cursor-pointer ${
+                                isSelected 
+                                  ? "bg-[#6C4CF1]/5 text-[#6C4CF1] border-[#6C4CF1] shadow-[0_0_0_1px_#6C4CF1]" 
+                                  : "bg-white border-[#E2E8F0] text-[#1E2235] hover:border-[#6C4CF1]/30 hover:bg-[#F8FAFC]"
+                              }`}
+                            >
+                              <span className={`w-4 h-4 rounded-full border flex items-center justify-center stroke-2 shrink-0 ${isSelected ? "border-[#6C4CF1]" : "border-slate-300"}`}>
+                                {isSelected && <span className="w-2 h-2 bg-[#6C4CF1] rounded-full"></span>}
+                              </span>
+                              <span>{pref.label}</span>
                             </button>
                           );
                         })}

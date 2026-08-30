@@ -230,7 +230,7 @@ export default function UserDashboard() {
                       key={p.id || p._id} 
                       className="bg-white border border-[#ECECEC] rounded-3xl overflow-hidden shadow-xs hover:shadow-md transition-all duration-300 flex flex-col justify-between"
                     >
-                      <Link href={`/rooms/${p.id || p._id}`} className="block relative aspect-video overflow-hidden">
+                      <Link href={`/${(p.type || "").toLowerCase() === "room" ? "rooms" : (p.type || "").toLowerCase() === "hostel" ? "hostels" : (p.type || "").toLowerCase() === "flat" ? "flats" : "pg"}/${p.id || p._id}`} className="block relative aspect-video overflow-hidden">
                         <img 
                           src={p.image || "/assets/room1.png"} 
                           alt={p.title} 

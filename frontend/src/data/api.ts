@@ -12,7 +12,13 @@ export const getApiUrl = (path: string): string => {
       backendUrl = "http://localhost:5000";
     }
   } else {
-    backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "https://roomswallah-backend.onrender.com";
+    const envUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+    const isCloudEnv = process.env.VERCEL === "1" || process.env.RENDER === "true" || process.env.NETLIFY === "true";
+    if (envUrl && (!envUrl.includes("localhost") && !envUrl.includes("127.0.0.1") || !isCloudEnv)) {
+      backendUrl = envUrl;
+    } else {
+      backendUrl = "https://roomswallah-backend.onrender.com";
+    }
   }
   
   // Normalize by removing trailing slash(es)
@@ -34,7 +40,13 @@ export const getImageUrl = (url: string): string => {
       backendUrl = "http://localhost:5000";
     }
   } else {
-    backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "https://roomswallah-backend.onrender.com";
+    const envUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+    const isCloudEnv = process.env.VERCEL === "1" || process.env.RENDER === "true" || process.env.NETLIFY === "true";
+    if (envUrl && (!envUrl.includes("localhost") && !envUrl.includes("127.0.0.1") || !isCloudEnv)) {
+      backendUrl = envUrl;
+    } else {
+      backendUrl = "https://roomswallah-backend.onrender.com";
+    }
   }
 
   // Normalize by removing trailing slash(es)

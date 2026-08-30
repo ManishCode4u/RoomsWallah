@@ -9,9 +9,11 @@ interface PageProps {
 }
 
 async function getProperty(id: string) {
-
+  const url = getApiUrl(`/api/listings/${id}`);
+  console.log(`[flats-[id]] Fetching URL: "${url}"`);
   try {
-    const res = await fetch(getApiUrl(`/api/listings/${id}`), { cache: "no-store" });
+    const res = await fetch(url, { cache: "no-store" });
+    console.log(`[flats-[id]] Response status: ${res.status}, ok: ${res.ok}`);
     if (res.ok) {
       const data = await res.json();
       if (data) {
@@ -20,6 +22,11 @@ async function getProperty(id: string) {
           id: data._id || data.id
         };
       }
+    } else {
+      try {
+        const text = await res.text();
+        console.log(`[flats-[id]] Error response body: ${text.substring(0, 200)}`);
+      } catch (e) {}
     }
   } catch (err) {
     console.error("Failed to fetch property details on server:", err);

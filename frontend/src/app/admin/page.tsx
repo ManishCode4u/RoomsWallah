@@ -1613,6 +1613,11 @@ export default function AdminPage() {
                                   {rep.reason}
                                 </span>
                                 <h4 className="text-xs font-bold text-[#1E2235] truncate leading-tight">{rep.listingTitle}</h4>
+                                {rep.message && (
+                                  <p className="text-[10px] text-slate-400 font-medium italic mt-0.5 max-w-xs truncate font-poppins">
+                                    "{rep.message}"
+                                  </p>
+                                )}
                                 <span className="text-[10px] text-[#94A3B8] font-bold mt-1 block">Owner: {rep.ownerName} &bull; {rep.date}</span>
                               </div>
                               
@@ -2699,8 +2704,13 @@ export default function AdminPage() {
                         <tbody className="divide-y divide-[#F0F2F5] text-xs font-semibold text-[#1E2235] font-poppins">
                           {reports.map((rep) => (
                             <tr key={rep.id} className="hover:bg-slate-50/30 transition-colors">
-                              <td className="px-6 py-4 font-bold text-[#1E2235]">
-                                {rep.listingTitle}
+                              <td className="px-6 py-4">
+                                <div className="font-bold text-[#1E2235]">{rep.listingTitle}</div>
+                                {rep.message && (
+                                  <div className="text-[10px] text-slate-400 font-medium mt-1 bg-slate-50/50 p-1.5 px-2.5 rounded-lg border border-slate-100/80 max-w-xs break-words font-poppins">
+                                    "{rep.message}"
+                                  </div>
+                                )}
                               </td>
                               <td className="px-6 py-4 font-bold">{rep.ownerName}</td>
                               <td className="px-6 py-4">

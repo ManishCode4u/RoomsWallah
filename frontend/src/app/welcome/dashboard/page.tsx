@@ -558,8 +558,8 @@ export default function HostDashboard() {
         if (res.ok) {
           const data = await res.json();
           if (data && data.imageUrl) {
-            // Prepend hostname so frontend loads it from backend
-            const fullUrl = getApiUrl(data.imageUrl);
+            // Prepend hostname if it's a relative path, otherwise use it directly
+            const fullUrl = data.imageUrl.startsWith("http") ? data.imageUrl : getApiUrl(data.imageUrl);
             setPhotos((prev) => [...prev, fullUrl]);
           }
         } else {
@@ -1267,20 +1267,20 @@ export default function HostDashboard() {
                       onClick={() => setActiveScreen("listings")}
                       className="bg-[#F8FAFC] hover:bg-[#F0EDFF]/30 border border-[#F0F2F5] hover:border-primary/20 p-4 rounded-[20px] flex items-center justify-between text-left transition-all duration-200 cursor-pointer w-full group"
                     >
-                      <div className="space-y-1.5 text-left">
-                        <span className="block text-xs sm:text-sm font-semibold text-[#1E2235] group-hover:text-primary transition-colors">My Listings</span>
-                        <span className="text-[10px] sm:text-xs text-[#94A3B8] font-normal block leading-none">Manage properties</span>
+                      <div className="space-y-2 text-left">
+                        <span className="block text-base sm:text-lg font-bold text-[#1E2235] group-hover:text-primary transition-colors">My Listings</span>
+                        <span className="text-sm sm:text-base text-[#94A3B8] font-normal block leading-tight">Manage properties</span>
                       </div>
-                      <ChevronRight className="w-4.5 h-4.5 text-[#94A3B8] group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                      <ChevronRight className="w-5.5 h-5.5 text-[#94A3B8] group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
                     </button>
 
                     <button 
                       onClick={() => setActiveScreen("inquiries")}
                       className="bg-[#F8FAFC] hover:bg-[#F0EDFF]/30 border border-[#F0F2F5] hover:border-primary/20 p-4 rounded-[20px] flex items-center justify-between text-left transition-all duration-200 cursor-pointer w-full group"
                     >
-                      <div className="space-y-1.5 text-left">
-                        <span className="block text-xs sm:text-sm font-semibold text-[#1E2235] group-hover:text-primary transition-colors">Inquiries</span>
-                        <span className="text-[10px] sm:text-xs text-[#94A3B8] font-normal block leading-none">View & reply</span>
+                      <div className="space-y-2 text-left">
+                        <span className="block text-base sm:text-lg font-bold text-[#1E2235] group-hover:text-primary transition-colors">Inquiries</span>
+                        <span className="text-sm sm:text-base text-[#94A3B8] font-normal block leading-tight">View & reply</span>
                       </div>
                       <ChevronRight className="w-4.5 h-4.5 text-[#94A3B8] group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
                     </button>
@@ -2737,9 +2737,13 @@ export default function HostDashboard() {
                               👤 {inq.name || "Guest User"}
                             </span>
                             {inq.phone && inq.phone !== "Not Provided" && (
-                              <span className="flex items-center text-slate-500">
+                              <a 
+                                href={`tel:${inq.phone}`}
+                                className="flex items-center text-slate-500 hover:text-blue-600 hover:underline transition-colors"
+                                title="Call Tenant"
+                              >
                                 📞 {inq.phone}
-                              </span>
+                              </a>
                             )}
                           </div>
                           <div className="flex items-center space-x-2 text-[11px] text-slate-400 font-semibold">
@@ -3071,13 +3075,59 @@ export default function HostDashboard() {
 
                   {/* Download / Share Buttons mockup */}
                   <div className="grid grid-cols-2 gap-3 w-full pt-4 border-t border-white/5 mt-4">
-                    <button className="flex items-center justify-center space-x-1.5 border border-white/15 hover:bg-white/5 text-slate-300 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-colors">
+                    <button 
+                      onClick={async () => {
+                        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=9263119717@axl%26pn=RoomsWallah%26am=${selectedPlan === "basic" ? "19" : "49"}%26cu=INR%26tn=Boost_${boostingListing.id}`;
+                        try {
+                          const response = await fetch(qrUrl);
+                          const blob = await response.blob();
+                          const blobUrl = URL.createObjectURL(blob);
+                          const link = document.createElement("a");
+                          link.href = blobUrl;
+                          link.download = `roomswallah-payment-qr.png`;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                          URL.revokeObjectURL(blobUrl);
+                        } catch (err) {
+                          window.open(qrUrl, "_blank");
+                        }
+                      }}
+                      className="flex items-center justify-center space-x-1.5 border border-white/15 hover:bg-white/5 text-slate-300 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-colors"
+                    >
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                       </svg>
                       <span>Download</span>
                     </button>
-                    <button className="flex items-center justify-center space-x-1.5 border border-white/15 hover:bg-white/5 text-slate-300 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-colors">
+                    <button 
+                      onClick={async () => {
+                        const paymentDetails = `RoomsWallah Boost Payment:\nAmount: ₹${selectedPlan === "basic" ? "19" : "49"}\nUPI ID: 9263119717@axl\nNote: Boost_${boostingListing.id}`;
+                        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=9263119717@axl%26pn=RoomsWallah%26am=${selectedPlan === "basic" ? "19" : "49"}%26cu=INR%26tn=Boost_${boostingListing.id}`;
+                        
+                        if (typeof navigator !== "undefined" && navigator.share) {
+                          try {
+                            await navigator.share({
+                              title: 'RoomsWallah Payment QR',
+                              text: paymentDetails,
+                              url: qrUrl
+                            });
+                          } catch (err) {
+                            console.error("Error sharing:", err);
+                          }
+                        } else {
+                          try {
+                            if (typeof navigator !== "undefined") {
+                              await navigator.clipboard.writeText(`${paymentDetails}\nQR Code: ${qrUrl}`);
+                              alert("Payment info copied to clipboard! Opening WhatsApp...");
+                            }
+                          } catch (clipErr) {}
+                          const encodedText = encodeURIComponent(`${paymentDetails}\nQR Code Link: ${qrUrl}`);
+                          window.open(`https://api.whatsapp.com/send?text=${encodedText}`, "_blank");
+                        }
+                      }}
+                      className="flex items-center justify-center space-x-1.5 border border-white/15 hover:bg-white/5 text-slate-300 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-colors"
+                    >
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 10.742l-2.016 1.152m0 0l-2.016 1.152m2.016-1.152L11 8m0 0l2.016-1.152m0 0l2.016-1.152M11 8v8M11 8l-2.016 1.152m2.016-1.152l2.016 1.152m-2.016-1.152v8" />
                       </svg>

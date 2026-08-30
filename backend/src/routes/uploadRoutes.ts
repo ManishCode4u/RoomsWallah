@@ -22,12 +22,12 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 // Upload buffer helper for Cloudinary
-const uploadToCloudinary = (fileBuffer: Buffer, originalName: string): Promise<any> => {
+const uploadToCloudinary = (fileBuffer: Buffer, originalName: string, folder: string = "roomswallah/general"): Promise<any> => {
   return new Promise((resolve, reject) => {
     const uniqueName = path.parse(originalName).name + "-" + Date.now();
     const uploadStream = cloudinary.uploader.upload_stream(
       {
-        folder: "roomswallah/payment-receipts",
+        folder,
         public_id: uniqueName,
         resource_type: "image",
       },
@@ -77,32 +77,33 @@ const upload = multer({
 router.post(
   "/",
   (req: Request, res: Response, next) => {
-    // Custom wrapper to catch Multer errors gracefully
-    upload.single("image")(req, res, (err: any) => {
+    // Custom wrapper to catch Multer errors gracefully using in-memory multer
+    uploadReceiptMulter.single("image")(req, res, (err: any) => {
       if (err instanceof multer.MulterError) {
-        // Multer specific error (e.g. limit file size)
         res.status(400).json({ message: `Upload error: ${err.message}` });
       } else if (err) {
-        // General error (e.g. file format not allowed)
         res.status(400).json({ message: err.message });
       } else {
         next();
       }
     });
   },
-  (req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
     if (!req.file) {
       res.status(400).json({ message: "No file uploaded" });
       return;
     }
 
-    // Return the relative URL of the uploaded image
-    // For localhost development, it will look like /uploads/17000000000-image.jpg
-    const fileUrl = `/uploads/${req.file.filename}`;
-    res.status(200).json({
-      message: "Image uploaded successfully",
-      imageUrl: fileUrl,
-    });
+    try {
+      const uploadResult = await uploadToCloudinary(req.file.buffer, req.file.originalname, "roomswallah/listings");
+      res.status(200).json({
+        message: "Image uploaded successfully",
+        imageUrl: uploadResult.secure_url,
+      });
+    } catch (err: any) {
+      console.error("Error uploading listing image to Cloudinary:", err);
+      res.status(500).json({ message: "Failed to upload image to Cloudinary" });
+    }
   }
 );
 
@@ -188,7 +189,7 @@ router.post(
     }
 
     try {
-      const uploadResult = await uploadToCloudinary(req.file.buffer, req.file.originalname);
+      const uploadResult = await uploadToCloudinary(req.file.buffer, req.file.originalname, "roomswallah/payment-receipts");
       res.status(200).json({
         message: "Receipt uploaded successfully",
         imageUrl: uploadResult.secure_url,

@@ -35,6 +35,7 @@ export interface ListingReport {
   listingTitle: string;
   ownerName: string;
   reason: "Fake Listing" | "Wrong Information" | "Duplicate Listing" | "Spam";
+  message?: string;
   date: string;
   status: "Pending" | "Ignored" | "Resolved";
 }

@@ -169,17 +169,20 @@ export const getActiveBoostSlots = async (): Promise<IPromotedSlot[]> => {
   return slots.filter((slot) => slot.status === "Active");
 };
 
-/**
- * Start periodic cron checker (every 60 seconds)
- */
 export const startBoostExpiryScheduler = (): void => {
   // Run once immediately
-  checkAndExpireBoosts();
+  checkAndExpireBoosts().catch((err) => {
+    console.error("❌ Boost manager initial check error:", err);
+  });
 
   // Run every 60 seconds
-  setInterval(() => {
-    checkAndExpireBoosts();
+  const interval = setInterval(() => {
+    checkAndExpireBoosts().catch((err) => {
+      console.error("❌ Boost manager periodic check error:", err);
+    });
   }, 60 * 1000);
+
+  interval.unref();
 
   console.log("⏱ Boost Expiration Engine initialized (Checks every 60s)");
 };

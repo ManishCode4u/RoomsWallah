@@ -90,7 +90,16 @@ app.use(
         origin
       );
 
-      if (allowedOrigins.indexOf(origin) !== -1 || isLocalIp || process.env.NODE_ENV !== "production") {
+      const isVercel = origin.endsWith(".vercel.app");
+      const isRoomsWallah = origin.includes("roomswallah") || origin.includes("checkrooms");
+
+      if (
+        allowedOrigins.indexOf(origin) !== -1 ||
+        isLocalIp ||
+        isVercel ||
+        isRoomsWallah ||
+        process.env.NODE_ENV !== "production"
+      ) {
         callback(null, true);
       } else {
         callback(null, false);

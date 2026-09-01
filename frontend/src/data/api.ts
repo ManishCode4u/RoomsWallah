@@ -17,7 +17,7 @@ function isValidBackendUrl(url: string | undefined): boolean {
 export const getApiUrl = (path: string): string => {
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   
-  let backendUrl = "https://checkrooms-backend.onrender.com";
+  let backendUrl = "https://roomswallah-backend.onrender.com";
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname;
     if (hostname === "localhost" || hostname === "127.0.0.1" || hostname.startsWith("192.168.")) {
@@ -28,7 +28,7 @@ export const getApiUrl = (path: string): string => {
     if (isValidBackendUrl(envUrl)) {
       backendUrl = envUrl!;
     } else {
-      backendUrl = "https://checkrooms-backend.onrender.com";
+      backendUrl = "https://roomswallah-backend.onrender.com";
     }
   }
   
@@ -44,7 +44,7 @@ export const getApiUrl = (path: string): string => {
 export const getImageUrl = (url: string): string => {
   if (!url) return "";
   
-  let backendUrl = "https://checkrooms-backend.onrender.com";
+  let backendUrl = "https://roomswallah-backend.onrender.com";
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname;
     if (hostname === "localhost" || hostname === "127.0.0.1" || hostname.startsWith("192.168.")) {
@@ -55,7 +55,7 @@ export const getImageUrl = (url: string): string => {
     if (isValidBackendUrl(envUrl)) {
       backendUrl = envUrl!;
     } else {
-      backendUrl = "https://checkrooms-backend.onrender.com";
+      backendUrl = "https://roomswallah-backend.onrender.com";
     }
   }
 

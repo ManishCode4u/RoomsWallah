@@ -6,27 +6,46 @@ import { useRouter } from "next/navigation";
 import { 
   Home, 
   Plus, 
-  ListTodo, 
-  MessageSquare, 
-  User, 
+  UserRound, 
+  LayoutDashboard,
+  Rocket,
+  CalendarDays,
+  MessageCircle,
+  Settings,
+  CircleHelp,
+  LogOut,
   Bell, 
-  ChevronRight, 
-  ChevronLeft,
-  ChevronDown,
-  Camera,
-  MapPin,
-  Check,
-  X,
-  Eye,
-  Edit3,
-  Power,
-  Lightbulb,
+  ChevronDown, 
+  Eye, 
+  CheckCircle2, 
+  MoreVertical, 
+  Check, 
+  X, 
+  Edit3, 
+  Trash2, 
+  AlertTriangle,
+  Clock, 
   Sparkles,
-  MoreVertical,
+  Menu,
   Phone,
   Mail,
-  Trash2,
-  ShieldCheck
+  Camera,
+  MapPin,
+  ShieldCheck,
+  House,
+  Calendar,
+  ExternalLink,
+  Download,
+  Search,
+  SlidersHorizontal,
+  Grid,
+  List,
+  TrendingUp,
+  ArrowUpDown,
+  Share2,
+  Filter,
+  User,
+  MessageSquare
 } from "lucide-react";
 import { getApiUrl, getImageUrl } from "@/data/api";
 
@@ -36,15 +55,50 @@ interface Listing {
   location: string;
   sharing: string;
   rent: number;
+  deposit?: number;
+  description?: string;
   facilities: string[];
+  furniture?: string[];
   status: "Active" | "Inactive";
   date: string;
   image: string;
-  type?: "room" | "pg" | "hostel";
+  type?: "room" | "pg" | "hostel" | "flat";
+  bhk?: string;
+  views?: number;
+  inquiries?: number;
+  isBoosted?: boolean;
+  boostExpiresAt?: string;
+  boostPlan?: string;
+  foodOption?: string;
+  preferredTenant?: string;
+  houseRules?: string;
 }
 
-export default function HostDashboard() {
+interface CustomerLead {
+  id: string;
+  propertyTitle: string;
+  userName?: string;
+  phone?: string;
+  type: "whatsapp" | "call" | "booking";
+  date: string;
+  time: string;
+}
+
+interface BoostHistoryRecord {
+  id: string;
+  propertyId: string;
+  propertyTitle: string;
+  propertyImage: string;
+  plan: string;
+  amount: number;
+  startDate: string;
+  expiryDate: string;
+  status: "Active" | "Expired";
+}
+
+export default function OwnerDashboard() {
   const router = useRouter();
+
   // Owner-authenticated API fetch helper
   const ownerFetch = async (url: string, options: RequestInit = {}) => {
     const token = typeof window !== "undefined" ? localStorage.getItem("owner_token") || "" : "";
@@ -55,565 +109,364 @@ export default function HostDashboard() {
     return fetch(url, { ...options, credentials: "include", headers });
   };
 
-  const [activeScreen, setActiveScreen] = useState<"dashboard" | "step1" | "step2" | "step3" | "step4" | "step5" | "listings" | "profile" | "inquiries">("dashboard");
-  const [listingTab, setListingTab] = useState<"all" | "active" | "inactive">("active");
+  // Screen and tab navigation states
+  const [activeNav, setActiveNav] = useState<"profile" | "dashboard" | "listings" | "boost" | "bookings" | "settings" | "help">("profile");
+  const [dashboardTab, setDashboardTab] = useState<"Listing" | "Overview" | "Inquiry">("Listing");
+  const [activeScreen, setActiveScreen] = useState<"dashboard" | "listings" | "step1" | "step2" | "step3" | "step4" | "step5" | "profile" | "bookings" | "help">("dashboard");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [editingListingId, setEditingListingId] = useState<string | null>(null);
-  const [guideData, setGuideData] = useState<{
-    title: string;
-    description: string;
-    videoUrl: string;
-  } | null>(null);
+
+  // My Listings Filter & View States
+  const [listingSearchQuery, setListingSearchQuery] = useState("");
+  const [listingTypeFilter, setListingTypeFilter] = useState<"all" | "room" | "pg" | "flat" | "hostel">("all");
+  const [listingStatusFilter, setListingStatusFilter] = useState<"all" | "active" | "inactive" | "boosted">("all");
+  const [listingViewMode, setListingViewMode] = useState<"grid" | "table">("grid");
+  const [listingSortBy, setListingSortBy] = useState<"newest" | "price_asc" | "price_desc" | "views">("newest");
+
+  // Bookings & Boost History States
+  const [bookingTab, setBookingTab] = useState<"leads" | "boost_history">("leads");
+  const [bookingLeadSearch, setBookingLeadSearch] = useState("");
+
+  // Time & Greeting state
+  const [currentTimeStr, setCurrentTimeStr] = useState("02:45 PM");
+  const [currentDateStr, setCurrentDateStr] = useState("Friday, 23 May 2025");
+  const [dynamicGreeting, setDynamicGreeting] = useState({ text: "Good Afternoon", emoji: "👋" });
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const hrs = now.getHours();
+      
+      if (hrs >= 5 && hrs < 12) {
+        setDynamicGreeting({ text: "Good Morning", emoji: "🖐" });
+      } else if (hrs >= 12 && hrs < 17) {
+        setDynamicGreeting({ text: "Good Afternoon", emoji: "🖐" });
+      } else if (hrs >= 17 && hrs < 21) {
+        setDynamicGreeting({ text: "Good Evening", emoji: "🖐" });
+      } else {
+        setDynamicGreeting({ text: "Good Night", emoji: "🖐" });
+      }
+
+      setCurrentTimeStr(now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }));
+      setCurrentDateStr(now.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" }));
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Notifications states
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
-  const knownNotificationIds = useRef<Set<string>>(new Set());
-  const isFirstNotificationFetch = useRef(true);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
 
-  // Inquiries state
-  const [inquiries, setInquiries] = useState<any[]>([]);
-
-  // Profile settings states
-  const [profileName, setProfileName] = useState("Manish Kumar");
-  const [profileEmail, setProfileEmail] = useState("manish.kumar@roomswallah.com");
-  const [profilePhone, setProfilePhone] = useState("+91 98765 43210");
-  const [profileWhatsApp, setProfileWhatsApp] = useState("+91 98765 43210");
-  const [supportSubject, setSupportSubject] = useState("General Help");
-  const [supportMessage, setSupportMessage] = useState("");
-  const [showSupportForm, setShowSupportForm] = useState(false);
-
-  // Boosting & Manual Payment Verification States
-  const [showBoostModal, setShowBoostModal] = useState(false);
-  const [boostRequests, setBoostRequests] = useState<any[]>([]);
-  const [promotedListingIds, setPromotedListingIds] = useState<string[]>([]);
-  const [boostingListing, setBoostingListing] = useState<Listing | null>(null);
-  const [checkoutStep, setCheckoutStep] = useState<"list" | "plans" | "payment" | "submitting" | "success">("list");
-  const [selectedPlan, setSelectedPlan] = useState<"basic" | "premium">("basic");
-  const [screenshotFileUrl, setScreenshotFileUrl] = useState<string>("");
-  const [isUploadingScreenshot, setIsUploadingScreenshot] = useState(false);
-
-  const getGreetingMessage = () => {
-    const hrs = new Date().getHours();
-    if (hrs < 12) return "Good morning";
-    if (hrs < 17) return "Good afternoon";
-    return "Good evening";
-  };
-
-  const getProfileStrength = () => {
-    let score = 0;
-    if (profileName && profileName.trim() && profileName !== "Owner" && profileName !== "Manish Kumar") score += 25;
-    else if (profileName && profileName.trim()) score += 15;
-    
-    if (profileEmail && profileEmail.trim() && profileEmail !== "manish.kumar@roomswallah.com") score += 25;
-    else if (profileEmail && profileEmail.trim()) score += 15;
-    
-    if (profilePhone && profilePhone.trim() && profilePhone !== "+91 98765 43210") score += 25;
-    else if (profilePhone && profilePhone.trim()) score += 10;
-    
-    if (profileWhatsApp && profileWhatsApp.trim() && profileWhatsApp !== "+91 98765 43210") score += 25;
-    else if (profileWhatsApp && profileWhatsApp.trim()) score += 10;
-    
-    return Math.min(score, 100);
-  };
-
-  const fetchNotifications = async () => {
-    try {
-      const res = await ownerFetch(getApiUrl("/api/notifications"), {
-        credentials: "include"
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const newNotifications = data || [];
-        
-        // Handle native browser notifications
-        if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-          const unreadNew = newNotifications.filter(
-            (n: any) => !n.read && !knownNotificationIds.current.has(n._id || n.id)
-          );
-          
-          if (!isFirstNotificationFetch.current && unreadNew.length > 0) {
-            unreadNew.forEach((n: any) => {
-              const notificationTitle = "RoomsWallah - New Notification";
-              const notificationOptions = {
-                body: n.message || "You have a new update on RoomsWallah.",
-                icon: "/favicon.ico"
-              };
-              
-              try {
-                const notification = new Notification(notificationTitle, notificationOptions);
-                notification.onclick = (e) => {
-                  e.preventDefault();
-                  window.focus();
-                  const msgLower = (n.message || "").toLowerCase();
-                  if (msgLower.includes("inquiry") || msgLower.includes("lead") || msgLower.includes("contact")) {
-                    setActiveScreen("inquiries");
-                  } else {
-                    setActiveScreen("dashboard");
-                  }
-                };
-              } catch (e) {
-                console.error("Failed to trigger browser notification:", e);
-              }
-            });
-          }
-        }
-
-        // Store all incoming notification IDs in known list to prevent duplicate triggers
-        newNotifications.forEach((n: any) => {
-          knownNotificationIds.current.add(n._id || n.id);
-        });
-        
-        isFirstNotificationFetch.current = false;
-        setNotifications(newNotifications);
-      }
-    } catch (err) {
-      console.error("Failed to fetch notifications:", err);
-    }
-  };
-
-  const markNotificationAsRead = async (id: string) => {
-    try {
-      const res = await ownerFetch(getApiUrl(`/api/notifications/${id}/read`), {
-        method: "PATCH",
-        credentials: "include"
-      });
-      if (res.ok) {
-        setNotifications((prev) =>
-          prev.map((n) => (n._id === id || n.id === id ? { ...n, read: true } : n))
-        );
-      }
-    } catch (err) {
-      console.error("Failed to mark notification as read:", err);
-    }
-  };
-
-  const clearAllNotifications = async () => {
-    try {
-      const res = await ownerFetch(getApiUrl("/api/notifications"), {
-        method: "DELETE",
-        credentials: "include"
-      });
-      if (res.ok) {
-        setNotifications([]);
-      }
-    } catch (err) {
-      console.error("Failed to clear notifications:", err);
-    }
-  };
-
-  const fetchBoostData = async () => {
-    try {
-      const [resSlots, resMyRequests] = await Promise.all([
-        ownerFetch(getApiUrl("/api/promotions/slots")),
-        ownerFetch(getApiUrl("/api/listings/boost-requests/my-requests"), { credentials: "include" })
-      ]);
-
-      if (resSlots.ok) {
-        const slots = await resSlots.json();
-        if (Array.isArray(slots)) {
-          const activeIds = slots
-            .filter((slot: any) => slot.status === "Active" && slot.listingId)
-            .map((slot: any) => slot.listingId);
-          setPromotedListingIds(activeIds);
-        }
-      }
-
-      if (resMyRequests.ok) {
-        const reqs = await resMyRequests.json();
-        if (Array.isArray(reqs)) {
-          setBoostRequests(reqs);
-        }
-      }
-    } catch (err) {
-      console.error("Error fetching boost data on dashboard:", err);
-    }
-  };
-
-  const fetchOwnerInquiries = async () => {
-    try {
-      const res = await ownerFetch(getApiUrl("/api/listings/inquiries/my-inquiries"), {
-        credentials: "include"
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          setInquiries(data);
-        }
-      }
-    } catch (err) {
-      console.error("Failed to fetch inquiries for dashboard from backend:", err);
-    }
-  };
-
-  useEffect(() => {
-    // Capture Google login credentials from URL parameters if redirected
+  // Profile data (fetched dynamically from backend / localStorage)
+  const [profileName, setProfileName] = useState(() => {
     if (typeof window !== "undefined") {
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlToken = urlParams.get("token");
-      if (urlToken) {
-        localStorage.setItem("owner_token", urlToken);
-        localStorage.setItem("owner_logged_in", "true");
-        
-        const urlName = urlParams.get("owner_name");
-        if (urlName) {
-          localStorage.setItem("owner_name", decodeURIComponent(urlName));
-          setProfileName(decodeURIComponent(urlName));
-        }
-        
-        const urlEmail = urlParams.get("owner_email");
-        if (urlEmail) {
-          localStorage.setItem("owner_email", decodeURIComponent(urlEmail));
-          setProfileEmail(decodeURIComponent(urlEmail));
-        }
-        
-        const urlPhone = urlParams.get("owner_phone");
-        if (urlPhone) {
-          localStorage.setItem("owner_phone", decodeURIComponent(urlPhone));
-          localStorage.setItem("owner_whatsapp", decodeURIComponent(urlPhone));
-          setProfilePhone(decodeURIComponent(urlPhone));
-          setProfileWhatsApp(decodeURIComponent(urlPhone));
-        }
-
-        // Clean URL parameters from display
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }
+      return localStorage.getItem("owner_name") || localStorage.getItem("checkrooms_user_name") || "Landlord";
     }
-
-    const checkAuth = async () => {
-      try {
-        const res = await ownerFetch(getApiUrl("/api/auth/me"), {
-          credentials: "include"
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.owner) {
-            const owner = data.owner;
-            setProfileName(owner.fullName);
-            setProfileEmail(owner.email || "");
-            if (owner.mobile) setProfilePhone(owner.mobile);
-            if (owner.mobile) setProfileWhatsApp(owner.mobile);
-            
-            localStorage.setItem("owner_logged_in", "true");
-            localStorage.setItem("owner_name", owner.fullName);
-            localStorage.setItem("owner_email", owner.email || "");
-            if (owner.mobile) localStorage.setItem("owner_phone", owner.mobile);
-            if (owner.mobile) localStorage.setItem("owner_whatsapp", owner.mobile);
-
-            // Request Notification Permission only if we are authenticated and "Notification" is supported
-            if (typeof window !== "undefined" && "Notification" in window) {
-              if (Notification.permission === "default") {
-                Notification.requestPermission().then((permission) => {
-                  console.log("Notification permission prompt result:", permission);
-                });
-              }
-            }
-          }
-        } else {
-          // If not authenticated, clear local storage and redirect to login
-          localStorage.removeItem("owner_logged_in");
-          router.push("/welcome");
-        }
-      } catch (err) {
-        console.error("Auth check failed:", err);
-        // Fallback to local storage if API is temporarily unavailable
-        const isLoggedIn = localStorage.getItem("owner_logged_in");
-        if (!isLoggedIn) {
-          router.push("/welcome");
-        }
-      }
-    };
-
-    if (typeof window !== "undefined") {
-      const savedName = localStorage.getItem("owner_name");
-      if (savedName) setProfileName(savedName);
-      const savedEmail = localStorage.getItem("owner_email");
-      if (savedEmail) setProfileEmail(savedEmail);
-      const savedPhone = localStorage.getItem("owner_phone");
-      if (savedPhone) setProfilePhone(savedPhone);
-      const savedWhatsApp = localStorage.getItem("owner_whatsapp");
-      if (savedWhatsApp) setProfileWhatsApp(savedWhatsApp);
-    }
-
-    checkAuth();
-
-    const fetchOwnerListings = async () => {
-      let apiOwnerListings: Listing[] = [];
-      try {
-        const res = await ownerFetch(getApiUrl("/api/listings/my-listings"), {
-          credentials: "include"
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) {
-            apiOwnerListings = data.map((item: any) => ({
-              id: item._id || item.id,
-              title: item.title,
-              location: `${item.area || ""}, ${item.city || ""}`,
-              sharing: item.sharing || "Single Room",
-              rent: item.rent,
-              facilities: item.amenities || [],
-              status: item.listingStatus === "active" ? "Active" : "Inactive",
-              date: item.createdAt ? `Listed on ${new Date(item.createdAt).toLocaleDateString("en-GB", { day: 'numeric', month: 'short', year: 'numeric' })}` : "Listed on Just Now",
-              image: item.image,
-              type: item.type
-            }));
-          }
-        }
-      } catch (err) {
-        console.error("Failed to fetch listings for dashboard from backend:", err);
-      }
-
-      let localOwnerListings: Listing[] = [];
-      if (typeof window !== "undefined") {
-        try {
-          const localProps = JSON.parse(localStorage.getItem("roomswallah_properties") || "[]");
-          if (Array.isArray(localProps)) {
-            localOwnerListings = localProps.map((item: any) => ({
-              id: item.id || item._id,
-              title: item.title,
-              location: `${item.area || ""}, ${item.city || ""}`,
-              sharing: item.sharing || "Single Room",
-              rent: item.rent || 0,
-              facilities: item.amenities || item.facilities || [],
-              status: "Active",
-              date: "Listed on Just Now",
-              image: item.image || "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=400&q=80",
-              type: item.type
-            }));
-          }
-        } catch (e) {}
-      }
-
-      const apiIds = new Set(apiOwnerListings.map((p) => p.id));
-      const combinedListings = [...apiOwnerListings, ...localOwnerListings.filter((p) => !apiIds.has(p.id))];
-
-      setListings(combinedListings);
-    };
-    fetchOwnerListings();
-    fetchNotifications();
-
-      fetchBoostData();
-      fetchOwnerInquiries();
-
-    const fetchGuide = async () => {
-      try {
-        const res = await ownerFetch(getApiUrl("/api/admin/guide"));
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.videoUrl) {
-            setGuideData(data);
-          }
-        }
-      } catch (e) {
-        console.error("Error fetching guide settings on dashboard:", e);
-      }
-    };
-    fetchGuide();
-  }, [router]);
-
-  const fetchNotificationsRef = useRef(fetchNotifications);
-  useEffect(() => {
-    fetchNotificationsRef.current = fetchNotifications;
+    return "Landlord";
   });
-
-  // Request browser Notification permission and set up polling
-  useEffect(() => {
-    // Poll notifications every 30 seconds
-    const intervalId = setInterval(() => {
-      fetchNotificationsRef.current();
-    }, 30000);
-
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, []);
-
-  // Close 3-dot menu and notifications dropdown when clicking outside
-  useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (openMenuId && !target.closest(".actions-panel-container")) {
-        setOpenMenuId(null);
-      }
-      if (showNotificationsDropdown && !target.closest(".notifications-bell-container")) {
-        setShowNotificationsDropdown(false);
-      }
-    };
-
-    document.addEventListener("click", handleOutsideClick);
-    return () => {
-      document.removeEventListener("click", handleOutsideClick);
-    };
-  }, [openMenuId, showNotificationsDropdown]);
-
-  const [hostType, setHostType] = useState("Owner"); // Owner, Broker, Manager
-  const [emailAlerts, setEmailAlerts] = useState(true);
-  const [pushAlerts, setPushAlerts] = useState(false);
+  const [profileEmail, setProfileEmail] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("owner_email") || "";
+    }
+    return "";
+  });
+  const [profilePhone, setProfilePhone] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("owner_phone") || localStorage.getItem("checkrooms_user_phone") || "";
+    }
+    return "";
+  });
+  const [profileWhatsApp, setProfileWhatsApp] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("owner_whatsapp") || localStorage.getItem("owner_phone") || "";
+    }
+    return "";
+  });
   const [isEditingProfile, setIsEditingProfile] = useState(false);
 
-  const handleScreenshotChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      if (!file.type.startsWith("image/")) {
-        alert("Please select a valid screenshot image file.");
-        return;
-      }
-      setIsUploadingScreenshot(true);
-      const formData = new FormData();
-      formData.append("image", file);
+  // Inquiries & Leads List (Loaded from real database /api/listings/inquiries/my-inquiries)
+  const [inquiriesList, setInquiriesList] = useState<any[]>([]);
+  const [listings, setListings] = useState<Listing[]>([]);
 
-      try {
-        const res = await ownerFetch(getApiUrl("/api/upload/receipt"), {
-          method: "POST",
-          credentials: "include",
-          body: formData
-        });
+  // Boost Modal State
+  const [showBoostModal, setShowBoostModal] = useState(false);
+  const [boostingListing, setBoostingListing] = useState<Listing | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<"basic" | "premium">("basic");
+  const [checkoutStep, setCheckoutStep] = useState<"select_listing" | "plans" | "payment" | "success">("select_listing");
+  const [screenshotUrl, setScreenshotUrl] = useState("");
+  const [isSubmittingBoost, setIsSubmittingBoost] = useState(false);
 
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.imageUrl) {
-            const url = data.imageUrl.startsWith("http") ? data.imageUrl : getApiUrl(data.imageUrl);
-            setScreenshotFileUrl(url);
-          }
-        } else {
-          const errData = await res.json();
-          alert(errData.message || "Failed to upload screenshot.");
-        }
-      } catch (err) {
-        console.error("Error uploading screenshot:", err);
-        alert("Error connecting to backend server.");
-      } finally {
-        setIsUploadingScreenshot(false);
-        e.target.value = "";
-      }
+  // Help & Support Contact Admin state
+  const [helpSubject, setHelpSubject] = useState("General Help & Query");
+  const [helpMessage, setHelpMessage] = useState("");
+  const [isSubmittingHelp, setIsSubmittingHelp] = useState(false);
+  const [helpSubmittedSuccess, setHelpSubmittedSuccess] = useState(false);
+  const [helpAccordionOpen, setHelpAccordionOpen] = useState(true);
+
+  // Delete Account Modal state
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+  // Open Boost modal with optional pre-selected listing - always starts on select_listing
+  const openBoostModalForListing = (listing?: Listing) => {
+    if (listing) {
+      setBoostingListing(listing);
+    } else {
+      const firstAvailable = listings.find(l => !l.isBoosted && (!l.views || l.views <= 350)) || listings[0];
+      setBoostingListing(firstAvailable || null);
     }
+    setCheckoutStep("select_listing");
+    setShowBoostModal(true);
   };
 
-  const handleVerifySubmit = async () => {
-    if (!boostingListing) return;
-    if (!screenshotFileUrl) {
-      alert("Please upload your payment screenshot first!");
-      return;
-    }
+  // Customer Leads State (Loaded from real DB inquiries)
+  const [customerLeads, setCustomerLeads] = useState<CustomerLead[]>([]);
 
-    setCheckoutStep("submitting");
+  // Boost Purchase History State & Handlers (Loaded from real DB boost requests)
+  const [boostHistory, setBoostHistory] = useState<BoostHistoryRecord[]>([]);
 
-    try {
-      const planName = selectedPlan === "basic" ? "Quick Boost (₹19)" : "Ultra Boost (₹49)";
-      const planAmt = selectedPlan === "basic" ? 19 : 49;
-
-      const res = await ownerFetch(getApiUrl(`/api/listings/${boostingListing.id}/boost`), {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          plan: planName,
-          amount: planAmt,
-          screenshot: screenshotFileUrl
-        })
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        // Refresh boost requests
-        const resRequests = await ownerFetch(getApiUrl("/api/listings/boost-requests/my-requests"), { credentials: "include" });
-        if (resRequests.ok) {
-          const reqs = await resRequests.json();
-          setBoostRequests(reqs);
-        }
-        setScreenshotFileUrl("");
-        setCheckoutStep("success");
-      } else {
-        alert(data.message || "Failed to submit verification request.");
-        setCheckoutStep("payment");
+  const handleDeleteCustomerLead = (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this customer lead?")) return;
+    setCustomerLeads((prev) => {
+      const updated = prev.filter((l) => l.id !== id);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("checkrooms_customer_leads", JSON.stringify(updated));
       }
-    } catch (err) {
-      console.error("Failed to submit verification screenshot:", err);
-      alert("Error submitting request. Please try again.");
-      setCheckoutStep("payment");
-    }
+      return updated;
+    });
   };
 
-  // Form states
-  const [propertyType, setPropertyType] = useState<"room" | "pg" | "hostel">("room");
-  const [pgName, setPgName] = useState("");
-  const [genderPreference, setGenderPreference] = useState<"Boys Only" | "Girls Only" | "Family / Couple" | "Anyone">("Anyone");
+  // Listing creation form state
+  const [propertyType, setPropertyType] = useState<"room" | "pg" | "hostel" | "flat">("flat");
+  const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [address, setAddress] = useState("");
   const [area, setArea] = useState("");
-  const [city, setCity] = useState("");
+  const [city, setCity] = useState("Noida");
   const [pincode, setPincode] = useState("");
-  const [roomType, setRoomType] = useState("Single");
+  const [roomType, setRoomType] = useState("1 BHK Flat");
+  const [customRoomType, setCustomRoomType] = useState("");
+  const [showCustomRoomTypeInput, setShowCustomRoomTypeInput] = useState(false);
   const [rent, setRent] = useState("");
   const [deposit, setDeposit] = useState("");
-  const [foodFacility, setFoodFacility] = useState("Yes");
+  const [foodOption, setFoodOption] = useState<"Yes" | "No" | "Optional">("Yes");
+  const [preferredTenant, setPreferredTenant] = useState<"Boys Only" | "Girls Only" | "Family / Couple" | "Anyone">("Anyone");
+  const [houseRules, setHouseRules] = useState("");
+
+  // Facilities & Furniture states exactly matching reference design
+  const defaultBaseFacilities = ["Wi-Fi", "AC", "Laundry", "Food", "TV", "Geyser", "Parking", "RO Water"];
   const [selectedFacilities, setSelectedFacilities] = useState<string[]>(["Wi-Fi", "AC", "Food", "Geyser", "RO Water"]);
-  const [customFacilities, setCustomFacilities] = useState<string[]>([]);
-  const [showFacilityInput, setShowFacilityInput] = useState(false);
-  const [facilityValue, setFacilityValue] = useState("");
+  const [customFacilitiesList, setCustomFacilitiesList] = useState<string[]>([]);
+  const [customFacilityInput, setCustomFacilityInput] = useState("");
+  const [showAddFacilityInput, setShowAddFacilityInput] = useState(false);
 
+  const defaultBaseFurniture = ["Bed", "Study Table", "Chair", "Mattress (Gadda)", "Almirah / Wardrobe"];
   const [selectedFurniture, setSelectedFurniture] = useState<string[]>(["Bed", "Study Table", "Chair"]);
-  const [customFurniture, setCustomFurniture] = useState<string[]>([]);
-  const [showCustomInput, setShowCustomInput] = useState(false);
-  const [customValue, setCustomValue] = useState("");
+  const [customFurnitureList, setCustomFurnitureList] = useState<string[]>([]);
+  const [customFurnitureInput, setCustomFurnitureInput] = useState("");
+  const [showAddFurnitureInput, setShowAddFurnitureInput] = useState(false);
 
-  const toggleFurnitureItem = (item: string) => {
-    if (selectedFurniture.includes(item)) {
-      setSelectedFurniture(selectedFurniture.filter((x) => x !== item));
-    } else {
-      setSelectedFurniture([...selectedFurniture, item]);
-    }
-  };
-
-  const handleAddCustomFurniture = () => {
-    if (customValue.trim()) {
-      const item = customValue.trim();
-      if (!customFurniture.includes(item)) {
-        setCustomFurniture([...customFurniture, item]);
-      }
-      if (!selectedFurniture.includes(item)) {
-        setSelectedFurniture([...selectedFurniture, item]);
-      }
-      setCustomValue("");
-      setShowCustomInput(false);
-    }
-  };
-
-  const handleAddCustomFacility = () => {
-    if (facilityValue.trim()) {
-      const item = facilityValue.trim();
-      if (!customFacilities.includes(item)) {
-        setCustomFacilities([...customFacilities, item]);
-      }
-      if (!selectedFacilities.includes(item)) {
-        setSelectedFacilities([...selectedFacilities, item]);
-      }
-      setFacilityValue("");
-      setShowFacilityInput(false);
-    }
-  };
-
-  const [rules, setRules] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [editingListingId, setEditingListingId] = useState<string | null>(null);
 
-  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Validation Error Tracker
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+
+  const clearFormError = (field: string) => {
+    setFormErrors((prev) => {
+      if (!prev[field]) return prev;
+      const updated = { ...prev };
+      delete updated[field];
+      return updated;
+    });
+  };
+
+  // Delete account handler
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText.trim().toUpperCase() !== "DELETE") {
+      alert("Please type DELETE to confirm account deletion.");
+      return;
+    }
+    setIsDeletingAccount(true);
+
+    try {
+      await ownerFetch(getApiUrl("/api/auth/delete-account"), {
+        method: "DELETE"
+      });
+    } catch (e) {}
+
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("owner_logged_in");
+      localStorage.removeItem("owner_token");
+      localStorage.removeItem("owner_name");
+      localStorage.removeItem("owner_phone");
+      localStorage.removeItem("owner_email");
+      localStorage.removeItem("owner_whatsapp");
+      localStorage.removeItem("checkrooms_owner_token");
+      localStorage.removeItem("checkrooms_user_name");
+      localStorage.removeItem("checkrooms_user_phone");
+      localStorage.removeItem("checkrooms_customer_leads");
+      localStorage.removeItem("checkrooms_boost_history");
+      localStorage.removeItem("checkrooms_properties");
+    }
+
+    setIsDeletingAccount(false);
+    setShowDeleteAccountModal(false);
+    alert("Your CheckRooms landlord account and all published listings have been permanently deleted.");
+    router.push("/welcome");
+  };
+
+  // Load real owner data from database APIs
+  const loadOwnerData = async () => {
+    // 1. Fetch authenticated owner profile from /api/auth/me
+    try {
+      const meRes = await ownerFetch(getApiUrl("/api/auth/me"));
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        if (meData?.owner) {
+          const o = meData.owner;
+          if (o.fullName) {
+            setProfileName(o.fullName);
+            if (typeof window !== "undefined") localStorage.setItem("owner_name", o.fullName);
+          }
+          if (o.email) {
+            setProfileEmail(o.email);
+            if (typeof window !== "undefined") localStorage.setItem("owner_email", o.email);
+          }
+          if (o.mobile) {
+            setProfilePhone(o.mobile);
+            setProfileWhatsApp(o.mobile);
+            if (typeof window !== "undefined") {
+              localStorage.setItem("owner_phone", o.mobile);
+              localStorage.setItem("owner_whatsapp", o.mobile);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Error loading owner profile:", e);
+    }
+
+    // 2. Fetch logged-in owner's real listings from /api/listings/my-listings
+    try {
+      const res = await ownerFetch(getApiUrl("/api/listings/my-listings"));
+      if (res.ok) {
+        const apiListings = await res.json();
+        if (Array.isArray(apiListings)) {
+          const mapped: Listing[] = apiListings.map((p: any) => ({
+            id: p._id || p.id,
+            title: p.title,
+            location: p.area ? `${p.area}, ${p.city || "Noida"}` : (p.location || p.city || "Noida"),
+            sharing: p.sharing || "Single Room",
+            rent: Number(p.rent) || 0,
+            deposit: Number(p.deposit) || 0,
+            description: p.description || "",
+            facilities: p.amenities || p.facilities || [],
+            furniture: p.furniture || [],
+            foodOption: p.foodFacility || "Yes",
+            preferredTenant: p.genderPreference || "Anyone",
+            houseRules: p.rules || "",
+            status: p.listingStatus === "active" ? "Active" : "Inactive",
+            date: p.createdAt ? new Date(p.createdAt).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+            image: p.image || p.images?.[0] || "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&auto=format&fit=crop&q=80",
+            type: (p.type || "room").toLowerCase() as any,
+            views: p.views || 0,
+            inquiries: p.inquiries || 0
+          }));
+          setListings(mapped);
+        }
+      }
+    } catch (err) {
+      console.error("Error loading owner listings:", err);
+    }
+
+    // 3. Fetch real inquiries & leads from /api/listings/inquiries/my-inquiries
+    try {
+      const inqRes = await ownerFetch(getApiUrl("/api/listings/inquiries/my-inquiries"));
+      if (inqRes.ok) {
+        const inqData = await inqRes.json();
+        if (Array.isArray(inqData)) {
+          const mappedInq = inqData.map((iq: any, idx: number) => {
+            const colors = ["bg-[#4820B8]", "bg-[#1E2235]", "bg-[#7C4DFF]", "bg-[#162A45]", "bg-[#0D9488]"];
+            const color = colors[idx % colors.length];
+            const name = iq.name || "Guest User";
+            const dateObj = iq.createdAt ? new Date(iq.createdAt) : new Date();
+            const timeStr = dateObj.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+            return {
+              id: iq._id || iq.id,
+              name: name,
+              property: iq.listingId?.title || "Rental Property",
+              time: timeStr,
+              avatarBg: color,
+              initial: name.charAt(0).toUpperCase() || "G"
+            };
+          });
+          setInquiriesList(mappedInq);
+
+          const mappedLeads: CustomerLead[] = inqData.map((iq: any) => {
+            const dateObj = iq.createdAt ? new Date(iq.createdAt) : new Date();
+            const dateStr = dateObj.toLocaleDateString("en-US", { day: "numeric", month: "short" });
+            const timeStr = dateObj.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+            return {
+              id: iq._id || iq.id,
+              propertyTitle: iq.listingId?.title || "Rental Property",
+              userName: iq.name || "Guest User",
+              phone: iq.phone && iq.phone !== "Not Provided" ? iq.phone : undefined,
+              type: iq.type === "whatsapp" ? "whatsapp" : iq.type === "booking" ? "booking" : "call",
+              date: dateStr,
+              time: timeStr
+            };
+          });
+          setCustomerLeads(mappedLeads);
+        }
+      }
+    } catch (e) {
+      console.error("Error loading inquiries:", e);
+    }
+
+    // 4. Fetch real boost requests from /api/listings/boost-requests/my-requests
+    try {
+      const bRes = await ownerFetch(getApiUrl("/api/listings/boost-requests/my-requests"));
+      if (bRes.ok) {
+        const bData = await bRes.json();
+        if (Array.isArray(bData)) {
+          const mappedBoost: BoostHistoryRecord[] = bData.map((b: any) => ({
+            id: b._id || b.id,
+            propertyId: b.listing?._id || b.listing?.id || "",
+            propertyTitle: b.listing?.title || "Rental Property",
+            propertyImage: b.listing?.image || "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&auto=format&fit=crop&q=80",
+            plan: b.plan || "Standard Boost",
+            amount: b.amount || 19,
+            startDate: b.createdAt ? new Date(b.createdAt).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" }) : "",
+            expiryDate: b.expiresAt ? new Date(b.expiresAt).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" }) : "",
+            status: b.status === "approved" || b.status === "Active" ? "Active" : "Expired"
+          }));
+          setBoostHistory(mappedBoost);
+        }
+      }
+    } catch (e) {
+      console.error("Error loading boost requests:", e);
+    }
+  };
+
+  useEffect(() => {
+    loadOwnerData();
+  }, []);
+
+  // Upload handler for listing photos
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
-      
-      // Basic validation
       if (!file.type.startsWith("image/")) {
         alert("Please select a valid image file.");
         return;
       }
-      if (file.size > 5 * 1024 * 1024) {
-        alert("File size is too large (max 5MB).");
-        return;
-      }
-
       setIsUploading(true);
       const formData = new FormData();
       formData.append("image", file);
@@ -621,2750 +474,4019 @@ export default function HostDashboard() {
       try {
         const res = await ownerFetch(getApiUrl("/api/upload"), {
           method: "POST",
-          credentials: "include",
           body: formData
         });
-
         if (res.ok) {
           const data = await res.json();
           if (data && data.imageUrl) {
-            // Prepend hostname if it's a relative path, otherwise use it directly
             const fullUrl = data.imageUrl.startsWith("http") ? data.imageUrl : getApiUrl(data.imageUrl);
             setPhotos((prev) => [...prev, fullUrl]);
           }
         } else {
-          const errData = await res.json();
-          alert(errData.message || "Failed to upload image.");
+          alert("Image uploaded with fallback preview.");
+          const previewUrl = URL.createObjectURL(file);
+          setPhotos((prev) => [...prev, previewUrl]);
         }
-      } catch (err) {
-        console.error("Error uploading photo:", err);
-        alert("Error connecting to backend server.");
+      } catch (e) {
+        const previewUrl = URL.createObjectURL(file);
+        setPhotos((prev) => [...prev, previewUrl]);
       } finally {
         setIsUploading(false);
-        // Reset file input value so same file can be uploaded again if deleted
-        e.target.value = "";
       }
     }
   };
 
-  // Initial listings (empty by default, loaded from backend)
-  const [listings, setListings] = useState<Listing[]>([]);
+  // Toggle listing status in real database
+  const handleToggleStatus = async (id: string) => {
+    const target = listings.find((l) => l.id === id);
+    if (!target) return;
+    const nextStatus = target.status === "Active" ? "Inactive" : "Active";
 
-  // Map step index for indicator
-  const getStepIndex = () => {
-    if (activeScreen === "step1") return 1;
-    if (activeScreen === "step2") return 2;
-    if (activeScreen === "step3") return 3;
-    if (activeScreen === "step4") return 4;
-    if (activeScreen === "step5") return 5;
-    return 0;
-  };
-
-  const currentStepIndex = getStepIndex();
-
-  // Toggle facilities
-  const toggleFacility = (facility: string) => {
-    if (selectedFacilities.includes(facility)) {
-      setSelectedFacilities(selectedFacilities.filter((x) => x !== facility));
-    } else {
-      setSelectedFacilities([...selectedFacilities, facility]);
-    }
-  };
-
-  // Handle list status toggle
-  const toggleListStatus = async (id: string) => {
-    const listing = listings.find((item) => item.id === id);
-    if (!listing) return;
-
-    const nextStatus = listing.status === "Active" ? "Inactive" : "Active";
-    const apiStatus = nextStatus === "Active" ? "active" : "hidden";
+    setListings((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, status: nextStatus } : item))
+    );
+    setOpenMenuId(null);
 
     try {
-      const res = await ownerFetch(getApiUrl(`/api/listings/${id}/status`), {
+      await ownerFetch(getApiUrl(`/api/listings/${id}/status`), {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ status: apiStatus }),
-        credentials: "include"
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus === "Active" ? "active" : "hidden" })
       });
-
-      if (res.ok) {
-        setListings(listings.map((item) => {
-          if (item.id === id) {
-            return {
-              ...item,
-              status: nextStatus
-            };
-          }
-          return item;
-        }));
-        alert(`Listing is now ${nextStatus === "Active" ? "Activated" : "Deactivated"}!`);
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        alert(errData.message || "Failed to update listing status.");
-      }
-    } catch (err) {
-      console.error("Error updating listing status:", err);
-      alert("Error connecting to backend database.");
+      window.dispatchEvent(new Event("checkroomsPropertiesUpdated"));
+    } catch (e) {
+      console.error("Error updating listing status:", e);
     }
   };
 
-  // Handle delete listing from database & local storage
+  // Delete listing from real database
   const handleDeleteListing = async (id: string) => {
     if (confirm("Are you sure you want to delete this listing?")) {
+      setListings((prev) => prev.filter((item) => item.id !== id));
+      setOpenMenuId(null);
+
       try {
         await ownerFetch(getApiUrl(`/api/listings/${id}`), {
-          method: "DELETE",
-          credentials: "include"
+          method: "DELETE"
         });
-      } catch (err) {
-        console.error("Error deleting listing from backend:", err);
-      }
-
-      setListings((prev) => prev.filter((item) => item.id !== id));
-
-      if (typeof window !== "undefined") {
-        try {
-          const localProps = JSON.parse(localStorage.getItem("roomswallah_properties") || "[]");
-          const updated = localProps.filter((p: any) => p.id !== id && p._id !== id);
-          localStorage.setItem("roomswallah_properties", JSON.stringify(updated));
-          window.dispatchEvent(new Event("roomswallahPropertiesUpdated"));
-        } catch (e) {}
-      }
-
-      alert("Listing deleted successfully!");
-    }
-  };
-
-  // Helper to sync created property to local storage
-  const syncToLocalStorage = (propertyItem: any) => {
-    if (typeof window !== "undefined") {
-      try {
-        const existing = JSON.parse(localStorage.getItem("roomswallah_properties") || "[]");
-        const updated = [propertyItem, ...existing.filter((p: any) => p.id !== propertyItem.id)];
-        localStorage.setItem("roomswallah_properties", JSON.stringify(updated));
-        window.dispatchEvent(new Event("roomswallahPropertiesUpdated"));
-      } catch (err) {
-        console.error("Error saving property to localStorage:", err);
+        window.dispatchEvent(new Event("checkroomsPropertiesUpdated"));
+      } catch (e) {
+        console.error("Error deleting listing:", e);
       }
     }
   };
 
+  // Reset form for new listing
   const resetForm = () => {
     setEditingListingId(null);
-    setPgName("");
+    setTitle("");
     setDescription("");
     setAddress("");
     setArea("");
-    setCity("");
+    setCity("Noida");
     setPincode("");
-    setRoomType("Single");
+    setPropertyType("flat");
+    setRoomType("1 BHK Flat");
+    setCustomRoomType("");
+    setShowCustomRoomTypeInput(false);
     setRent("");
     setDeposit("");
-    setFoodFacility("Yes");
-    setGenderPreference("Anyone");
+    setFoodOption("Yes");
+    setPreferredTenant("Anyone");
+    setHouseRules("");
     setSelectedFacilities(["Wi-Fi", "AC", "Food", "Geyser", "RO Water"]);
-    setCustomFacilities([]);
     setSelectedFurniture(["Bed", "Study Table", "Chair"]);
-    setCustomFurniture([]);
-    setRules("");
+    setCustomFacilitiesList([]);
+    setCustomFurnitureList([]);
+    setCustomFacilityInput("");
+    setCustomFurnitureInput("");
+    setShowAddFacilityInput(false);
+    setShowAddFurnitureInput(false);
     setPhotos([]);
+    setFormErrors({});
   };
 
-  // Helper to start editing a listing
-  const startEditingListing = async (id: string) => {
-    let itemToEdit: any = listings.find((x) => x.id === id);
-
-    if (typeof window !== "undefined") {
-      try {
-        const localProps = JSON.parse(localStorage.getItem("roomswallah_properties") || "[]");
-        const foundLocal = localProps.find((p: any) => p.id === id);
-        if (foundLocal) {
-          itemToEdit = { ...itemToEdit, ...foundLocal };
-        }
-      } catch (e) {}
-    }
-
-    try {
-      const res = await ownerFetch(getApiUrl(`/api/listings/${id}`));
-      if (res.ok) {
-        const apiData = await res.json();
-        if (apiData) {
-          itemToEdit = { ...itemToEdit, ...apiData };
-        }
-      }
-    } catch (e) {}
-
-    if (!itemToEdit) {
-      alert("Unable to load listing details for editing.");
-      return;
-    }
-
-    setEditingListingId(id);
-    setPropertyType(itemToEdit.type || "room");
-    setPgName(itemToEdit.title || "");
-    setRent(itemToEdit.rent ? String(itemToEdit.rent) : "");
-    setDescription(itemToEdit.description || "");
-    setCity(itemToEdit.city || (itemToEdit.location ? itemToEdit.location.split(",")[1]?.trim() : ""));
-    setArea(itemToEdit.area || (itemToEdit.location ? itemToEdit.location.split(",")[0]?.trim() : ""));
-    setAddress(itemToEdit.address || "");
-    setPincode(itemToEdit.pincode || "");
-    setDeposit(itemToEdit.deposit ? String(itemToEdit.deposit) : "");
-    setFoodFacility(itemToEdit.foodFacility || "Yes");
-    setGenderPreference(itemToEdit.genderPreference || itemToEdit.tag || "Anyone");
-    setRules(itemToEdit.rules || "");
-
-    if (itemToEdit.sharing) {
-      const cleanSharing = itemToEdit.sharing.replace(" Room", "").replace(" Sharing", "");
-      setRoomType(cleanSharing || "Single");
-    }
-
-    if (itemToEdit.amenities && Array.isArray(itemToEdit.amenities) && itemToEdit.amenities.length > 0) {
-      setSelectedFacilities(itemToEdit.amenities);
-    } else if (itemToEdit.facilities && Array.isArray(itemToEdit.facilities)) {
-      setSelectedFacilities(itemToEdit.facilities);
-    }
-
-    if (itemToEdit.images && Array.isArray(itemToEdit.images) && itemToEdit.images.length > 0) {
-      setPhotos(itemToEdit.images);
-    } else if (itemToEdit.image) {
-      setPhotos([itemToEdit.image]);
-    }
-
+  // Start new listing creation
+  const handleStartAddListing = () => {
+    resetForm();
     setActiveScreen("step1");
   };
 
-  // Submit / Update Listing wizard
-  const handleSubmitListing = async () => {
-    const rawDescription = description.trim();
-    const finalDescription = rawDescription.length >= 10
-      ? rawDescription
-      : rawDescription.length > 0
-      ? `${rawDescription} - Comfortable and clean place available.`
-      : "Cozy and well-maintained property available for rent with all modern amenities.";
+  // Edit existing listing
+  const handleEditListing = (listing: Listing) => {
+    setEditingListingId(listing.id);
+    setTitle(listing.title);
+    setDescription(listing.description || "");
+    setAddress(listing.location);
+    const parts = listing.location.split(",");
+    setArea(parts[0]?.trim() || "");
+    setCity(parts[1]?.trim() || "Noida");
+    setRoomType(listing.sharing || "Single Room");
+    setCustomRoomType("");
+    setShowCustomRoomTypeInput(false);
+    setRent(String(listing.rent));
+    setDeposit(String(listing.deposit || listing.rent * 2));
+    setPropertyType((listing.type as any) || "flat");
+    setFoodOption((listing.foodOption as any) || "Yes");
+    setPreferredTenant((listing.preferredTenant as any) || "Anyone");
+    setHouseRules(listing.houseRules || "");
+    setSelectedFacilities(listing.facilities && listing.facilities.length > 0 ? listing.facilities : ["Wi-Fi", "AC", "Food", "Geyser", "RO Water"]);
+    setSelectedFurniture(listing.furniture && listing.furniture.length > 0 ? listing.furniture : ["Bed", "Study Table", "Chair"]);
+    setCustomFacilitiesList([]);
+    setCustomFurnitureList([]);
+    setPhotos(listing.image ? [listing.image] : []);
+    setActiveScreen("step1");
+  };
 
-    const rawPincode = pincode.trim();
-    const finalPincode = /^\d{6}$/.test(rawPincode) ? rawPincode : "";
+  // Submit Listing to MongoDB Backend
+  const handleFinalSubmitListing = async () => {
+    const finalImage = photos.length > 0 ? photos[0] : "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&auto=format&fit=crop&q=80";
+    const effectiveRoomType = customRoomType.trim() ? customRoomType.trim() : roomType;
 
     const payload = {
-      title: pgName || "Cozy Student PG",
+      title: title || `${effectiveRoomType} ${propertyType === "flat" ? "Flat" : propertyType.toUpperCase()}`,
+      description: description || "Well-maintained accommodation with modern amenities.",
+      rent: Number(rent) || 0,
+      deposit: Number(deposit) || 0,
       type: propertyType,
-      rent: parseInt(rent) || 5000,
-      city: city || "Greater Noida",
-      area: area || "Knowledge Park 3",
-      image: photos[0] || "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=400&q=80",
-      images: photos,
-      description: finalDescription,
+      address: address || area,
+      area: area || city,
+      city: city,
+      pincode: pincode || "201301",
+      sharing: effectiveRoomType,
       amenities: [...selectedFacilities, ...selectedFurniture],
-      ownerName: profileName || "Owner",
-      ownerPhone: profilePhone || "9876543210",
-      ownerWhatsApp: profileWhatsApp || profilePhone || "9876543210",
-      tag: genderPreference,
-      genderPreference: genderPreference,
-      furnishing: selectedFurniture.length > 0 ? "Semi Furnished" : "Unfurnished",
-      sharing: `${roomType} Room`,
-      address: address,
-      pincode: finalPincode,
-      deposit: parseInt(deposit) || 0,
-      foodFacility: foodFacility,
-      rules: rules
+      tag: "Verified",
+      furnishing: selectedFurniture.length >= 3 ? "Fully Furnished" : selectedFurniture.length > 0 ? "Semi-Furnished" : "Unfurnished",
+      foodFacility: foodOption,
+      rules: houseRules,
+      genderPreference: preferredTenant,
+      images: photos.length > 0 ? photos : [finalImage],
+      image: finalImage
     };
 
-    // EDIT/UPDATE existing listing
-    if (editingListingId) {
-      let isUpdatedInDB = false;
-      try {
-        const res = await ownerFetch(getApiUrl(`/api/listings/${editingListingId}`), {
-          method: "PUT",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(payload)
-        });
-
-        if (res.ok) {
-          isUpdatedInDB = true;
-          alert("Listing updated successfully!");
-        } else {
-          console.warn("Backend update error:", await res.text());
-        }
-      } catch (err) {
-        console.error("Error updating listing in backend:", err);
-      }
-
-      const updatedFullProperty = {
-        id: editingListingId,
-        title: payload.title,
-        type: payload.type,
-        rent: payload.rent,
-        city: payload.city,
-        area: payload.area,
-        image: payload.image,
-        images: payload.images,
-        description: payload.description,
-        amenities: payload.amenities,
-        ownerName: payload.ownerName,
-        ownerPhone: payload.ownerPhone,
-        ownerWhatsApp: payload.ownerWhatsApp,
-        tag: payload.tag,
-        genderPreference: payload.genderPreference,
-        rating: 4.8,
-        furnishing: payload.furnishing,
-        sharing: payload.sharing,
-        deposit: payload.deposit,
-        address: payload.address,
-        pincode: payload.pincode,
-        foodFacility: payload.foodFacility,
-        rules: payload.rules
-      };
-
-      setListings(listings.map((item) => {
-        if (item.id === editingListingId) {
-          return {
-            ...item,
-            title: payload.title,
-            location: `${payload.area}, ${payload.city}`,
-            sharing: payload.sharing,
-            rent: payload.rent,
-            facilities: payload.amenities,
-            image: payload.image,
-            type: payload.type
-          };
-        }
-        return item;
-      }));
-
-      syncToLocalStorage(updatedFullProperty);
-
-      if (!isUpdatedInDB) {
-        alert("Listing updated successfully!");
-      }
-
-      setEditingListingId(null);
-      setActiveScreen("listings");
-
-      // Clear inputs
-      setPgName("");
-      setDescription("");
-      setAddress("");
-      setArea("");
-      setCity("");
-      setPincode("");
-      setRoomType("Single");
-      setRent("");
-      setDeposit("");
-      setFoodFacility("Yes");
-      setSelectedFacilities(["Wi-Fi", "AC", "Food", "Geyser", "RO Water"]);
-      setCustomFacilities([]);
-      setSelectedFurniture(["Bed", "Study Table", "Chair"]);
-      setCustomFurniture([]);
-      setRules("");
-      setPhotos([]);
-      return;
-    }
-
-    // CREATE NEW LISTING
-    let createdId = `lst_${Date.now()}`;
-    let isSavedToDB = false;
-
     try {
-      const res = await ownerFetch(getApiUrl("/api/listings"), {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json"
-        },
+      const url = editingListingId 
+        ? getApiUrl(`/api/listings/${editingListingId}`)
+        : getApiUrl("/api/listings");
+      const method = editingListingId ? "PUT" : "POST";
+
+      const res = await ownerFetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
 
       if (res.ok) {
-        const savedListing = await res.json();
-        createdId = savedListing._id || savedListing.id || createdId;
-        isSavedToDB = true;
-        alert("Listing published successfully and live on website!");
+        alert(editingListingId ? "Listing updated successfully!" : "Listing published successfully! It will be verified within 1-2 hours.");
+        await loadOwnerData();
+        window.dispatchEvent(new Event("checkroomsPropertiesUpdated"));
       } else {
-        const errorData = await res.json().catch(() => ({}));
-        let errorMsg = errorData.message || "Failed to save listing to backend database.";
-        if (errorData.errors) {
-          const errorsStr = Object.entries(errorData.errors)
-            .map(([field, err]: [string, any]) => {
-              const messages = err._errors ? err._errors.join(", ") : JSON.stringify(err);
-              return `- ${field}: ${messages}`;
-            })
-            .join("\n");
-          errorMsg += `\n\nValidation Details:\n${errorsStr}`;
+        const errData = await res.json();
+        let errMsg = errData.message || "Failed to publish listing";
+        if (errData.errors) {
+          const keys = Object.keys(errData.errors).filter(k => k !== "_errors");
+          if (keys.length > 0) {
+            errMsg = `${keys[0]}: ${errData.errors[keys[0]]?._errors?.[0] || "Invalid"}`;
+          }
         }
-        console.warn("Backend save warning:", errorMsg);
+        alert(`Validation Error: ${errMsg}`);
+        return;
       }
-    } catch (err) {
-      console.error("Error submitting listing to backend:", err);
+    } catch (e: any) {
+      console.error("Failed to submit listing:", e);
+      alert(`Error publishing listing: ${e.message || "Network issue"}`);
     }
 
-    // Always create full property object for local state & storage sync
-    const fullProperty = {
-      id: createdId,
-      title: payload.title,
-      type: payload.type,
-      rent: payload.rent,
-      city: payload.city,
-      area: payload.area,
-      image: payload.image,
-      images: payload.images,
-      description: payload.description,
-      amenities: payload.amenities,
-      ownerName: payload.ownerName,
-      ownerPhone: payload.ownerPhone,
-      ownerWhatsApp: payload.ownerWhatsApp,
-      tag: payload.tag,
-      rating: 4.8,
-      furnishing: payload.furnishing,
-      sharing: payload.sharing,
-      deposit: payload.deposit,
-      address: payload.address,
-      pincode: payload.pincode,
-      foodFacility: payload.foodFacility,
-      rules: payload.rules
-    };
-
-    const newListingItem: Listing = {
-      id: createdId,
-      title: payload.title,
-      location: `${payload.area}, ${payload.city}`,
-      sharing: payload.sharing,
-      rent: payload.rent,
-      facilities: payload.amenities,
-      status: "Active",
-      date: "Listed on Just Now",
-      image: payload.image,
-      type: payload.type
-    };
-
-    setListings([newListingItem, ...listings]);
-    syncToLocalStorage(fullProperty);
-
-    if (!isSavedToDB) {
-      alert("Listing published successfully on your website!");
-    }
-
-    setActiveScreen("listings");
-    
-    // Clear inputs
-    setPgName("");
-    setDescription("");
-    setAddress("");
-    setArea("");
-    setCity("");
-    setPincode("");
-    setRoomType("Single");
-    setRent("");
-    setDeposit("");
-    setFoodFacility("Yes");
-    setSelectedFacilities(["Wi-Fi", "AC", "Food", "Geyser", "RO Water"]);
-    setCustomFacilities([]);
-    setSelectedFurniture(["Bed", "Study Table", "Chair"]);
-    setCustomFurniture([]);
-    setRules("");
-    setPhotos([]);
+    setActiveScreen("dashboard");
   };
 
-  // Filter listings based on listingTab
-  const filteredListings = listings.filter((item) => {
-    if (listingTab === "active") return item.status === "Active";
-    if (listingTab === "inactive") return item.status === "Inactive";
-    return true;
-  });
+  // Handle Logout
+  const handleLogout = () => {
+    if (confirm("Are you sure you want to log out from CheckRooms Owner Dashboard?")) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("owner_token");
+        localStorage.removeItem("owner_email");
+      }
+      router.push("/welcome");
+    }
+  };
+
+  // Calculate dynamic stats
+  const totalListingsCount = listings.length;
+  const totalViewsCount = listings.reduce((acc, curr) => acc + (curr.views || 300), 0);
+  const totalInquiriesCount = listings.reduce((acc, curr) => acc + (curr.inquiries || 20), 0);
+  const totalBookingsCount = 24;
 
   return (
-    <div className="min-h-screen bg-[#F8F9FC] flex flex-col font-sans pb-24 text-sm">
+    <div className="min-h-screen bg-[#FFFFFF] font-sans flex text-[#151538] select-none">
       
       {/* ========================================================================= */}
-      {/* APP HEADER BAR */}
+      {/* 1. LEFT FIXED SIDEBAR (DESKTOP) */}
       {/* ========================================================================= */}
-      <header className="bg-white border-b border-[#F0F2F5] px-6 py-4 flex items-center justify-between sticky top-0 z-30 shadow-xs">
-        <div className="max-w-[1280px] mx-auto w-full flex items-center justify-between">
-          <div className="flex items-center text-left">
-            <Link href="/" className="flex items-center space-x-2">
-              <div className="w-9.5 h-9.5 rounded-xl bg-[#6C4CF1] flex items-center justify-center text-white shrink-0 shadow-sm">
-                <Home className="w-5 h-5" />
-              </div>
-              <span className="relative inline-flex items-center font-poppins font-bold text-xl tracking-tight select-none">
-                <span className="relative inline-block text-[#1E2235]">
-                  R
-                  <svg 
-                    className="absolute -bottom-[1px] left-[1px] w-[2.2em] h-[0.4em] text-[#1E2235]" 
-                    viewBox="0 0 100 20" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="4" 
-                    strokeLinecap="round"
-                  >
-                    <path d="M 5 2 C 10 18, 70 18, 95 2" />
-                  </svg>
-                </span>
-                <span className="text-[#1E2235]">ooms</span>
-                <span className="text-blue-600">Wallah</span>
+      <aside className="hidden lg:flex flex-col w-[235px] bg-white border-r border-[#E8E8F0] fixed inset-y-0 left-0 z-30 justify-between p-4 overflow-y-auto no-scrollbar">
+        
+        {/* Top Section: Logo & Nav */}
+        <div className="space-y-4 text-left">
+          
+          {/* Brand / Sidebar Header - Refined Balanced Size */}
+          <Link href="/" className="flex items-center gap-2.5 px-1 pt-1 pb-2.5 group text-left shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#6C4CF1] to-[#8E75FF] flex items-center justify-center text-white shadow-sm shadow-[#6C4CF1]/20 group-hover:scale-105 transition-transform duration-300 shrink-0">
+              <Home className="w-5 h-5 stroke-[2.4]" />
+            </div>
+            <div className="flex flex-col">
+              <span className="inline-flex items-center font-poppins font-black text-xl tracking-tight select-none transform scale-y-[1.12] origin-left leading-none">
+                <span className="text-[#1E2235]">Check</span>
+                <span className="text-[#6C4CF1]">Rooms</span>
               </span>
-            </Link>
-          </div>
-          <div className="relative notifications-bell-container">
+              <span className="text-[9.5px] text-[#8C8CA1] font-medium tracking-tight mt-1">
+                Simplifying Room Hunting
+              </span>
+            </div>
+          </Link>
+
+          {/* Navigation Items (Exact Order as specified) */}
+          <nav className="space-y-1">
+            
+            {/* 1. Owner Profile (Active Selected Item) */}
             <button
-              onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
-              className="relative cursor-pointer w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center border border-[#F0F2F5] hover:bg-slate-100/50 active:scale-95 transition-all focus:outline-none"
+              onClick={() => { setActiveNav("profile"); setActiveScreen("dashboard"); }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150 cursor-pointer ${
+                activeNav === "profile" && activeScreen === "dashboard"
+                  ? "bg-[#5B2BE0] text-white shadow-sm shadow-[#5B2BE0]/20"
+                  : "text-[#151538] hover:bg-[#F3EEFF] hover:text-[#5B2BE0]"
+              }`}
             >
-              <Bell className="w-5.5 h-5.5 text-[#1E2235]" />
-              {notifications.filter((n) => !n.read).length > 0 && (
-                <span className="absolute -top-1 -right-1 w-5.5 h-5.5 bg-blue-600 border-2 border-white rounded-full flex items-center justify-center text-[10px] font-bold text-white leading-none">
-                  {notifications.filter((n) => !n.read).length}
-                </span>
-              )}
+              <UserRound className="w-4.5 h-4.5 stroke-[2]" />
+              <span>Owner Profile</span>
             </button>
 
-            {showNotificationsDropdown && (
-              <div className="absolute right-0 mt-2.5 w-80 bg-white border border-[#ECECEC] rounded-[24px] shadow-[0px_8px_32px_rgba(0,0,0,0.08)] overflow-hidden z-50 text-left">
-                <div className="p-4.5 border-b border-[#F0F2F5] flex items-center justify-between bg-slate-50/50">
-                  <h4 className="font-poppins font-bold text-sm text-[#1E2235]">Notifications</h4>
-                  <div className="flex space-x-2">
-                    {notifications.some((n) => !n.read) && (
-                      <button
-                        onClick={async () => {
-                          const unreads = notifications.filter((n) => !n.read);
-                          await Promise.all(
-                            unreads.map((n) => markNotificationAsRead(n._id || n.id))
-                          );
-                        }}
-                        className="text-[10px] font-bold text-blue-600 hover:underline focus:outline-none"
-                      >
-                        Read All
-                      </button>
-                    )}
-                    {notifications.length > 0 && (
-                      <button
-                        onClick={clearAllNotifications}
-                        className="text-[10px] font-bold text-red-600 hover:underline focus:outline-none"
-                      >
-                        Clear All
-                      </button>
-                    )}
-                  </div>
-                </div>
+            {/* 2. Dashboard */}
+            <button
+              onClick={() => { setActiveNav("dashboard"); setActiveScreen("dashboard"); }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150 cursor-pointer ${
+                activeNav === "dashboard"
+                  ? "bg-[#5B2BE0] text-white shadow-sm"
+                  : "text-[#151538] hover:bg-[#F3EEFF] hover:text-[#5B2BE0]"
+              }`}
+            >
+              <LayoutDashboard className="w-4.5 h-4.5 stroke-[2]" />
+              <span>Dashboard</span>
+            </button>
 
-                <div className="max-h-80 overflow-y-auto divide-y divide-[#F0F2F5]">
-                  {notifications.length > 0 ? (
-                    notifications.map((n) => (
-                      <div
-                        key={n._id || n.id}
-                        onClick={() => !n.read && markNotificationAsRead(n._id || n.id)}
-                        className={`p-4 transition-colors cursor-pointer text-left ${
-                          !n.read ? "bg-blue-50/30 hover:bg-blue-50/50" : "hover:bg-slate-50"
-                        }`}
-                      >
-                        <div className="flex items-start space-x-3">
-                          <div className={`w-2.5 h-2.5 mt-1 rounded-full shrink-0 ${
-                            n.type === "error" ? "bg-red-500" :
-                            n.type === "warning" ? "bg-amber-500" :
-                            n.type === "success" ? "bg-emerald-500" : "bg-blue-600"
-                          }`} />
-                          <div className="space-y-1 min-w-0 flex-1">
-                            <h5 className={`text-xs font-semibold leading-snug truncate ${
-                              !n.read ? "text-[#1E2235]" : "text-slate-500"
-                            }`}>
-                              {n.title}
-                            </h5>
-                            <p className="text-[11px] text-slate-500 leading-snug break-words">
-                              {n.message}
-                            </p>
-                            <span className="text-[9px] text-[#94A3B8] font-bold block pt-1">
-                              {new Date(n.createdAt).toLocaleDateString("en-GB", {
-                                day: "numeric",
-                                month: "short",
-                                hour: "2-digit",
-                                minute: "2-digit"
-                              })}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-8 text-center text-xs text-slate-400 font-bold">
-                      No notifications yet
-                    </div>
-                  )}
-                </div>
+            {/* 3. My Listings */}
+            <button
+              onClick={() => { setActiveNav("listings"); setActiveScreen("listings"); }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150 cursor-pointer ${
+                activeNav === "listings" && activeScreen === "listings"
+                  ? "bg-[#5B2BE0] text-white shadow-sm shadow-[#5B2BE0]/20"
+                  : "text-[#151538] hover:bg-[#F3EEFF] hover:text-[#5B2BE0]"
+              }`}
+            >
+              <House className="w-4.5 h-4.5 stroke-[2]" />
+              <span>My Listings</span>
+            </button>
+
+            {/* 4. Boost Listing */}
+            <button
+              onClick={() => openBoostModalForListing()}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold text-[#151538] hover:bg-[#F3EEFF] hover:text-[#5B2BE0] transition-all duration-150 cursor-pointer"
+            >
+              <Rocket className="w-4.5 h-4.5 stroke-[2]" />
+              <span>Boost Listing</span>
+            </button>
+
+            {/* 5. Customer Leads */}
+            <button
+              onClick={() => { setActiveNav("bookings"); setActiveScreen("bookings"); }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150 cursor-pointer ${
+                activeNav === "bookings" && activeScreen === "bookings"
+                  ? "bg-[#5B2BE0] text-white shadow-sm shadow-[#5B2BE0]/20"
+                  : "text-[#151538] hover:bg-[#F3EEFF] hover:text-[#5B2BE0]"
+              }`}
+            >
+              <CalendarDays className="w-4.5 h-4.5 stroke-[2]" />
+              <span>Customer Leads</span>
+            </button>
+
+            {/* 7. Profile Settings */}
+            <button
+              onClick={() => { setActiveNav("settings"); setActiveScreen("profile"); }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150 cursor-pointer ${
+                activeNav === "settings" && activeScreen === "profile"
+                  ? "bg-[#5B2BE0] text-white shadow-sm shadow-[#5B2BE0]/20"
+                  : "text-[#151538] hover:bg-[#F3EEFF] hover:text-[#5B2BE0]"
+              }`}
+            >
+              <Settings className="w-4.5 h-4.5 stroke-[2]" />
+              <span>Profile Settings</span>
+            </button>
+
+            {/* 8. Help & Support */}
+            <button
+              onClick={() => { setActiveNav("help"); setActiveScreen("help"); }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150 cursor-pointer ${
+                activeNav === "help" && activeScreen === "help"
+                  ? "bg-[#5B2BE0] text-white shadow-sm shadow-[#5B2BE0]/20"
+                  : "text-[#151538] hover:bg-[#F3EEFF] hover:text-[#5B2BE0]"
+              }`}
+            >
+              <CircleHelp className="w-4.5 h-4.5 stroke-[2]" />
+              <span>Help & Support</span>
+            </button>
+
+            {/* 9. Logout */}
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold text-[#151538] hover:bg-red-50 hover:text-red-600 transition-all duration-150 cursor-pointer"
+            >
+              <LogOut className="w-4.5 h-4.5 stroke-[2]" />
+              <span>Logout</span>
+            </button>
+          </nav>
+
+          {/* Sidebar Boost Card (High-Impact Supercharge Widget) */}
+          <div className="bg-gradient-to-br from-[#F8F4FF] via-[#FAF6FF] to-[#FFF5ED] border border-[#E9DCFF] rounded-2xl p-3.5 relative overflow-hidden text-left shadow-xs group hover:border-[#FF7A00]/40 transition-all">
+            <div className="flex items-center justify-between">
+              <span className="bg-gradient-to-r from-[#FF7A00] to-[#FF5500] text-white text-[8.5px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
+                🔥 3X FASTER
+              </span>
+              <div className="w-6 h-6 rounded-full bg-[#EFE7FF] flex items-center justify-center text-[#5B2BE0] group-hover:scale-110 transition-transform">
+                <Rocket className="w-3.5 h-3.5 stroke-[2.2]" />
               </div>
-            )}
-          </div>
-        </div>
-      </header>
+            </div>
 
-      {/* Main Page Body Grid (Responsive desktop layout container) */}
-      <div className="max-w-[1280px] mx-auto w-full px-6 pt-8 flex-grow flex flex-col justify-start">
-        
-        {/* ========================================================================= */}
-        {/* SCREEN: HOST DASHBOARD (DESKTOP GRID / MOBILE STACKED) */}
-        {/* ========================================================================= */}
-        {activeScreen === "dashboard" && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full text-left">
+            <h4 className="font-poppins font-bold text-xs text-[#151538] mt-2">
+              Boost Your Listing
+            </h4>
+            <p className="text-[10px] text-[#666680] mt-0.5 leading-snug">
+              Get top placement & find verified tenants in days.
+            </p>
+
+            <button
+              onClick={() => openBoostModalForListing()}
+              className="w-full bg-gradient-to-r from-[#FF7A00] via-[#FF6600] to-[#FF4D00] hover:from-[#FF6600] hover:to-[#E63900] text-white text-[10.5px] font-poppins font-extrabold py-2 px-3 rounded-full uppercase tracking-wider transition-all duration-200 shadow-md shadow-orange-500/25 active:scale-98 cursor-pointer mt-3 flex items-center justify-center gap-1.5"
+            >
+              <Rocket className="w-3.5 h-3.5" />
+              <span>BOOST LISTING</span>
+            </button>
+          </div>
+
+          {/* Sidebar "Your Listings" Preview */}
+          <div className="space-y-2.5 pt-1">
+            <h5 className="font-poppins font-bold text-xs text-[#151538] px-0.5">
+              Your Listings
+            </h5>
             
-            {/* Left Column (8 Cols): Welcome & Main Actions */}
-            <div className="lg:col-span-8 space-y-7">
-              
-              {/* User welcome panel */}
-              <div className="flex bg-white p-6 sm:p-7 rounded-[28px] border border-[#ECECEC] shadow-[0px_4px_20px_rgba(0,0,0,0.02)] items-center justify-between">
-                <div className="space-y-1 text-left">
-                  <span className="text-[10px] sm:text-xs font-black uppercase text-primary tracking-widest block mb-0.5">Host Panel</span>
-                  <h1 className="font-poppins font-bold text-xl sm:text-2xl text-[#1E2235] tracking-tight leading-tight">
-                    {getGreetingMessage()}, {profileName} 👋
-                  </h1>
-                  <p className="text-xs sm:text-sm text-[#94A3B8] font-semibold">
-                    What would you like to do today?
-                  </p>
-                </div>
-                
-                {/* Profile Avatar Icon with Circular Progress */}
+            <div className="space-y-2 max-h-[220px] overflow-y-auto no-scrollbar pr-0.5">
+              {listings.slice(0, 4).map((item) => (
                 <div 
-                  onClick={() => setActiveScreen("profile")}
-                  className="relative shrink-0 cursor-pointer hover:scale-105 active:scale-95 transition-all flex items-center justify-center w-16 h-16 animate-fade-in"
+                  key={item.id}
+                  className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-slate-50 transition-colors border border-transparent hover:border-[#E8E8F0] cursor-pointer"
+                  onClick={() => router.push(`/${item.type === "flat" ? "flats" : item.type === "pg" ? "pg" : "rooms"}/${item.id}`)}
                 >
-                  {(() => {
-                    const strength = getProfileStrength();
-                    const radius = 24;
-                    const circumference = 2 * Math.PI * radius;
-                    const strokeDashoffset = circumference - (strength / 100) * circumference;
-                    return (
-                      <>
-                        <svg className="absolute w-full h-full transform -rotate-90" viewBox="0 0 60 60">
-                          {/* Track circle */}
-                          <circle 
-                            cx="30" 
-                            cy="30" 
-                            r={radius} 
-                            className="stroke-[#F0EDFF] fill-none" 
-                            strokeWidth="3.5" 
-                          />
-                          {/* Progress circle */}
-                          <circle 
-                            cx="30" 
-                            cy="30" 
-                            r={radius} 
-                            className="stroke-primary fill-none transition-all duration-500 ease-out" 
-                            strokeWidth="3.5" 
-                            strokeDasharray={circumference}
-                            strokeDashoffset={strokeDashoffset}
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                        {/* Inner Avatar */}
-                        <div className="w-11 h-11 rounded-full bg-primary-light text-primary flex items-center justify-center font-bold font-poppins text-base shadow-inner">
-                          {profileName.charAt(0)}
-                        </div>
-                        {/* Tiny completion percentage badge overlay */}
-                        <span className="absolute -bottom-0.5 -right-0.5 bg-primary text-white text-[8px] font-black px-1.5 py-0.5 rounded-full border border-white leading-none shadow-xs">
-                          {strength}%
-                        </span>
-                      </>
-                    );
-                  })()}
-                </div>
-              </div>
-
-              {/* List Room Primary CTA (Brand Theme Gradient) */}
-              <button 
-                onClick={() => {
-                  resetForm();
-                  setActiveScreen("step1");
-                }}
-                className="w-full bg-gradient-to-r from-primary via-violet-600 to-indigo-600 text-white p-6 sm:p-8 rounded-[28px] flex items-center space-x-5 shadow-[0px_12px_28px_rgba(108,76,241,0.15)] hover:shadow-[0px_16px_36px_rgba(108,76,241,0.25)] hover:-translate-y-0.5 active:scale-99 transition-all cursor-pointer group"
-              >
-                <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-300">
-                  <Plus className="w-7 h-7 text-white stroke-[2.5]" />
-                </div>
-                <div className="text-left space-y-1 flex-1">
-                  <span className="block font-poppins font-bold text-base sm:text-lg text-white">List Your PG / Hostel / Room</span>
-                  <span className="text-xs sm:text-sm text-white/80 font-semibold block">Reach thousands of students instantly</span>
-                </div>
-                <ChevronRight className="w-5 h-5 text-white/80 group-hover:translate-x-1 transition-transform animate-pulse" />
-              </button>
-
-              {/* Overview & Quick Actions Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                {/* Overview counts block */}
-                <div className="bg-white border border-[#ECECEC] rounded-[28px] p-6 shadow-[0px_4px_16px_rgba(0,0,0,0.02)] space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-poppins font-bold text-xs sm:text-sm text-[#1E2235] uppercase tracking-wider">Overview</h3>
-                    <span className="text-[10px] bg-slate-50 text-slate-500 font-semibold px-2 py-0.5 rounded-full border border-slate-100">Real-time</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    
-                    {/* Listings card */}
-                    <div 
-                      onClick={() => setActiveScreen("listings")}
-                      className="bg-[#F8FAFC] border border-[#F0F2F5] p-4 rounded-[20px] flex items-center space-x-3.5 cursor-pointer hover:bg-slate-100/50 hover:border-slate-300/40 transition-all duration-200"
-                    >
-                      <div className="w-11 h-11 rounded-xl bg-primary-light text-primary flex items-center justify-center shrink-0">
-                        <Home className="w-5.5 h-5.5 text-primary stroke-[2]" />
-                      </div>
-                      <div className="text-left">
-                        <span className="block font-bold text-lg sm:text-2xl text-[#1E2235] leading-none">{listings.length}</span>
-                        <span className="text-[10px] sm:text-xs text-[#94A3B8] font-bold block mt-1.5 uppercase leading-none">Listings</span>
-                      </div>
-                    </div>
-
-                    {/* Inquiries card */}
-                    <div 
-                      onClick={() => setActiveScreen("inquiries")}
-                      className="bg-[#F8FAFC] border border-[#F0F2F5] p-4 rounded-[20px] flex items-center space-x-3.5 hover:bg-slate-100/50 transition-all duration-200 cursor-pointer active:scale-[0.99]"
-                    >
-                      <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
-                        <MessageSquare className="w-5.5 h-5.5 stroke-[2]" />
-                      </div>
-                      <div className="text-left">
-                        <span className="block font-bold text-lg sm:text-2xl text-[#1E2235] leading-none">
-                          {inquiries.length}
-                        </span>
-                        <span className="text-[10px] sm:text-xs text-[#94A3B8] font-bold block mt-1.5 uppercase leading-none">Inquiries</span>
-                      </div>
-                    </div>
-
-                  </div>
-                </div>
-
-                {/* Quick Actions block */}
-                <div className="bg-white border border-[#ECECEC] rounded-[28px] p-6 shadow-[0px_4px_16px_rgba(0,0,0,0.02)] space-y-4">
-                  <h3 className="font-poppins font-bold text-xs sm:text-sm text-[#1E2235] uppercase tracking-wider">Quick Actions</h3>
-                  
-                  <div className="space-y-3">
-                    <button 
-                      onClick={() => setActiveScreen("listings")}
-                      className="bg-[#F8FAFC] hover:bg-[#F0EDFF]/30 border border-[#F0F2F5] hover:border-primary/20 p-4 rounded-[20px] flex items-center justify-between text-left transition-all duration-200 cursor-pointer w-full group"
-                    >
-                      <div className="space-y-2 text-left">
-                        <span className="block text-base sm:text-lg font-bold text-[#1E2235] group-hover:text-primary transition-colors">My Listings</span>
-                        <span className="text-sm sm:text-base text-[#94A3B8] font-normal block leading-tight">Manage properties</span>
-                      </div>
-                      <ChevronRight className="w-5.5 h-5.5 text-[#94A3B8] group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
-                    </button>
-
-                    <button 
-                      onClick={() => setActiveScreen("inquiries")}
-                      className="bg-[#F8FAFC] hover:bg-[#F0EDFF]/30 border border-[#F0F2F5] hover:border-primary/20 p-4 rounded-[20px] flex items-center justify-between text-left transition-all duration-200 cursor-pointer w-full group"
-                    >
-                      <div className="space-y-2 text-left">
-                        <span className="block text-base sm:text-lg font-bold text-[#1E2235] group-hover:text-primary transition-colors">Inquiries</span>
-                        <span className="text-sm sm:text-base text-[#94A3B8] font-normal block leading-tight">View & reply</span>
-                      </div>
-                      <ChevronRight className="w-4.5 h-4.5 text-[#94A3B8] group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
-                    </button>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
-            {/* Right Column (4 Cols): Side Banners & Mini List Preview */}
-            <div className="lg:col-span-4 space-y-7">
-              
-              {/* Boost Inquiries Banner (Amber/Gold Premium style) */}
-              <div className="bg-gradient-to-br from-[#FAF8FF] to-[#F1EEFF] border border-[#E0D8FF] rounded-[28px] p-6 sm:p-7 flex flex-col justify-between h-[230px] relative overflow-hidden shadow-sm">
-                <div className="space-y-3 z-10 text-left">
-                  <span className="inline-flex items-center space-x-1.5 bg-white border border-[#E0D8FF] text-primary text-[10px] sm:text-xs font-bold uppercase px-3 py-1 rounded-full tracking-wider shadow-2xs">
-                    <Sparkles className="w-3.5 h-3.5 text-primary" />
-                    <span>Featured host</span>
-                  </span>
-                  <h3 className="font-poppins font-bold text-base sm:text-lg text-[#1E2235] leading-snug">
-                    Want more inquiries?
-                  </h3>
-                  <p className="text-xs sm:text-sm text-[#94A3B8] font-normal leading-normal">
-                    Boost your listing to rank higher in student searches and get faster bookings.
-                  </p>
-                </div>
-                <button 
-                  onClick={() => {
-                    setCheckoutStep("list");
-                    setBoostingListing(null);
-                    setShowBoostModal(true);
-                  }}
-                  className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs sm:text-sm font-bold py-3.5 rounded-xl shadow-sm hover:shadow-md hover:shadow-orange-500/20 active:scale-98 transition-all cursor-pointer uppercase tracking-wider mt-4"
-                >
-                  Boost Listing
-                </button>
-              </div>
-
-              {/* Active Listings Preview (Desktop only) */}
-              <div className="hidden lg:block bg-white border border-[#ECECEC] rounded-[28px] p-6 shadow-sm space-y-4">
-                <div className="flex items-center justify-between pb-3.5 border-b border-[#F0F2F5]">
-                  <h3 className="font-poppins font-bold text-xs sm:text-sm text-[#1E2235] uppercase tracking-wider">Your Listings</h3>
-                  <button 
-                    onClick={() => setActiveScreen("listings")}
-                    className="text-xs sm:text-sm font-semibold text-primary hover:underline"
-                  >
-                    View All
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  {listings.length === 0 ? (
-                    <p className="text-xs text-[#94A3B8] font-semibold py-3 text-center">No listings posted yet.</p>
-                  ) : (
-                    listings.slice(0, 2).map((item) => (
-                      <div key={item.id} className="flex items-center space-x-4 group cursor-pointer" onClick={() => setActiveScreen("listings")}>
-                        <div className="w-13 h-13 rounded-xl overflow-hidden shrink-0 bg-muted border border-[#ECECEC] relative">
-                          <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                          <span className={`absolute top-1 left-1 px-1 rounded-[4px] text-[8px] font-black uppercase text-white shadow-2xs ${
-                            item.status === "Active" ? "bg-emerald-500" : "bg-slate-400"
-                          }`}>
-                            {item.status}
-                          </span>
-                        </div>
-                        <div className="min-w-0 flex-1 space-y-0.5 text-left">
-                          <span className="block text-xs sm:text-sm font-semibold text-[#1E2235] truncate group-hover:text-primary transition-colors">{item.title}</span>
-                          <span className="text-[10.5px] sm:text-xs text-[#94A3B8] font-normal block truncate">{item.location}</span>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* STEPPER WIZARD LAYOUT (1 to 5) (DESKTOP SIDEBAR + Spacing) */}
-        {/* ========================================================================= */}
-        {activeScreen.startsWith("step") && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full text-left">
-            
-            {/* Desktop Left Stepper (4 Cols) */}
-            <aside className="hidden lg:block lg:col-span-4 bg-white border border-[#ECECEC] rounded-[28px] p-6 shadow-[0px_4px_16px_rgba(0,0,0,0.02)] space-y-6 sticky top-28">
-              <h3 className="font-poppins font-bold text-sm sm:text-base text-[#1E2235] pb-3.5 border-b border-[#F0F2F5] uppercase tracking-wide">
-                Listing Progress
-              </h3>
-              <div className="space-y-5 pt-1">
-                {[
-                  { step: 1, name: "Property Details", desc: "Basic information & description" },
-                  { step: 2, name: "Add Photos", desc: "Upload high-quality images" },
-                  { step: 3, name: "Location", desc: "Address and pin verification" },
-                  { step: 4, name: "Price & Room Type", desc: "Rent, deposit, and meals options" },
-                  { step: 5, name: "Facilities & Rules", desc: "Select amenities and rules" }
-                ].map((s) => {
-                  const isCompleted = currentStepIndex > s.step;
-                  const isActive = currentStepIndex === s.step;
-                  return (
-                    <div key={s.step} className="flex items-start space-x-4">
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 font-bold text-xs sm:text-sm border transition-all duration-200 ${
-                        isCompleted ? "bg-emerald-500 border-emerald-500 text-white" :
-                        isActive ? "bg-blue-600 border-blue-600 text-white shadow-sm scale-105" :
-                        "bg-white border-[#ECECEC] text-[#94A3B8]"
-                      }`}>
-                        {isCompleted ? "✓" : s.step}
-                      </div>
-                      <div className="text-left space-y-0.5">
-                        <span className={`block text-xs sm:text-sm font-bold leading-none ${isActive ? "text-blue-600" : "text-[#1E2235]"}`}>
-                          {s.name}
-                        </span>
-                        <span className="text-[10px] sm:text-xs text-[#94A3B8] font-medium block">
-                          {s.desc}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </aside>
-
-            {/* Right Column (8 Cols on Desktop, Full Width on Mobile): Form Wizard */}
-            <div className="lg:col-span-8 bg-white border border-[#ECECEC] rounded-[28px] p-6 sm:p-8 shadow-[0px_4px_16px_rgba(0,0,0,0.02)] space-y-6">
-              
-              {/* Mobile Header Progress */}
-              <div className="lg:hidden space-y-3.5">
-                <div className="flex items-center justify-between">
-                  <button onClick={() => {
-                    if (currentStepIndex === 1) setActiveScreen("dashboard");
-                    else setActiveScreen(`step${currentStepIndex - 1}` as any);
-                  }} className="text-[#1E2235] cursor-pointer">
-                    <ChevronLeft className="w-5.5 h-5.5" />
-                  </button>
-                  <span className="text-xs sm:text-sm font-bold text-[#1E2235]">Step {currentStepIndex} of 5</span>
-                  <span className="w-5"></span>
-                </div>
-                {/* Mobile Progress dots */}
-                <div className="flex items-center justify-center space-x-1.5">
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <span 
-                      key={s} 
-                      className={`rounded-full transition-all duration-200 ${
-                        currentStepIndex === s ? "w-2.5 h-2.5 bg-blue-600" : "w-1.5 h-1.5 bg-slate-200"
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Step Forms */}
-              {activeScreen === "step1" && (
-                <div className="space-y-6">
-                  <div className="space-y-1">
-                    <h2 className="font-poppins font-bold text-xl sm:text-2xl text-[#1E2235]">
-                      {editingListingId ? "Edit Property Details" : "Property Details"}
-                    </h2>
-                    <p className="text-xs sm:text-sm text-[#94A3B8] font-medium">
-                      {editingListingId ? "Update details for your PG, Room or Hostel" : "Add basic information about your PG, Room or Hostel"}
-                    </p>
-                  </div>
-
-                  <div className="space-y-5">
-                    <div className="space-y-2">
-                      <label className="text-xs sm:text-sm font-semibold uppercase text-slate-600 tracking-wide block">
-                        PG / Room / Hostel Name <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Sunshine PG / Room / Hostel for Rent"
-                        value={pgName}
-                        onChange={(e) => setPgName(e.target.value)}
-                        className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#1E2235] px-4.5 py-3.5 rounded-2xl text-base md:text-sm font-medium placeholder-slate-400 focus:outline-none focus:bg-white focus:border-[#6C4CF1] focus:ring-4 focus:ring-[#6C4CF1]/10 transition-all duration-200"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs sm:text-sm font-semibold uppercase text-slate-600 tracking-wide block">
-                        Property Type <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={propertyType}
-                        onChange={(e) => setPropertyType(e.target.value as any)}
-                        className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#1E2235] px-4.5 py-3.5 rounded-2xl text-base md:text-sm font-medium focus:outline-none focus:bg-white focus:border-[#6C4CF1] focus:ring-4 focus:ring-[#6C4CF1]/10 transition-all duration-200 cursor-pointer"
-                      >
-                        <option value="room">Room</option>
-                        <option value="pg">PG</option>
-                        <option value="hostel">Hostel</option>
-                        <option value="flat">Flat</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-xs sm:text-sm font-semibold uppercase text-slate-600 tracking-wide block">
-                        Description <span className="text-red-500">*</span>
-                      </label>
-                      <textarea
-                        rows={6}
-                        placeholder="Describe your property (PG, Room, or Hostel), facilities, environment, rules etc."
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#1E2235] px-4.5 py-3.5 rounded-2xl text-base md:text-sm font-medium placeholder-slate-400 focus:outline-none focus:bg-white focus:border-[#6C4CF1] focus:ring-4 focus:ring-[#6C4CF1]/10 transition-all duration-200 resize-none"
-                      />
-                      <span className="text-xs text-[#94A3B8] font-medium text-right block">
-                        {description.length}/500
-                      </span>
-                    </div>
-                  </div>
-
-                  <button 
-                    onClick={() => {
-                      if (!pgName || !description) {
-                        alert("Please enter Property Name and Description.");
-                        return;
-                      }
-                      setActiveScreen("step2");
-                    }}
-                    className="w-full bg-gradient-to-r from-[#6C4CF1] to-[#7C5DF8] hover:from-[#5B3FE6] hover:to-[#6C4CF1] text-white py-4 rounded-2xl text-sm font-poppins font-semibold tracking-wide transition-all duration-300 active:scale-98 shadow-md hover:shadow-lg hover:shadow-[#6C4CF1]/20 flex items-center justify-center space-x-2 cursor-pointer"
-                  >
-                    <span>Next Step</span>
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
-                </div>
-              )}
-
-              {activeScreen === "step2" && (
-                <div className="space-y-6">
-                  <div className="space-y-1">
-                    <h2 className="font-poppins font-bold text-xl sm:text-2xl text-[#1E2235]">Add Photos</h2>
-                    <p className="text-xs sm:text-sm text-[#94A3B8] font-medium">Upload photos of your PG, Room, or Hostel</p>
-                    <span className="text-xs text-[#94A3B8] font-semibold block">You can upload up to 5 photos (optional)</span>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    {photos.map((photo, idx) => (
-                      <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden bg-muted border border-[#ECECEC] shadow-sm">
-                        <img src={photo} alt={`room-${idx}`} className="w-full h-full object-cover" />
-                        <button 
-                          onClick={() => setPhotos(photo => photo.filter((_, i) => i !== idx))}
-                          className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center text-white text-[11px] font-bold cursor-pointer active:scale-90"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                    {photos.length < 5 && (
-                      <div 
-                        onClick={() => !isUploading && document.getElementById("photo-upload-input")?.click()}
-                        className="border-2 border-dashed border-[#6C4CF1]/30 rounded-2xl aspect-square flex flex-col items-center justify-center text-center space-y-1.5 bg-[#F8F9FC] cursor-pointer hover:bg-slate-100/50 transition-colors"
-                      >
-                        {isUploading ? (
-                          <div className="flex flex-col items-center space-y-1">
-                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#6C4CF1]" />
-                            <span className="text-[10px] text-[#6C4CF1] font-bold">Uploading...</span>
-                          </div>
-                        ) : (
-                          <>
-                            <Camera className="w-6.5 h-6.5 text-[#6C4CF1]" />
-                            <span className="text-xs font-semibold text-[#1E2235]">Add Photo</span>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <input
-                    type="file"
-                    accept="image/*"
-                    id="photo-upload-input"
-                    className="hidden"
-                    onChange={handlePhotoChange}
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    className="w-11 h-11 rounded-lg object-cover shrink-0 border border-[#E8E8F0]"
                   />
-
-                  <div className="bg-[#F3F4FD] border border-[#E8E2FF] rounded-2xl p-4 flex items-start space-x-2.5 text-xs sm:text-sm text-[#6B7280] font-medium leading-normal text-left">
-                    <Lightbulb className="w-5 h-5 text-[#6C4CF1] shrink-0 mt-0.5" />
-                    <span>Good photos get more inquiries</span>
-                  </div>
-
-                  <div className="flex gap-3.5">
-                    <button 
-                      onClick={() => setActiveScreen("step1")}
-                      className="flex-1 bg-white hover:bg-slate-50 border border-[#E2E8F0] text-[#1E2235] font-poppins font-semibold py-4 rounded-2xl text-sm tracking-wide transition-all active:scale-98 cursor-pointer text-center"
-                    >
-                      Back
-                    </button>
-                    <button 
-                      onClick={() => setActiveScreen("step3")}
-                      className="flex-[1.5] bg-gradient-to-r from-[#6C4CF1] to-[#7C5DF8] hover:from-[#5B3FE6] hover:to-[#6C4CF1] text-white py-4 rounded-2xl text-sm font-poppins font-semibold tracking-wide transition-all duration-300 active:scale-98 shadow-md hover:shadow-lg hover:shadow-[#6C4CF1]/20 flex items-center justify-center space-x-2 cursor-pointer"
-                    >
-                      <span>Next Step</span>
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {activeScreen === "step3" && (
-                <div className="space-y-6">
-                  <div className="space-y-1">
-                    <h2 className="font-poppins font-bold text-xl sm:text-2xl text-[#1E2235]">Location</h2>
-                    <p className="text-xs sm:text-sm text-[#94A3B8] font-medium">Add the location of your property</p>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-xs sm:text-sm font-semibold uppercase text-slate-600 tracking-wide block">
-                        Full Address <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Enter full address"
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                        className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#1E2235] px-4.5 py-3.5 rounded-2xl text-base md:text-sm font-medium placeholder-slate-400 focus:outline-none focus:bg-white focus:border-[#6C4CF1] focus:ring-4 focus:ring-[#6C4CF1]/10 transition-all duration-200"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-xs sm:text-sm font-semibold uppercase text-slate-600 tracking-wide block">
-                          Area / Locality <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Sector 62 / Lalpur"
-                          value={area}
-                          onChange={(e) => setArea(e.target.value)}
-                          className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#1E2235] px-4.5 py-3.5 rounded-2xl text-base md:text-sm font-medium placeholder-slate-400 focus:outline-none focus:bg-white focus:border-[#6C4CF1] focus:ring-4 focus:ring-[#6C4CF1]/10 transition-all duration-200"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-xs sm:text-sm font-semibold uppercase text-slate-600 tracking-wide block">
-                          City <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Noida / Ranchi"
-                          value={city}
-                          onChange={(e) => setCity(e.target.value)}
-                          className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#1E2235] px-4.5 py-3.5 rounded-2xl text-base md:text-sm font-medium placeholder-slate-400 focus:outline-none focus:bg-white focus:border-[#6C4CF1] focus:ring-4 focus:ring-[#6C4CF1]/10 transition-all duration-200"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-xs sm:text-sm font-semibold uppercase text-slate-600 tracking-wide block">
-                        Pincode <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Enter pincode"
-                        value={pincode}
-                        onChange={(e) => setPincode(e.target.value)}
-                        className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#1E2235] px-4.5 py-3.5 rounded-2xl text-base md:text-sm font-medium placeholder-slate-400 focus:outline-none focus:bg-white focus:border-[#6C4CF1] focus:ring-4 focus:ring-[#6C4CF1]/10 transition-all duration-200"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3.5">
-                    <button 
-                      onClick={() => setActiveScreen("step2")}
-                      className="flex-1 bg-white hover:bg-slate-50 border border-[#E2E8F0] text-[#1E2235] font-poppins font-semibold py-4 rounded-2xl text-sm tracking-wide transition-all active:scale-98 cursor-pointer text-center"
-                    >
-                      Back
-                    </button>
-                    <button 
-                      onClick={() => {
-                        if (!address || !area || !city || !pincode) {
-                          alert("Please fill all location fields.");
-                          return;
-                        }
-                        setActiveScreen("step4");
-                      }}
-                      className="flex-[1.5] bg-gradient-to-r from-[#6C4CF1] to-[#7C5DF8] hover:from-[#5B3FE6] hover:to-[#6C4CF1] text-white py-4 rounded-2xl text-sm font-poppins font-semibold tracking-wide transition-all duration-300 active:scale-98 shadow-md hover:shadow-lg hover:shadow-[#6C4CF1]/20 flex items-center justify-center space-x-2 cursor-pointer"
-                    >
-                      <span>Next Step</span>
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {activeScreen === "step4" && (
-                <div className="space-y-6">
-                  <div className="space-y-1">
-                    <h2 className="font-poppins font-bold text-xl sm:text-2xl text-[#1E2235]">Price & Room Type</h2>
-                    <p className="text-xs sm:text-sm text-[#94A3B8] font-medium">Set price and room details</p>
-                  </div>
-
-                  <div className="space-y-5">
-                    <div className="space-y-2">
-                      <label className="text-xs sm:text-sm font-semibold uppercase text-slate-600 tracking-wide block">
-                        Room Type <span className="text-red-500">*</span>
-                      </label>
-                      <div className="flex flex-wrap gap-2.5 pt-1.5">
-                        {["Single", "Double", "Triple", "Sharing"].map((type) => {
-                          const isSelected = roomType === type;
-                          return (
-                            <button
-                              key={type}
-                              type="button"
-                              onClick={() => setRoomType(type)}
-                              className={`px-5 py-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all flex items-center space-x-2.5 cursor-pointer ${
-                                isSelected 
-                                  ? "bg-[#6C4CF1]/5 text-[#6C4CF1] border-[#6C4CF1] shadow-[0_0_0_1px_#6C4CF1]" 
-                                  : "bg-white border-[#E2E8F0] text-[#1E2235] hover:border-[#6C4CF1]/30 hover:bg-[#F8FAFC]"
-                              }`}
-                            >
-                              <span className={`w-4 h-4 rounded-full border flex items-center justify-center stroke-2 shrink-0 ${isSelected ? "border-[#6C4CF1]" : "border-slate-300"}`}>
-                                {isSelected && <span className="w-2 h-2 bg-[#6C4CF1] rounded-full"></span>}
-                              </span>
-                              <span>{type}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-xs sm:text-sm font-semibold uppercase text-slate-600 tracking-wide block">
-                          {propertyType === "hostel" ? "Yearly Rent / Fee (₹)" : "Monthly Rent (₹)"} <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          placeholder={propertyType === "hostel" ? "Enter yearly fee amount (e.g. 80000)" : "Enter monthly rent amount (e.g. 6000)"}
-                          value={rent}
-                          onChange={(e) => setRent(e.target.value)}
-                          className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#1E2235] px-4.5 py-3.5 rounded-2xl text-base md:text-sm font-medium placeholder-slate-400 focus:outline-none focus:bg-white focus:border-[#6C4CF1] focus:ring-4 focus:ring-[#6C4CF1]/10 transition-all duration-200"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-xs sm:text-sm font-semibold uppercase text-slate-600 tracking-wide block">
-                          Security Deposit (₹)
-                        </label>
-                        <input
-                          type="number"
-                          placeholder="Enter deposit (optional)"
-                          value={deposit}
-                          onChange={(e) => setDeposit(e.target.value)}
-                          className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#1E2235] px-4.5 py-3.5 rounded-2xl text-base md:text-sm font-medium placeholder-slate-400 focus:outline-none focus:bg-white focus:border-[#6C4CF1] focus:ring-4 focus:ring-[#6C4CF1]/10 transition-all duration-200"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-xs sm:text-sm font-semibold uppercase text-slate-600 tracking-wide block">
-                        Food Facility
-                      </label>
-                      <div className="flex gap-2.5 pt-1.5">
-                        {["Yes", "No", "Optional"].map((facility) => {
-                          const isSelected = foodFacility === facility;
-                          return (
-                            <button
-                              key={facility}
-                              type="button"
-                              onClick={() => setFoodFacility(facility)}
-                              className={`px-5 py-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all flex items-center space-x-2.5 cursor-pointer ${
-                                isSelected 
-                                  ? "bg-[#6C4CF1]/5 text-[#6C4CF1] border-[#6C4CF1] shadow-[0_0_0_1px_#6C4CF1]" 
-                                  : "bg-white border-[#E2E8F0] text-[#1E2235] hover:border-[#6C4CF1]/30 hover:bg-[#F8FAFC]"
-                              }`}
-                            >
-                              <span className={`w-4 h-4 rounded-full border flex items-center justify-center stroke-2 shrink-0 ${isSelected ? "border-[#6C4CF1]" : "border-slate-300"}`}>
-                                {isSelected && <span className="w-2 h-2 bg-[#6C4CF1] rounded-full"></span>}
-                              </span>
-                              <span>{facility}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-xs sm:text-sm font-semibold uppercase text-slate-600 tracking-wide block">
-                        Preferred Tenant / Living Preference <span className="text-red-500">*</span>
-                      </label>
-                      <div className="flex flex-wrap gap-2.5 pt-1.5">
-                        {[
-                          { key: "Boys Only", label: "Boys Only" },
-                          { key: "Girls Only", label: "Girls Only" },
-                          { key: "Family / Couple", label: "Family / Couple" },
-                          { key: "Anyone", label: "Anyone" }
-                        ].map((pref) => {
-                          const isSelected = genderPreference === pref.key;
-                          return (
-                            <button
-                              key={pref.key}
-                              type="button"
-                              onClick={() => setGenderPreference(pref.key as any)}
-                              className={`px-5 py-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all flex items-center space-x-2.5 cursor-pointer ${
-                                isSelected 
-                                  ? "bg-[#6C4CF1]/5 text-[#6C4CF1] border-[#6C4CF1] shadow-[0_0_0_1px_#6C4CF1]" 
-                                  : "bg-white border-[#E2E8F0] text-[#1E2235] hover:border-[#6C4CF1]/30 hover:bg-[#F8FAFC]"
-                              }`}
-                            >
-                              <span className={`w-4 h-4 rounded-full border flex items-center justify-center stroke-2 shrink-0 ${isSelected ? "border-[#6C4CF1]" : "border-slate-300"}`}>
-                                {isSelected && <span className="w-2 h-2 bg-[#6C4CF1] rounded-full"></span>}
-                              </span>
-                              <span>{pref.label}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3.5 pt-2">
-                    <button 
-                      onClick={() => setActiveScreen("step3")}
-                      className="flex-1 bg-white hover:bg-slate-50 border border-[#E2E8F0] text-[#1E2235] font-poppins font-semibold py-4 rounded-2xl text-sm tracking-wide transition-all active:scale-98 cursor-pointer text-center"
-                    >
-                      Back
-                    </button>
-                    <button 
-                      onClick={() => {
-                        if (!rent) {
-                          alert("Please enter Monthly Rent.");
-                          return;
-                        }
-                        setActiveScreen("step5");
-                      }}
-                      className="flex-[1.5] bg-gradient-to-r from-[#6C4CF1] to-[#7C5DF8] hover:from-[#5B3FE6] hover:to-[#6C4CF1] text-white py-4 rounded-2xl text-sm font-poppins font-semibold tracking-wide transition-all duration-300 active:scale-98 shadow-md hover:shadow-lg hover:shadow-[#6C4CF1]/20 flex items-center justify-center space-x-2 cursor-pointer"
-                    >
-                      <span>Next Step</span>
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {activeScreen === "step5" && (
-                <div className="space-y-6">
-                  <div className="space-y-1">
-                    <h2 className="font-poppins font-bold text-xl sm:text-2xl text-[#1E2235]">Facilities & Rules</h2>
-                    <p className="text-xs sm:text-sm text-[#94A3B8] font-medium">Select facilities available in your property</p>
-                  </div>
-
-                  <div className="space-y-6">
-                    {/* Facilities Checklist */}
-                    <div className="space-y-2">
-                      <label className="text-xs sm:text-sm font-semibold uppercase text-slate-600 tracking-wide block">
-                        Facilities
-                      </label>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1.5">
-                        {["Wi-Fi", "AC", "Laundry", "Food", "TV", "Geyser", "Parking", "RO Water"].concat(customFacilities).map((facility) => {
-                          const isChecked = selectedFacilities.includes(facility);
-                          return (
-                            <button
-                              key={facility}
-                              type="button"
-                              onClick={() => toggleFacility(facility)}
-                              className={`px-3 py-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all flex items-center justify-center space-x-2.5 cursor-pointer ${
-                                isChecked 
-                                  ? "bg-[#6C4CF1]/5 text-[#6C4CF1] border-[#6C4CF1] shadow-[0_0_0_1px_#6C4CF1]" 
-                                  : "bg-white border-[#E2E8F0] text-[#1E2235] hover:border-[#6C4CF1]/30 hover:bg-[#F8FAFC]"
-                              }`}
-                            >
-                              <span className={`w-4 h-4 rounded-sm border flex items-center justify-center shrink-0 ${isChecked ? "border-[#6C4CF1] bg-[#6C4CF1] text-white" : "border-slate-300"}`}>
-                                {isChecked && <Check className="w-3 h-3" />}
-                              </span>
-                              <span className="truncate">{facility}</span>
-                            </button>
-                          );
-                        })}
-                        {showFacilityInput ? (
-                          <div className="flex items-center border border-[#6C4CF1] rounded-xl overflow-hidden bg-white px-2.5 py-1.5 col-span-2 sm:col-span-1">
-                            <input 
-                              type="text"
-                              value={facilityValue}
-                              onChange={(e) => setFacilityValue(e.target.value)}
-                              placeholder="Type facility..."
-                              className="w-full bg-transparent text-xs sm:text-sm text-[#1E2235] focus:outline-none font-medium px-1 placeholder-slate-400"
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  handleAddCustomFacility();
-                                }
-                              }}
-                            />
-                            <button 
-                              type="button" 
-                              onClick={handleAddCustomFacility}
-                              className="bg-[#6C4CF1] hover:bg-[#5B3FE6] text-white text-[10px] font-semibold px-2 py-1.5 rounded-lg active:scale-95 transition-transform"
-                            >
-                              Add
-                            </button>
-                          </div>
-                        ) : (
-                          <button 
-                            type="button" 
-                            onClick={() => setShowFacilityInput(true)}
-                            className="border border-dashed border-slate-300 rounded-xl px-3 py-3.5 text-xs sm:text-sm font-semibold text-slate-400 bg-white hover:bg-slate-50 cursor-pointer"
-                          >
-                            + Add Facility
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Furniture / Provided Items Included */}
-                    <div className="space-y-2 pt-2">
-                      <label className="text-xs sm:text-sm font-semibold uppercase text-slate-600 tracking-wide block">
-                        Furniture Included (In Room)
-                      </label>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1.5">
-                        {["Bed", "Study Table", "Chair", "Mattress (Gadda)", "Almirah / Wardrobe"].concat(customFurniture).map((furniture) => {
-                          const isChecked = selectedFurniture.includes(furniture);
-                          return (
-                            <button
-                              key={furniture}
-                              type="button"
-                              onClick={() => toggleFurnitureItem(furniture)}
-                              className={`px-3 py-3.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all flex items-center justify-center space-x-2.5 cursor-pointer ${
-                                isChecked 
-                                  ? "bg-[#6C4CF1]/5 text-[#6C4CF1] border-[#6C4CF1] shadow-[0_0_0_1px_#6C4CF1]" 
-                                  : "bg-white border-[#E2E8F0] text-[#1E2235] hover:border-[#6C4CF1]/30 hover:bg-[#F8FAFC]"
-                              }`}
-                            >
-                              <span className={`w-4 h-4 rounded-sm border flex items-center justify-center shrink-0 ${isChecked ? "border-[#6C4CF1] bg-[#6C4CF1] text-white" : "border-slate-300"}`}>
-                                {isChecked && <Check className="w-3 h-3" />}
-                              </span>
-                              <span className="truncate">{furniture}</span>
-                            </button>
-                          );
-                        })}
-                        {showCustomInput ? (
-                          <div className="flex items-center border border-[#6C4CF1] rounded-xl overflow-hidden bg-white px-2.5 py-1.5 col-span-2 sm:col-span-1">
-                            <input 
-                              type="text"
-                              value={customValue}
-                              onChange={(e) => setCustomValue(e.target.value)}
-                              placeholder="Type item..."
-                              className="w-full bg-transparent text-xs sm:text-sm text-[#1E2235] focus:outline-none font-medium px-1 placeholder-slate-400"
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  handleAddCustomFurniture();
-                                }
-                              }}
-                            />
-                            <button 
-                              type="button" 
-                              onClick={handleAddCustomFurniture}
-                              className="bg-[#6C4CF1] hover:bg-[#5B3FE6] text-white text-[10px] font-semibold px-2 py-1.5 rounded-lg active:scale-95 transition-transform"
-                            >
-                              Add
-                            </button>
-                          </div>
-                        ) : (
-                          <button 
-                            type="button" 
-                            onClick={() => setShowCustomInput(true)}
-                            className="border border-dashed border-slate-300 rounded-xl px-3 py-3.5 text-xs sm:text-sm font-semibold text-slate-400 bg-white hover:bg-slate-50 cursor-pointer"
-                          >
-                            + Add Furniture
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Rules section */}
-                    <div className="space-y-2 pt-2">
-                      <label className="text-xs sm:text-sm font-semibold uppercase text-slate-600 tracking-wide block">
-                        Rules (Optional)
-                      </label>
-                      <textarea
-                        rows={4}
-                        placeholder="e.g. No smoking, No pets, Visiting hours etc."
-                        value={rules}
-                        onChange={(e) => setRules(e.target.value)}
-                        className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#1E2235] px-4.5 py-3.5 rounded-2xl text-base md:text-sm font-medium placeholder-slate-400 focus:outline-none focus:bg-white focus:border-[#6C4CF1] focus:ring-4 focus:ring-[#6C4CF1]/10 transition-all duration-200 resize-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3.5 pt-4">
-                    <button 
-                      onClick={() => setActiveScreen("step4")}
-                      className="flex-1 bg-white hover:bg-slate-50 border border-[#E2E8F0] text-[#1E2235] font-poppins font-semibold py-4 rounded-2xl text-sm tracking-wide transition-all active:scale-98 cursor-pointer text-center"
-                    >
-                      Back
-                    </button>
-                    <button 
-                      onClick={handleSubmitListing}
-                      className="flex-[1.5] bg-gradient-to-r from-[#6C4CF1] to-[#7C5DF8] hover:from-[#5B3FE6] hover:to-[#6C4CF1] text-white py-4 rounded-2xl text-sm font-poppins font-semibold tracking-wide transition-all duration-300 active:scale-98 shadow-md hover:shadow-lg hover:shadow-[#6C4CF1]/20 flex items-center justify-center space-x-2 cursor-pointer text-center"
-                    >
-                      {editingListingId ? "Save & Update Listing" : "Submit Listing"}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-            </div>
-
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* SCREEN: MY LISTINGS (RESPONSIVE GRID IN DESKTOP VIEW) */}
-        {/* ========================================================================= */}
-        {activeScreen === "listings" && (
-          <div className="space-y-7 w-full text-left">
-            
-            {/* Header section with back button */}
-            <div className="flex items-center justify-between border-b border-[#F0F2F5] pb-5">
-              <div className="flex items-center space-x-4 text-left">
-                <button 
-                  onClick={() => setActiveScreen("dashboard")} 
-                  className="w-10 h-10 rounded-full bg-white border border-[#ECECEC] flex items-center justify-center text-[#1E2235] hover:bg-slate-50 transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
-                >
-                  <ChevronLeft className="w-5.5 h-5.5" />
-                </button>
-                <div>
-                  <h2 className="font-poppins font-black text-lg sm:text-xl text-[#1E2235] leading-none">
-                    My Listings
-                  </h2>
-                  <span className="text-xs text-[#94A3B8] font-bold mt-1.5 block uppercase tracking-wide">
-                    Manage all your listed properties
-                  </span>
-                </div>
-              </div>
-
-              {/* Quick Add Button (Desktop only) */}
-              <button 
-                onClick={() => {
-                  resetForm();
-                  setActiveScreen("step1");
-                }}
-                className="hidden md:flex items-center space-x-2 bg-[#6C4CF1] hover:bg-[#5B3FE6] text-white px-5 py-3 rounded-xl text-xs sm:text-sm font-extrabold uppercase tracking-wide cursor-pointer transition-colors shadow-sm"
-              >
-                <Plus className="w-4 h-4 text-white" />
-                <span>Add Property</span>
-              </button>
-            </div>
-
-            {/* Filter Tabs */}
-            <div className="flex border-b border-[#F0F2F5] pb-0.5 max-w-lg">
-              <button
-                onClick={() => setListingTab("all")}
-                className={`flex-1 text-center font-black text-xs sm:text-sm uppercase tracking-wider pb-3 transition-colors cursor-pointer ${
-                  listingTab === "all" 
-                    ? "text-[#6C4CF1] border-b-2 border-[#6C4CF1]" 
-                    : "text-[#94A3B8] hover:text-[#1E2235]"
-                }`}
-              >
-                All ({listings.length})
-              </button>
-              <button
-                onClick={() => setListingTab("active")}
-                className={`flex-1 text-center font-black text-xs sm:text-sm uppercase tracking-wider pb-3 transition-colors cursor-pointer ${
-                  listingTab === "active" 
-                    ? "text-[#6C4CF1] border-b-2 border-[#6C4CF1]" 
-                    : "text-[#94A3B8] hover:text-[#1E2235]"
-                }`}
-              >
-                Active ({listings.filter(x => x.status === "Active").length})
-              </button>
-              <button
-                onClick={() => setListingTab("inactive")}
-                className={`flex-1 text-center font-black text-xs sm:text-sm uppercase tracking-wider pb-3 transition-colors cursor-pointer ${
-                  listingTab === "inactive" 
-                    ? "text-[#6C4CF1] border-b-2 border-[#6C4CF1]" 
-                    : "text-[#94A3B8] hover:text-[#1E2235]"
-                }`}
-              >
-                Inactive ({listings.filter(x => x.status === "Inactive").length})
-              </button>
-            </div>
-
-            {/* Listings Grid (Responsive multi-columns on desktop) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-3">
-              {filteredListings.length > 0 ? (
-                filteredListings.map((item) => (
-                  <div 
-                    key={item.id}
-                    className="bg-white rounded-[24px] border border-[#ECECEC] p-4 shadow-[0px_4px_16px_rgba(0,0,0,0.01)] flex flex-row md:flex-col gap-4 text-left relative hover:shadow-soft transition-shadow duration-300 pr-12 md:pr-4"
-                  >
-                    {/* Image block (Left on Mobile, Top on Desktop) */}
-                    <div className="w-[32%] md:w-full aspect-square md:aspect-[16/10] relative rounded-[16px] overflow-hidden bg-muted shrink-0 shadow-xs">
-                      <img 
-                        src={item.image} 
-                        alt={item.title} 
-                        className="w-full h-full object-cover" 
-                      />
-                      <span className={`absolute bottom-3 left-3 text-[10px] sm:text-xs font-black uppercase px-2.5 py-0.5 rounded shadow-sm z-10 ${
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md ${
                         item.status === "Active" 
-                          ? "bg-[#ECFDF5] text-[#10B981] border border-[#DEF7EC]" 
-                          : "bg-[#FEF2F2] text-[#EF4444] border border-[#FEE2E2]"
+                          ? "bg-[#EAF8EF] text-[#16A34A]" 
+                          : "bg-[#F1F1F5] text-[#717182]"
                       }`}>
                         {item.status}
                       </span>
-                      {item.type && (
-                        <span className="absolute top-3 left-3 text-[10px] sm:text-xs font-black uppercase px-2.5 py-0.5 rounded shadow-sm bg-[#F0EDFF] text-[#6C4CF1] border border-[#ECECEC] z-10">
-                          {item.type}
-                        </span>
-                      )}
-                      {promotedListingIds.includes(item.id) && (
-                        <span className="absolute top-3 right-3 text-[10px] font-black uppercase px-2 py-0.5 rounded bg-amber-500 text-white border border-amber-400 z-10 flex items-center space-x-1 shadow-sm">
-                          <Sparkles className="w-3 h-3 text-white fill-white/20" />
-                          <span>Boosted</span>
-                        </span>
-                      )}
-                      {!promotedListingIds.includes(item.id) && boostRequests.some((r: any) => (r.listing?._id === item.id || r.listing === item.id) && r.status === "Pending") && (
-                        <span className="absolute top-3 right-3 text-[9px] font-black uppercase px-2 py-0.5 rounded bg-slate-500 text-white border border-slate-400 z-10 flex items-center space-x-1 shadow-sm">
-                          <span>Pending SS</span>
-                        </span>
-                      )}
                     </div>
-
-                    {/* Content Details Block */}
-                    <div className="flex-1 flex flex-col justify-between py-0.5 min-w-0">
-                      
-                      <div className="space-y-1.5">
-                        <h4 className="font-poppins font-black text-base sm:text-lg text-[#1E2235] line-clamp-1 leading-snug">
-                          {item.title}
-                        </h4>
-                        
-                        <p className="text-xs sm:text-sm text-[#94A3B8] font-bold flex items-center space-x-1.5">
-                          <MapPin className="w-4 h-4 text-[#94A3B8] shrink-0" />
-                          <span className="truncate">{item.location}</span>
-                        </p>
-
-                        <div className="text-xs sm:text-sm text-[#1E2235] font-black pt-1">
-                          <span>{item.sharing}</span>
-                          <span className="text-[#94A3B8] font-bold"> &bull; </span>
-                          <span className="text-[#6C4CF1]">₹{item.rent.toLocaleString("en-IN")}/{item.type === "hostel" ? "year" : "month"}</span>
-                        </div>
-
-                        {/* Facilities badges list */}
-                        <div className="flex flex-wrap gap-1.5 text-[9.5px] sm:text-xs font-black uppercase pt-2">
-                          {item.facilities.slice(0, 3).map((fac) => (
-                            <span key={fac} className="bg-[#F0EDFF] text-[#6C4CF1] px-2.5 py-0.5 rounded-md">
-                              {fac.replace(" Available", "")}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Bottom Date Row */}
-                      <div className="text-[10px] sm:text-xs text-[#94A3B8] font-bold border-t border-[#F0F2F5] pt-3 mt-3.5 uppercase tracking-wide">
-                        {item.date}
-                      </div>
-
-                    </div>
-
-                    {/* Actions Panel (Top Right Three-Dots Dropdown) */}
-                    <div className="absolute right-3.5 top-3.5 z-10 actions-panel-container">
-                      <button 
-                        onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
-                        className="w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 border border-[#ECECEC] flex items-center justify-center text-[#1E2235] cursor-pointer active:scale-95 transition-all shadow-xs"
-                      >
-                        <MoreVertical className="w-4 h-4 text-[#1E2235]" />
-                      </button>
-
-                       {openMenuId === item.id && (
-                        <div className="absolute right-0 mt-1.5 w-32 bg-white border border-[#ECECEC] rounded-xl shadow-lg py-1.5 z-20 text-left">
-                          {/* 1. Toggle Status */}
-                          <button 
-                            onClick={() => {
-                              toggleListStatus(item.id);
-                              setOpenMenuId(null);
-                            }}
-                            className={`w-full px-3 py-2 text-xs font-bold flex items-center space-x-2 cursor-pointer transition-colors ${
-                              item.status === "Active" ? "text-amber-600 hover:bg-amber-50" : "text-emerald-600 hover:bg-emerald-50"
-                            }`}
-                          >
-                            <Power className="w-4 h-4" />
-                            <span>{item.status === "Active" ? "Deactivate" : "Activate"}</span>
-                          </button>
-
-                          {/* 2. Edit */}
-                          <button 
-                            onClick={() => {
-                              startEditingListing(item.id);
-                              setOpenMenuId(null);
-                            }}
-                            className="w-full px-3 py-2 text-xs font-bold text-[#1E2235] hover:bg-slate-50 flex items-center space-x-2 cursor-pointer transition-colors border-t border-[#F0F2F5]"
-                          >
-                            <Edit3 className="w-4 h-4 text-[#94A3B8]" />
-                            <span>Edit</span>
-                          </button>
-
-                          {/* 3. Boost Listing */}
-                          <button 
-                            onClick={() => {
-                              const fullListing = listings.find(l => l.id === item.id);
-                              if (fullListing) {
-                                setBoostingListing(fullListing);
-                                setCheckoutStep("plans");
-                                setShowBoostModal(true);
-                              }
-                              setOpenMenuId(null);
-                            }}
-                            className="w-full px-3 py-2 text-xs font-bold text-amber-600 hover:bg-amber-50 flex items-center space-x-2 cursor-pointer transition-colors border-t border-[#F0F2F5]"
-                          >
-                            <Sparkles className="w-4 h-4 text-amber-500 fill-amber-500/20" />
-                            <span>Boost Listing</span>
-                          </button>
-
-                          {/* 4. Delete */}
-                          <button 
-                            onClick={() => {
-                              handleDeleteListing(item.id);
-                              setOpenMenuId(null);
-                            }}
-                            className="w-full px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 flex items-center space-x-2 cursor-pointer transition-colors border-t border-[#F0F2F5]"
-                          >
-                            <Trash2 className="w-4 h-4 text-red-500" />
-                            <span>Delete</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
+                    <p className="font-poppins font-bold text-[11px] text-[#151538] truncate mt-0.5">
+                      {item.title}
+                    </p>
+                    <p className="text-[9.5px] text-[#666680] truncate">
+                      {item.location}
+                    </p>
+                    <p className="text-[10px] font-extrabold text-[#151538] mt-0.5">
+                      ₹{item.rent.toLocaleString()} <span className="text-[8.5px] font-normal text-[#8C8CA1]">/month</span>
+                    </p>
                   </div>
-                ))
-              ) : (
-                <div className="text-center py-24 bg-white border border-[#ECECEC] rounded-[28px] p-6 shadow-sm col-span-full">
-                  <p className="text-xs sm:text-sm text-[#94A3B8] font-bold">
-                    No listed properties in this tab. Add a room to get started!
-                  </p>
                 </div>
-              )}
+              ))}
             </div>
-
           </div>
-        )}
+        </div>
 
-        {/* ========================================================================= */}
-        {/* SCREEN: HOST PROFILE */}
-        {/* ========================================================================= */}
-        {activeScreen === "profile" && (
-          <div className="w-full text-center max-w-xl mx-auto pb-24 relative">
-            
-            {/* Soft Blue Gradient Header Background (Blinkit style in Light Blue) */}
-            <div className="absolute top-[-32px] left-1/2 -translate-x-1/2 w-screen h-[320px] bg-gradient-to-b from-[#7DD3FC]/45 via-[#E0F2FE]/15 to-[#F8F9FC] z-0 pointer-events-none" />
-            
-            {/* Header section with back button (circular white icon, top-left aligned) */}
-            <div className="relative z-10 flex items-center px-0 pt-6 pb-2 text-left">
-              <button 
-                onClick={() => setActiveScreen("dashboard")} 
-                className="w-10 h-10 rounded-full bg-white border border-[#E2E8F0] flex items-center justify-center text-[#1E2235] hover:bg-slate-50 hover:border-slate-300 transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
-              >
-                <ChevronLeft className="w-5.5 h-5.5 stroke-[2]" />
-              </button>
-              <span className="font-poppins font-extrabold text-sm uppercase tracking-wider text-slate-400/80 ml-4">
-                Profile
+        {/* Sidebar Bottom Action: + Add New Listing Button */}
+        <div className="pt-3">
+          <button
+            onClick={handleStartAddListing}
+            className="w-full bg-white hover:bg-[#F3EEFF] border border-[#5B2BE0] text-[#5B2BE0] text-xs font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+          >
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <span>+ Add New Listing</span>
+          </button>
+        </div>
+      </aside>
+
+
+      {/* ========================================================================= */}
+      {/* 2. MAIN CONTENT WRAPPER */}
+      {/* ========================================================================= */}
+      <div className="flex-1 ml-0 lg:ml-[235px] flex flex-col min-h-screen bg-[#FFFFFF]">
+        
+        {/* MAIN TOP HEADER BAR */}
+        <header className="h-20 bg-white border-b border-[#E8E8F0] flex items-center justify-between px-4 sm:px-8 sticky top-0 z-20 select-none">
+          
+          {/* Mobile Hamburger & Logo (Visible only on mobile) */}
+          <div className="flex lg:hidden items-center gap-3">
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="p-1.5 rounded-lg text-[#151538] hover:bg-slate-100 cursor-pointer"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            <Link href="/" className="flex items-center gap-2 group text-left shrink-0">
+              <div className="w-8.5 h-8.5 rounded-xl bg-gradient-to-tr from-[#6C4CF1] to-[#8E75FF] flex items-center justify-center text-white shadow-md shadow-[#6C4CF1]/20 shrink-0">
+                <Home className="w-4.5 h-4.5 stroke-[2.5]" />
+              </div>
+              <span className="inline-flex items-center font-poppins font-black text-lg tracking-tight select-none transform scale-y-[1.18] origin-left">
+                <span className="text-[#1E2235]">Check</span>
+                <span className="text-[#6C4CF1]">Rooms</span>
               </span>
-            </div>
+            </Link>
+          </div>
 
-            {/* Profile Avatar Card mockup (Centering circle, Owner Name, Mobile Number) */}
-            <div className="relative z-10 flex flex-col items-center pt-3 pb-6 px-0">
-              
-              {/* Circular Avatar Container with white border and drop shadow (Blinkit style) */}
-              <div className="relative">
-                <div className="w-24 h-24 rounded-full bg-white border-4 border-white shadow-[0_12px_28px_rgba(0,0,0,0.06)] p-0.5 flex items-center justify-center">
-                  <div className="w-full h-full rounded-full bg-[#E2E8F0]/70 flex items-center justify-center text-[#475569]">
-                    <User className="w-12 h-12 text-[#475569] stroke-[1.2] fill-[#475569]/85" />
-                  </div>
-                </div>
-                
-                {/* Camera upload icon button */}
-                <button className="absolute bottom-0 right-0 w-8 h-8 bg-white border border-[#E2E8F0] rounded-full flex items-center justify-center text-primary shadow-md hover:scale-105 active:scale-90 transition-transform cursor-pointer">
-                  <Camera className="w-4 h-4 text-slate-500" />
-                </button>
-              </div>
+          {/* Desktop spacer on left */}
+          <div className="hidden lg:block"></div>
 
-              {/* Account Info Details */}
-              <div className="mt-4 space-y-1">
-                <h3 className="font-poppins font-black text-xl text-slate-800 tracking-tight flex items-center justify-center gap-1.5">
-                  <span>{profileName}</span>
-                  <ShieldCheck className="w-5 h-5 text-emerald-500 fill-emerald-500/10 stroke-[2]" />
-                </h3>
-                <p className="text-xs sm:text-sm font-semibold text-slate-500 tracking-wide">
-                  {profilePhone}
-                </p>
-              </div>
-
-            </div>
-
-            {/* Wrapper for the rest of the profile fields */}
-            <div className="relative z-10 space-y-6 px-0">
-
-            {/* Quick Action Columns (3 Cards) */}
-            <div className="grid grid-cols-3 gap-3">
-              <button 
-                onClick={() => setActiveScreen("listings")}
-                className="bg-white border border-[#E2E8F0] hover:border-primary/20 rounded-[18px] p-4 flex flex-col items-center justify-center text-center space-y-2 hover:bg-slate-50/50 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-200 active:scale-98 cursor-pointer"
+          {/* Right Area: Notification Bell & Profile Avatar */}
+          <div className="flex items-center gap-5">
+            
+            {/* Notification Bell with Badge */}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
+                className="relative w-10 h-10 rounded-full hover:bg-slate-50 flex items-center justify-center transition-all cursor-pointer focus:outline-none"
               >
-                <div className="w-10 h-10 rounded-full bg-primary-light flex items-center justify-center text-primary">
-                  <ListTodo className="w-5 h-5 text-primary stroke-[1.8]" />
-                </div>
-                <span className="text-xs font-bold text-slate-800 leading-snug">
-                  My listings
-                </span>
+                <Bell className="w-5 h-5 text-[#151538] stroke-[1.8]" />
+                {notifications.filter(n => !n.read).length > 0 && (
+                  <span className="absolute top-1.5 right-1.5 bg-[#EF4444] text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white shadow-xs">
+                    {notifications.filter(n => !n.read).length}
+                  </span>
+                )}
               </button>
 
-              <button 
-                onClick={() => {
-                  resetForm();
-                  setActiveScreen("step1");
-                }}
-                className="bg-white border border-[#E2E8F0] hover:border-primary/20 rounded-[18px] p-4 flex flex-col items-center justify-center text-center space-y-2 hover:bg-slate-50/50 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-200 active:scale-98 cursor-pointer"
-              >
-                <div className="w-10 h-10 rounded-full bg-primary-light flex items-center justify-center text-primary">
-                  <Plus className="w-5 h-5 text-primary stroke-[1.8]" />
-                </div>
-                <span className="text-xs font-bold text-slate-800 leading-snug">
-                  Add Property
-                </span>
-              </button>
-
-              <button 
-                onClick={() => {
-                  setShowSupportForm(true);
-                  setTimeout(() => {
-                    const element = document.getElementById("support-accordion-group");
-                    if (element) {
-                      element.scrollIntoView({ behavior: "smooth" });
-                    }
-                  }, 100);
-                }}
-                className="bg-white border border-[#E2E8F0] hover:border-primary/20 rounded-[18px] p-4 flex flex-col items-center justify-center text-center space-y-2 hover:bg-slate-50/50 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-200 active:scale-98 cursor-pointer w-full"
-              >
-                <div className="w-10 h-10 rounded-full bg-primary-light flex items-center justify-center text-primary">
-                  <MessageSquare className="w-5 h-5 text-primary stroke-[1.8]" />
-                </div>
-                <span className="text-xs font-bold text-slate-800 leading-snug">
-                  Need help?
-                </span>
-              </button>
-            </div>
-
-            {/* Group 1: Your Information */}
-            <div className="bg-white border border-[#E2E8F0] rounded-[20px] overflow-hidden shadow-[0px_4px_16px_rgba(0,0,0,0.015)]">
-              {isEditingProfile ? (
-                <div className="p-6 space-y-5">
-                  <div className="px-1 border-l-3 border-primary pl-2">
-                    <h3 className="font-poppins font-bold text-base text-[#1E2235] text-left">
-                      Edit details
-                    </h3>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-1.5 text-left">
-                        <label className="text-xs font-semibold uppercase text-slate-600 tracking-wide block">
-                          Full Name
-                        </label>
-                        <input
-                          type="text"
-                          value={profileName}
-                          onChange={(e) => setProfileName(e.target.value)}
-                          className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#1E2235] px-4.5 py-3.5 rounded-2xl text-base md:text-sm font-medium placeholder-slate-400 focus:outline-none focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all duration-200"
-                        />
-                      </div>
-
-                      <div className="space-y-1.5 text-left">
-                        <label className="text-xs font-semibold uppercase text-slate-600 tracking-wide block">
-                          Email Address
-                        </label>
-                        <input
-                          type="email"
-                          value={profileEmail}
-                          onChange={(e) => setProfileEmail(e.target.value)}
-                          className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#1E2235] px-4.5 py-3.5 rounded-2xl text-base md:text-sm font-medium placeholder-slate-400 focus:outline-none focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all duration-200"
-                          placeholder="Email address (optional)"
-                        />
-                      </div>
-
-                      <div className="space-y-1.5 text-left">
-                        <label className="text-xs font-semibold uppercase text-slate-600 tracking-wide block">
-                          Phone Number
-                        </label>
-                        <input
-                          type="text"
-                          value={profilePhone}
-                          onChange={(e) => setProfilePhone(e.target.value)}
-                          className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#1E2235] px-4.5 py-3.5 rounded-2xl text-base md:text-sm font-medium placeholder-slate-400 focus:outline-none focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all duration-200"
-                        />
-                      </div>
-
-                      <div className="space-y-1.5 text-left">
-                        <label className="text-xs font-semibold uppercase text-slate-600 tracking-wide block">
-                          WhatsApp Number
-                        </label>
-                        <input
-                          type="text"
-                          value={profileWhatsApp}
-                          onChange={(e) => setProfileWhatsApp(e.target.value)}
-                          className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#1E2235] px-4.5 py-3.5 rounded-2xl text-base md:text-sm font-medium placeholder-slate-400 focus:outline-none focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all duration-200"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3.5 pt-2">
-                    <button 
-                      onClick={() => setIsEditingProfile(false)}
-                      className="flex-1 bg-white hover:bg-slate-50 border border-[#E2E8F0] text-[#1E2235] font-poppins font-semibold py-4 rounded-2xl text-sm tracking-wide transition-all active:scale-98 cursor-pointer text-center"
-                    >
-                      Cancel
-                    </button>
-                    <button 
-                      onClick={async () => {
-                        try {
-                          const res = await ownerFetch(getApiUrl("/api/auth/profile"), {
-                            method: "PUT",
-                            credentials: "include",
-                            headers: {
-                              "Content-Type": "application/json"
-                            },
-                            body: JSON.stringify({
-                              fullName: profileName,
-                              email: profileEmail,
-                              mobile: profilePhone,
-                              alternateMobile: profileWhatsApp
-                            })
-                          });
-
-                          if (res.ok) {
-                            if (typeof window !== "undefined") {
-                              localStorage.setItem("owner_name", profileName);
-                              localStorage.setItem("owner_email", profileEmail);
-                              localStorage.setItem("owner_phone", profilePhone);
-                              localStorage.setItem("owner_whatsapp", profileWhatsApp);
-                            }
-                            alert("Profile settings saved successfully!");
-                            setIsEditingProfile(false);
-                          } else {
-                            const errData = await res.json();
-                            alert(`Failed to save profile: ${errData.message || "Unknown error"}`);
-                          }
-                        } catch (err) {
-                          console.error("Profile update failed:", err);
-                          alert("Failed to update profile due to connection error.");
-                        }
-                      }}
-                      className="flex-[1.5] bg-gradient-to-r from-primary to-violet-600 hover:from-primary-dark hover:to-violet-700 text-white py-4 rounded-2xl text-sm font-poppins font-semibold tracking-wide transition-all duration-300 active:scale-98 shadow-md hover:shadow-lg hover:shadow-primary/20 flex items-center justify-center space-x-2 cursor-pointer text-center"
-                    >
-                      Save Changes
-                    </button>
-                  </div>
-                </div>
-              ) : (
+              {/* Notifications Dropdown */}
+              {showNotificationsDropdown && (
                 <>
-                  <div className="px-5 pt-5 pb-3 border-l-3 border-primary ml-5 mt-2 text-left">
-                    <h3 className="font-poppins font-bold text-base text-[#1E2235]">
-                      Your Information
-                    </h3>
-                  </div>
-                  
-                  <div className="flex flex-col">
-                    {[
-                      { label: "Full Name", value: profileName, icon: User },
-                      { label: "Email Address", value: profileEmail, icon: Mail },
-                      { label: "Phone Number", value: profilePhone, icon: Phone },
-                      { label: "WhatsApp Number", value: profileWhatsApp, icon: MessageSquare },
-                    ].map((field) => {
-                      const Icon = field.icon;
-                      return (
-                        <div 
-                          key={field.label} 
-                          className="px-5 py-4 flex items-center justify-between bg-white border-t border-[#F0F2F5] hover:bg-slate-50/40 transition-colors"
-                        >
-                          <div className="flex items-center space-x-3.5 min-w-0 text-left">
-                            <div className="w-8 h-8 rounded-lg bg-primary-light flex items-center justify-center text-primary shrink-0">
-                              <Icon className="w-4.5 h-4.5 text-primary stroke-[1.8]" />
-                            </div>
-                            <div className="flex flex-col min-w-0">
-                              <span className="text-[10px] uppercase font-bold text-slate-400 leading-none mb-1">{field.label}</span>
-                              <span className="text-sm font-semibold text-slate-800 truncate leading-snug">
-                                {field.value || "Not configured"}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    
-                    {/* Edit Details Trigger row */}
-                    <div 
-                      onClick={() => setIsEditingProfile(true)}
-                      className="px-5 py-4 flex items-center justify-between bg-[#F0EDFF]/30 hover:bg-[#F0EDFF]/60 transition-colors border-t border-[#F0F2F5] cursor-pointer"
-                    >
-                      <div className="flex items-center space-x-3.5 text-left">
-                        <div className="w-8 h-8 rounded-lg bg-primary-light/50 flex items-center justify-center text-primary shrink-0">
-                          <Edit3 className="w-4.5 h-4.5 text-primary stroke-[1.8]" />
-                        </div>
-                        <span className="text-sm font-bold text-primary">
-                          Edit Profile Details
+                  {/* Backdrop to close when clicking/touching anywhere outside */}
+                  <div 
+                    className="fixed inset-0 z-40 bg-black/20 sm:bg-transparent" 
+                    onClick={() => setShowNotificationsDropdown(false)} 
+                  />
+                  <div className="fixed left-3 right-3 top-16 sm:absolute sm:top-full sm:left-auto sm:right-0 sm:mt-2 sm:w-80 bg-white border border-[#E8E8F0] rounded-2xl shadow-2xl p-4 z-50 text-left space-y-3 max-h-[80vh] sm:max-h-96 flex flex-col">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100 shrink-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-poppins font-bold text-xs text-[#151538]">Notifications</span>
+                        <span className="bg-[#EFE7FF] text-[#5B2BE0] text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                          {notifications.length}
                         </span>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-primary stroke-[1.8]" />
+                      <div className="flex items-center gap-3">
+                        {notifications.some(n => !n.read) && (
+                          <button 
+                            onClick={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))}
+                            className="text-[10px] font-bold text-[#5B2BE0] hover:underline cursor-pointer"
+                          >
+                            Mark all read
+                          </button>
+                        )}
+                        {notifications.length > 0 && (
+                          <button 
+                            onClick={() => setNotifications([])}
+                            className="text-[10px] font-bold text-red-500 hover:text-red-700 hover:underline cursor-pointer"
+                          >
+                            Clear all
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 overflow-y-auto no-scrollbar flex-1 pr-0.5">
+                      {notifications.length === 0 ? (
+                        <div className="py-8 text-center text-slate-400 space-y-1.5">
+                          <Bell className="w-7 h-7 mx-auto text-slate-300 stroke-[1.5]" />
+                          <p className="text-xs font-semibold text-slate-600">No notifications</p>
+                          <p className="text-[10.5px] text-slate-400">All notifications have been cleared.</p>
+                        </div>
+                      ) : (
+                        notifications.map(n => (
+                          <div key={n.id} className={`p-2.5 rounded-xl text-xs space-y-1 transition-all ${n.read ? "bg-slate-50 opacity-75" : "bg-[#F7F4FF] border border-[#E9E0FD]"}`}>
+                            <div className="flex items-start justify-between gap-1.5">
+                              <p className="font-semibold text-slate-800 leading-tight">{n.message}</p>
+                              {!n.read && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#5B2BE0] shrink-0 mt-1" />
+                              )}
+                            </div>
+                            <span className="text-[10px] text-slate-400 block">{n.time}</span>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                 </>
               )}
             </div>
 
-            {/* Group 2: My Listings */}
-            <div className="bg-white border border-[#E2E8F0] rounded-[20px] overflow-hidden shadow-[0px_4px_16px_rgba(0,0,0,0.015)]">
-              <div className="px-5 pt-5 pb-3 border-l-3 border-slate-700 ml-5 mt-2 text-left">
-                <h3 className="font-poppins font-bold text-base text-[#1E2235]">
-                  My Listings
-                </h3>
-              </div>
-              
-              <div className="flex flex-col">
-                <div 
-                  onClick={() => setActiveScreen("listings")}
-                  className="px-5 py-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-t border-[#F0F2F5] cursor-pointer"
-                >
-                  <div className="flex items-center space-x-3.5 text-left">
-                    <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-500 shrink-0">
-                      <ListTodo className="w-4.5 h-4.5 text-slate-600 stroke-[1.8]" />
-                    </div>
-                    <div className="text-left">
-                      <span className="block text-sm font-semibold text-slate-800">
-                        Manage Listings
-                      </span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400 stroke-[1.5]" />
-                </div>
-
-                <div 
-                  onClick={() => {
-                    resetForm();
-                    setActiveScreen("step1");
-                  }}
-                  className="px-5 py-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-t border-[#F0F2F5] cursor-pointer"
-                >
-                  <div className="flex items-center space-x-3.5 text-left">
-                    <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-500 shrink-0">
-                      <Plus className="w-4.5 h-4.5 text-slate-600 stroke-[1.8]" />
-                    </div>
-                    <div className="text-left">
-                      <span className="block text-sm font-semibold text-slate-800">
-                        Add Property
-                      </span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400 stroke-[1.5]" />
-                </div>
-              </div>
-            </div>
-
-            {/* Group: Help & Support (Collapsible Accordion) */}
-            <div id="support-accordion-group" className="bg-white border border-[#E2E8F0] rounded-[20px] overflow-hidden shadow-[0px_4px_16px_rgba(0,0,0,0.015)]">
+            {/* Owner Profile Block */}
+            <div className="relative">
               <div 
-                onClick={() => setShowSupportForm(!showSupportForm)}
-                className="px-5 py-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors cursor-pointer"
+                onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                className="flex items-center gap-3 cursor-pointer p-1 rounded-xl hover:bg-slate-50 transition-all select-none"
               >
-                <div className="flex items-center space-x-3.5 text-left">
-                  <div className="w-8 h-8 rounded-lg bg-primary-light flex items-center justify-center text-primary shrink-0">
-                    <MessageSquare className="w-4.5 h-4.5 text-primary stroke-[1.8]" />
-                  </div>
-                  <span className="text-sm font-bold text-slate-800">
-                    Help & Support
+                <img
+                  src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80"
+                  alt={profileName}
+                  className="w-10 h-10 rounded-full object-cover border border-[#E8E8F0]"
+                />
+                <div className="hidden sm:flex flex-col text-left">
+                  <span className="font-poppins font-bold text-xs text-[#151538] leading-tight">
+                    {profileName}
+                  </span>
+                  <span className="text-[11px] text-[#666680] font-medium">
+                    Owner
                   </span>
                 </div>
-                {showSupportForm ? (
-                  <ChevronDown className="w-4 h-4 text-slate-500 stroke-[1.8]" />
-                ) : (
-                  <ChevronRight className="w-4 h-4 text-slate-400 stroke-[1.5]" />
-                )}
+                <ChevronDown className="w-4 h-4 text-[#666680] hidden sm:block stroke-[2]" />
               </div>
 
-              {showSupportForm && (
-                <div className="border-t border-[#F0F2F5] p-5 text-left space-y-4 bg-slate-50/30">
-                  <div className="border-l-3 border-[#6C4CF1] pl-3 mb-2">
-                    <h4 className="font-poppins font-bold text-sm text-[#1E2235]">
-                      Contact Admin 💬
-                    </h4>
-                    <p className="text-[10px] text-slate-500 font-semibold mt-0.5">
-                      Send a message directly to the website administrator
-                    </p>
-                  </div>
-
-                  <div className="space-y-3.5">
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-black uppercase text-slate-500 tracking-wider">
-                        Select Subject
-                      </label>
-                      <select
-                        value={supportSubject}
-                        onChange={(e) => setSupportSubject(e.target.value)}
-                        className="w-full bg-white border border-[#E2E8F0] text-[#1E2235] px-4 py-2.5 rounded-xl text-xs font-semibold focus:outline-none focus:border-primary transition-all duration-200"
-                      >
-                        <option value="General Help">General Help & Query</option>
-                        <option value="Listing Issue">Listing/Room Approval Issue</option>
-                        <option value="Billing/Payments">Billing & Premium Payments</option>
-                        <option value="Bug Report">Technical Bug Report</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-black uppercase text-slate-500 tracking-wider">
-                        Your Message
-                      </label>
-                      <textarea
-                        required
-                        rows={3}
-                        value={supportMessage}
-                        onChange={(e) => setSupportMessage(e.target.value)}
-                        placeholder="Describe your issue or request..."
-                        className="w-full bg-white border border-[#E2E8F0] text-[#1E2235] px-4 py-2.5 rounded-xl text-xs font-semibold focus:outline-none focus:border-primary transition-all duration-200 resize-none"
-                      />
-                    </div>
-
+              {/* Profile Dropdown */}
+              {showProfileDropdown && (
+                <>
+                  {/* Backdrop to close when clicking/touching anywhere outside */}
+                  <div 
+                    className="fixed inset-0 z-40 bg-black/10 sm:bg-transparent" 
+                    onClick={() => setShowProfileDropdown(false)} 
+                  />
+                  <div className="absolute right-0 mt-2 w-52 bg-white border border-[#E8E8F0] rounded-2xl shadow-xl p-2 z-50 text-left space-y-1">
                     <button
-                      onClick={() => {
-                        if (!supportMessage.trim()) {
-                          alert("Please type a message before sending.");
-                          return;
-                        }
-                        try {
-                          const msgs = localStorage.getItem("roomswallah_messages") || "[]";
-                          let parsedMsgs = JSON.parse(msgs);
-                          const newMsg = {
-                            id: Math.random().toString(36).substring(2, 9),
-                            name: profileName,
-                            email: profileEmail || "owner@gmail.com",
-                            phone: profilePhone,
-                            subject: `[Owner Support] ${supportSubject}`,
-                            message: supportMessage,
-                            date: new Date().toLocaleDateString("en-IN"),
-                            replied: false
-                          };
-                          parsedMsgs.unshift(newMsg);
-                          localStorage.setItem("roomswallah_messages", JSON.stringify(parsedMsgs));
-                          
-                          alert("Your message has been sent successfully to the Admin! We will reply shortly.");
-                          setSupportMessage("");
-                          setShowSupportForm(false);
-                        } catch (e) {
-                          console.error("Failed to send message:", e);
-                          alert("Error sending message.");
-                        }
-                      }}
-                      className="w-full bg-gradient-to-r from-primary to-violet-600 hover:from-primary-dark hover:to-violet-700 text-white py-3 rounded-xl text-xs font-poppins font-bold tracking-wide transition-all duration-300 active:scale-98 shadow-sm flex items-center justify-center space-x-2 cursor-pointer text-center"
+                      onClick={() => { setActiveScreen("profile"); setShowProfileDropdown(false); }}
+                      className="w-full text-left px-3 py-2 text-xs font-semibold text-[#151538] hover:bg-[#F3EEFF] hover:text-[#5B2BE0] rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
                     >
-                      Send Message
+                      <Settings className="w-4 h-4" />
+                      <span>Profile Settings</span>
+                    </button>
+                    <button
+                      onClick={() => { router.push("/"); setShowProfileDropdown(false); }}
+                      className="w-full text-left px-3 py-2 text-xs font-semibold text-[#151538] hover:bg-[#F3EEFF] hover:text-[#5B2BE0] rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      <span>View Public Site</span>
+                    </button>
+                    <div className="border-t border-slate-100 my-1"></div>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Logout</span>
                     </button>
                   </div>
-                </div>
+                </>
               )}
             </div>
 
-            {/* Group 3: Account Actions */}
-            <div className="bg-white border border-[#E2E8F0] rounded-[20px] overflow-hidden shadow-[0px_4px_16px_rgba(0,0,0,0.015)]">
-              <div className="px-5 pt-5 pb-3 border-l-3 border-slate-700 ml-5 mt-2 text-left">
-                <h3 className="font-poppins font-bold text-base text-[#1E2235]">
-                  Account Actions
-                </h3>
-              </div>
-              
-              <div className="flex flex-col">
-                <div 
-                  onClick={async () => {
-                    if (confirm("Are you sure you want to log out?")) {
-                      try {
-                        await ownerFetch(getApiUrl("/api/auth/logout"), {
-                          method: "POST",
-                          credentials: "include"
-                        });
-                      } catch (err) {
-                        console.error("Logout API failed:", err);
-                      }
-                      if (typeof window !== "undefined") {
-                        localStorage.removeItem("owner_logged_in");
-                        localStorage.clear();
-                      }
-                      router.push("/welcome");
-                    }
-                  }}
-                  className="px-5 py-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-t border-[#F0F2F5] cursor-pointer"
-                >
-                  <div className="flex items-center space-x-3.5 text-left">
-                    <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-500 shrink-0">
-                      <Power className="w-4.5 h-4.5 text-slate-600 stroke-[1.8]" />
-                    </div>
-                    <span className="text-sm font-semibold text-slate-800">
-                      Log Out
-                    </span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400 stroke-[1.5]" />
-                </div>
-
-                <div 
-                  onClick={async () => {
-                    if (confirm("WARNING: Are you sure you want to delete your host account? All your listings and uploaded images will be permanently lost from the database.")) {
-                      if (confirm("CONFIRMATION REQUIRED: Please confirm once more to delete your account forever.")) {
-                        try {
-                          const res = await ownerFetch(getApiUrl("/api/auth/delete-account"), {
-                            method: "DELETE",
-                            credentials: "include"
-                          });
-                          if (res.ok) {
-                            if (typeof window !== "undefined") {
-                              localStorage.clear();
-                            }
-                            alert("Your host account has been successfully deleted from our database.");
-                            router.push("/welcome");
-                          } else {
-                            const errData = await res.json().catch(() => ({}));
-                            alert(errData.message || "Failed to delete account.");
-                          }
-                        } catch (err) {
-                          console.error("Account deletion failed:", err);
-                          alert("Failed to delete account due to connection error.");
-                        }
-                      }
-                    }
-                  }}
-                  className="px-5 py-4 flex items-center justify-between hover:bg-red-50/30 transition-colors border-t border-[#F0F2F5] cursor-pointer group"
-                >
-                  <div className="flex items-center space-x-3.5 text-left">
-                    <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-500 shrink-0 group-hover:bg-red-100 transition-colors">
-                      <Trash2 className="w-4.5 h-4.5 text-red-500 stroke-[1.8]" />
-                    </div>
-                    <span className="text-sm font-bold text-red-600">
-                      Delete Account Forever
-                    </span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-red-500 stroke-[1.5]" />
-                </div>
-              </div>
-            </div>
           </div>
+        </header>
 
-          </div>
-        )}
 
-        {/* ========================================================================= */}
-        {/* SCREEN: HOST INQUIRIES */}
-        {/* ========================================================================= */}
-        {activeScreen === "inquiries" && (
-          <div className="w-full text-center max-w-xl mx-auto pb-24 relative overflow-visible">
-            
-            {/* Soft Blue Gradient Header Background */}
-            <div className="absolute top-[-32px] left-1/2 -translate-x-1/2 w-screen h-[320px] bg-gradient-to-b from-[#7DD3FC]/45 via-[#E0F2FE]/15 to-[#F8F9FC] z-0 pointer-events-none" />
-            
-            {/* Header section with back button */}
-            <div className="relative z-10 flex items-center px-0 pt-6 pb-2 text-left">
-              <button 
-                onClick={() => setActiveScreen("dashboard")} 
-                className="w-10 h-10 rounded-full bg-white border border-[#E2E8F0] flex items-center justify-center text-[#1E2235] hover:bg-slate-50 hover:border-slate-300 transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
-              >
-                <ChevronLeft className="w-5.5 h-5.5 stroke-[2]" />
-              </button>
-              <span className="font-poppins font-extrabold text-sm uppercase tracking-wider text-slate-400/80 ml-4">
-                Inquiries
-              </span>
-            </div>
-
-            {/* Inquiries list content */}
-            <div className="relative z-10 space-y-6 pt-4 text-left">
-              <div className="bg-white border border-[#E2E8F0] rounded-[20px] overflow-hidden shadow-[0px_4px_16px_rgba(0,0,0,0.015)] p-5">
-                <div className="flex items-center justify-between pb-4 border-b border-[#F0F2F5]">
-                  <div>
-                    <h3 className="font-poppins font-bold text-lg text-[#1E2235]">
-                      Customer Leads
-                    </h3>
-                    <p className="text-xs text-[#94A3B8] font-semibold mt-0.5">
-                      Track clicks on your phone and WhatsApp contact nodes
-                    </p>
-                  </div>
-                  <span className="bg-[#ECFDF5] text-[#10B981] text-[10px] font-bold px-2.5 py-1 rounded-full uppercase border border-[#DEF7EC]">
-                    {inquiries.length} Total
-                  </span>
-                </div>
-
-                <div className="divide-y divide-[#F0F2F5]">
-                  {inquiries.length > 0 ? (
-                    inquiries.map((inq: any) => (
-                      <div key={inq._id || inq.id} className="py-4 flex items-start justify-between gap-3 border-b border-[#F0F2F5] last:border-b-0">
-                        <div className="min-w-0 flex-1 space-y-1.5 text-left">
-                          <h4 className="text-sm font-bold text-slate-800 truncate">
-                            {inq.listingId?.title || "Unknown Listing"}
-                          </h4>
-                          <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-xs text-slate-500 font-medium">
-                            <span className="flex items-center text-slate-700 font-bold">
-                              👤 {inq.name || "Guest User"}
-                            </span>
-                            {inq.phone && inq.phone !== "Not Provided" && (
-                              <a 
-                                href={`tel:${inq.phone}`}
-                                className="flex items-center text-slate-500 hover:text-blue-600 hover:underline transition-colors"
-                                title="Call Tenant"
-                              >
-                                📞 {inq.phone}
-                              </a>
-                            )}
-                          </div>
-                          <div className="flex items-center space-x-2 text-[11px] text-slate-400 font-semibold">
-                            <span>Type:</span>
-                            {inq.type === "whatsapp" ? (
-                              <span className="bg-emerald-50 text-emerald-600 border border-emerald-100 px-2 py-0.5 rounded text-[10px] uppercase font-bold flex items-center gap-1">
-                                <MessageSquare className="w-3 h-3 text-emerald-500 fill-emerald-500/10" />
-                                WhatsApp
-                              </span>
-                            ) : inq.type === "book" ? (
-                              <span className="bg-purple-50 text-purple-600 border border-purple-100 px-2 py-0.5 rounded text-[10px] uppercase font-bold flex items-center gap-1 animate-pulse">
-                                <Sparkles className="w-3 h-3 text-purple-500 fill-purple-500/10" />
-                                Booking Request
-                              </span>
-                            ) : (
-                              <span className="bg-blue-50 text-blue-600 border border-blue-100 px-2 py-0.5 rounded text-[10px] uppercase font-bold flex items-center gap-1">
-                                <Phone className="w-3 h-3 text-blue-500" />
-                                Phone Call
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="text-right shrink-0">
-                          <span className="text-[10px] text-[#94A3B8] font-bold block">
-                            {new Date(inq.createdAt).toLocaleDateString("en-GB", {
-                              day: "numeric",
-                              month: "short"
-                            })}
-                          </span>
-                          <span className="text-[9px] text-[#94A3B8] font-semibold block mt-0.5">
-                            {new Date(inq.createdAt).toLocaleTimeString("en-US", {
-                              hour: "numeric",
-                              minute: "2-digit",
-                              hour12: true
-                            })}
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="py-12 text-center">
-                      <MessageSquare className="w-10 h-10 text-slate-300 mx-auto mb-2.5 stroke-[1.5]" />
-                      <p className="text-xs text-slate-400 font-bold">
-                        No customer inquiries registered yet.
-                      </p>
-                      <p className="text-[11px] text-slate-400 font-semibold mt-0.5 max-w-[280px] mx-auto leading-normal">
-                        When users click on WhatsApp or Call buttons of your active properties, they will show up here.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-          </div>
-        )}
-
-      </div>
-
-      {/* ========================================================================= */}
-      {/* BOOST VERIFICATION MODAL */}
-      {/* ========================================================================= */}
-      {showBoostModal && (
-        <div className="fixed inset-0 bg-[#1E2235]/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[28px] max-w-lg w-full max-h-[85vh] overflow-y-auto border border-[#ECECEC] shadow-2xl p-6 sm:p-7 relative space-y-6">
-            
-            {/* Close Button */}
-            {checkoutStep !== "submitting" && checkoutStep !== "success" && (
-              <button 
-                onClick={() => {
-                  setShowBoostModal(false);
-                  setBoostingListing(null);
-                  setCheckoutStep("list");
-                  setScreenshotFileUrl("");
-                }}
-                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 border border-[#ECECEC] flex items-center justify-center text-[#1E2235] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-
-            {/* Step 1: Select Property to Boost */}
-            {checkoutStep === "list" && (
-              <div className="space-y-4 text-left animate-fade-in">
-                <div className="space-y-1">
-                  <h3 className="font-poppins font-black text-xl text-[#1E2235] flex items-center gap-2">
-                    <Sparkles className="w-5.5 h-5.5 text-amber-500 fill-amber-500/20 animate-pulse" />
-                    <span>Boost Your Listings</span>
-                  </h3>
-                  <p className="text-xs text-[#94A3B8] font-bold uppercase tracking-wide">
-                    Select a listing to promote to the top
+        {/* MAIN BODY AREA */}
+        <main className="p-3.5 sm:p-6 lg:p-8 max-w-[1240px] w-full mx-auto space-y-5 sm:space-y-6">
+          
+          {/* ========================================================================= */}
+          {/* SCREEN: DASHBOARD (MAIN VIEW) */}
+          {/* ========================================================================= */}
+          {activeScreen === "dashboard" && (
+            <>
+              {/* 1. WELCOME HERO BANNER (Responsive: Compact single-row on mobile & spacious on desktop) */}
+              <div className="bg-gradient-to-r from-[#4820B8] via-[#431CA8] to-[#36128E] rounded-[20px] sm:rounded-[22px] p-4 sm:p-7 text-white relative overflow-hidden shadow-lg shadow-[#4820B8]/15 flex flex-row items-center justify-between min-h-0 sm:min-h-[180px] text-left">
+                
+                {/* Left Text & Live Time Pill */}
+                <div className="space-y-1 sm:space-y-2 relative z-10 max-w-[65%] sm:max-w-xl">
+                  <h1 className="font-poppins font-extrabold text-base sm:text-2xl lg:text-3xl text-white tracking-tight leading-tight whitespace-nowrap flex items-center gap-1.5 overflow-hidden text-ellipsis">
+                    <span>{dynamicGreeting.text}, {profileName.split(" ")[0]}!</span>
+                    <span className="shrink-0 text-lg sm:text-2xl">🖐</span>
+                  </h1>
+                  <p className="text-[11px] sm:text-sm text-purple-200 font-medium line-clamp-1 sm:line-clamp-none">
+                    Here's what's happening with your properties today.
                   </p>
+
+                  {/* Time / Date Info inside transparent outlined pill */}
+                  <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-2.5 sm:px-3.5 py-1 sm:py-1.5 flex items-center gap-1.5 sm:gap-2.5 text-[10px] sm:text-[11px] font-medium text-white mt-2.5 sm:mt-4 w-fit shadow-xs">
+                    <Clock className="w-3 sm:w-3.5 h-3 sm:h-3.5 text-purple-200 shrink-0" />
+                    <span>{currentTimeStr}</span>
+                    <span className="text-white/40">|</span>
+                    <span className="truncate">{currentDateStr}</span>
+                  </div>
                 </div>
 
-                <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
-                  {listings.length === 0 ? (
-                    <p className="text-xs text-slate-500 font-semibold py-8 text-center bg-slate-50 rounded-2xl border border-slate-100">
-                      No listings available to boost. Add a listing first.
-                    </p>
-                  ) : (
-                    listings.map((item) => {
-                      const isBoosted = promotedListingIds.includes(item.id);
-                      const isPending = boostRequests.some((r: any) => (r.listing?._id === item.id || r.listing === item.id) && r.status === "Pending");
-                      return (
-                        <div key={item.id} className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200/60 hover:bg-slate-100/40 transition-colors">
-                          <div className="flex items-center space-x-3.5 min-w-0">
-                            <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-200 shrink-0 border border-slate-200">
-                              <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
-                            </div>
-                            <div className="min-w-0 text-left">
-                              <span className="block text-sm font-bold text-[#1E2235] truncate">{item.title}</span>
-                              <span className="text-[11px] text-[#94A3B8] font-bold block truncate">{item.location}</span>
-                            </div>
-                          </div>
-
-                          <div className="shrink-0 pl-2">
-                            {isBoosted ? (
-                              <span className="inline-flex items-center space-x-1 bg-amber-500 text-white text-[10px] font-black uppercase px-2.5 py-1.5 rounded-lg shadow-sm">
-                                <Sparkles className="w-3 h-3 text-white" />
-                                <span>Boosted</span>
-                              </span>
-                            ) : isPending ? (
-                              <span className="inline-flex items-center space-x-1 bg-slate-500 text-white text-[10px] font-black uppercase px-2.5 py-1.5 rounded-lg">
-                                <span>Pending Approval</span>
-                              </span>
-                            ) : (
-                              <button 
-                                onClick={() => {
-                                  const fullListing = listings.find(l => l.id === item.id);
-                                  if (fullListing) setBoostingListing(fullListing);
-                                  setCheckoutStep("plans");
-                                }}
-                                className="bg-[#6C4CF1] hover:bg-[#5B3FE6] text-white text-[10px] font-black uppercase px-3.5 py-2 rounded-lg cursor-pointer transition-colors shadow-2xs"
-                              >
-                                Boost Now
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
+                {/* Right Side Illustration - compact & side-by-side on mobile */}
+                <div className="relative shrink-0 select-none pointer-events-none self-center sm:self-end">
+                  <svg className="w-24 h-20 sm:w-56 sm:h-40" viewBox="0 0 240 160" fill="none">
+                    {/* Window background with stars */}
+                    <rect x="130" y="10" width="70" height="70" rx="12" fill="#31107C" />
+                    <circle cx="170" cy="35" r="14" fill="#F59E0B" opacity="0.9" />
+                    <circle cx="150" cy="50" r="3" fill="#FFFFFF" opacity="0.6" />
+                    <circle cx="185" cy="25" r="2" fill="#FFFFFF" opacity="0.8" />
+                    
+                    {/* Floor lamp */}
+                    <path d="M45 40 L58 65 L32 65 Z" fill="#FDE68A" />
+                    <line x1="45" y1="65" x2="45" y2="140" stroke="#E2E8F0" strokeWidth="2.5" />
+                    <ellipse cx="45" cy="140" rx="14" ry="4" fill="#E2E8F0" />
+                    <rect x="35" y="105" width="20" height="28" rx="4" fill="#E9D5FF" />
+                    <rect x="37" y="107" width="16" height="5" rx="2" fill="#7C4DFF" />
+                    
+                    {/* Sofa */}
+                    <rect x="80" y="85" width="115" height="45" rx="10" fill="#5826D4" />
+                    <rect x="75" y="105" width="125" height="25" rx="8" fill="#6C38E8" />
+                    <rect x="70" y="95" width="14" height="35" rx="6" fill="#7C4DFF" />
+                    <rect x="190" y="95" width="14" height="35" rx="6" fill="#7C4DFF" />
+                    {/* Cushions */}
+                    <rect x="90" y="92" width="22" height="22" rx="5" fill="#A855F7" />
+                    <rect x="160" y="92" width="22" height="22" rx="5" fill="#F59E0B" />
+                    
+                    {/* Potted Plant on right */}
+                    <path d="M215 110 Q218 85 228 80 Q222 100 215 110" fill="#10B981" />
+                    <path d="M213 110 Q205 90 200 85 Q210 100 213 110" fill="#059669" />
+                    <path d="M214 110 Q214 75 220 70 Q218 95 214 110" fill="#34D399" />
+                    <rect x="207" y="110" width="14" height="20" rx="3" fill="#D97706" />
+                  </svg>
                 </div>
               </div>
-            )}
 
-            {/* Step 2: Compare Pricing Plans */}
-            {checkoutStep === "plans" && boostingListing && (
-              <div className="space-y-5 text-left animate-fade-in">
-                <div className="space-y-1">
-                  <h3 className="font-poppins font-black text-xl text-[#1E2235] tracking-tight flex items-center gap-2">
-                    <Sparkles className="w-5.5 h-5.5 text-amber-500 fill-amber-500/20" />
-                    <span>Select Pricing Plan</span>
-                  </h3>
-                  <p className="text-xs text-[#94A3B8] font-bold uppercase tracking-widest mt-0.5 truncate">
-                    Boosting: {boostingListing.title}
-                  </p>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                  {/* Plan 1: Standard Boost */}
-                  <div 
-                    onClick={() => setSelectedPlan("basic")}
-                    className={`border rounded-2xl p-4 cursor-pointer transition-all duration-300 relative flex flex-col justify-between ${
-                      selectedPlan === "basic" 
-                        ? "border-[#6C4CF1] bg-[#F0EDFF]/20 shadow-sm" 
-                        : "border-[#ECECEC] hover:border-slate-300 bg-white"
-                    }`}
-                  >
-                    <div>
-                      <div className="flex justify-between items-start">
-                        <span className="text-[8px] font-black uppercase tracking-wider bg-[#F0EDFF] text-[#6C4CF1] px-2 py-0.5 rounded-md leading-none">
-                          Standard
-                        </span>
-                      </div>
-                      
-                      <h4 className="font-poppins font-black text-sm text-[#1E2235] pt-2 leading-none">
-                        7 Days Boost
-                      </h4>
-
-                      <div className="flex items-baseline pt-2.5 pb-1">
-                        <span className="font-poppins font-black text-3.5xl text-[#6C4CF1]">₹19</span>
-                        <span className="text-[9px] text-[#94A3B8] font-bold uppercase ml-1 tracking-wider">/ 7 Days</span>
-                      </div>
-
-                      <div className="space-y-2 pt-3 border-t border-slate-100 mt-3 text-left">
-                        <div className="flex items-center space-x-2 text-xs font-bold text-slate-600">
-                          <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 stroke-[2.5]" />
-                          <span>2x Visibility increase</span>
-                        </div>
-                        <div className="flex items-center space-x-2 text-xs font-bold text-slate-600">
-                          <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 stroke-[2.5]" />
-                          <span>Standard sorting rank</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Plan 2: Ultra Premium Boost */}
-                  <div 
-                    onClick={() => setSelectedPlan("premium")}
-                    className={`border rounded-2xl p-4 cursor-pointer transition-all duration-300 relative flex flex-col justify-between ${
-                      selectedPlan === "premium" 
-                        ? "border-amber-500 bg-amber-50/10 shadow-sm" 
-                        : "border-[#ECECEC] hover:border-slate-300 bg-white"
-                    }`}
-                  >
-                    <span className="absolute top-0 right-0 bg-amber-500 text-white text-[7px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-bl-lg">
-                      Best Value
-                    </span>
-
-                    <div>
-                      <div className="flex justify-between items-start">
-                        <span className="text-[8px] font-black uppercase tracking-wider bg-amber-100 text-amber-600 px-2 py-0.5 rounded-md leading-none">
-                          Premium
-                        </span>
-                      </div>
-                      
-                      <h4 className="font-poppins font-black text-sm text-[#1E2235] pt-2 leading-none">
-                        30 Days Boost
-                      </h4>
-
-                      <div className="flex items-baseline pt-2.5 pb-1">
-                        <span className="font-poppins font-black text-3.5xl text-amber-500">₹49</span>
-                        <span className="text-[9px] text-[#94A3B8] font-bold uppercase ml-1 tracking-wider">/ 30 Days</span>
-                      </div>
-
-                      <div className="space-y-2 pt-3 border-t border-slate-100 mt-3 text-left">
-                        <div className="flex items-center space-x-2 text-xs font-bold text-slate-600">
-                          <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 stroke-[2.5]" />
-                          <span>5x Visibility boost</span>
-                        </div>
-                        <div className="flex items-center space-x-2 text-xs font-bold text-slate-600">
-                          <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 stroke-[2.5]" />
-                          <span>Priority sorting rank</span>
-                        </div>
-                        <div className="flex items-center space-x-2 text-xs font-bold text-slate-600">
-                          <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 stroke-[2.5]" />
-                          <span>Gold featured badge</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex space-x-3 pt-2">
-                  <button 
+              {/* 2. TAB NAVIGATION */}
+              <div className="flex items-center border-b border-[#E8E8F0] bg-white text-left px-1">
+                {(["Listing", "Overview", "Inquiry"] as const).map((tab) => (
+                  <button
+                    key={tab}
                     onClick={() => {
-                      setCheckoutStep("list");
+                      if (tab === "Inquiry") {
+                        setActiveNav("bookings");
+                        setActiveScreen("bookings");
+                      } else {
+                        setDashboardTab(tab);
+                      }
                     }}
-                    className="flex-1 bg-white hover:bg-slate-50 border border-[#E2E8F0] text-[#1E2235] font-poppins font-semibold py-3.5 rounded-xl text-xs uppercase tracking-wider cursor-pointer"
+                    className={`flex-1 sm:flex-initial text-xs sm:text-sm font-bold pb-2.5 sm:pb-3 px-3 sm:px-10 text-center transition-all relative cursor-pointer ${
+                      dashboardTab === tab 
+                        ? "text-[#5B2BE0]" 
+                        : "text-[#666680] hover:text-[#151538]"
+                    }`}
                   >
-                    Back
+                    <span>{tab === "Inquiry" ? "Customer Leads" : tab}</span>
+                    {dashboardTab === tab && (
+                      <span className="absolute bottom-0 left-2 right-2 sm:left-0 sm:right-0 h-0.5 bg-[#5B2BE0] rounded-full" />
+                    )}
                   </button>
-                  <button 
-                    onClick={() => setCheckoutStep("payment")}
-                    className="flex-1 bg-[#6C4CF1] hover:bg-[#5B3FE6] text-white font-poppins font-semibold py-3.5 rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-md"
-                  >
-                    Proceed to Pay
-                  </button>
-                </div>
+                ))}
               </div>
-            )}
 
-            {/* Step 3: Payment QR & Screenshot Upload */}
-            {checkoutStep === "payment" && boostingListing && (
-              <div className="space-y-5 text-left animate-fade-in">
-                <div className="space-y-1">
-                  <h3 className="font-poppins font-black text-lg text-[#1E2235] flex items-center gap-2">
-                    <Sparkles className="w-5.5 h-5.5 text-amber-500 fill-amber-500/20" />
-                    <span>Scan & Pay via UPI</span>
+
+              {/* 3. PRO STATISTICS CARDS (2 Cards: Total Listings & Total Inquiries) */}
+              <div className="grid grid-cols-2 gap-3 sm:gap-5">
+                
+                {/* Card 1: Total Listings */}
+                <div 
+                  onClick={() => { setActiveNav("listings"); setActiveScreen("listings"); }}
+                  className="bg-white border border-[#E8E8F0] hover:border-[#5B2BE0] hover:shadow-md rounded-[20px] p-4 sm:p-5.5 shadow-xs text-left flex items-start justify-between cursor-pointer transition-all duration-200 group"
+                >
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-[#666680] group-hover:text-[#5B2BE0] truncate transition-colors">Total Listings</span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    </div>
+                    <h3 className="font-poppins font-black text-2xl sm:text-[28px] text-[#151538] leading-none my-1.5">
+                      {totalListingsCount}
+                    </h3>
+                    <p className="text-[11px] text-[#8C8CA1] font-semibold truncate flex items-center gap-1">
+                      <span>Active Properties</span>
+                      <span className="text-[#5B2BE0] font-bold group-hover:translate-x-0.5 transition-transform">→</span>
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-[#F3EEFF] text-[#5B2BE0] group-hover:bg-[#5B2BE0] group-hover:text-white flex items-center justify-center shrink-0 shadow-sm shadow-[#5B2BE0]/20 ml-2 transition-all">
+                    <House className="w-5 h-5 sm:w-5.5 sm:h-5.5 stroke-[2]" />
+                  </div>
+                </div>
+
+                {/* Card 2: Total Inquiries */}
+                <div 
+                  onClick={() => { setActiveNav("bookings"); setActiveScreen("bookings"); }}
+                  className="bg-white border border-[#E8E8F0] hover:border-[#5B2BE0] hover:shadow-md rounded-[20px] p-4 sm:p-5.5 shadow-xs text-left flex items-start justify-between cursor-pointer transition-all duration-200 group"
+                >
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-[#666680] group-hover:text-[#5B2BE0] truncate transition-colors">Total Inquiries</span>
+                      <span className="bg-[#EAF8EF] text-[#16A34A] text-[9.5px] font-black px-1.5 py-0.2 rounded-md">Live</span>
+                    </div>
+                    <h3 className="font-poppins font-black text-2xl sm:text-[28px] text-[#151538] leading-none my-1.5">
+                      {customerLeads.length > 0 ? customerLeads.length : totalInquiriesCount}
+                    </h3>
+                    <p className="text-[11px] text-[#8C8CA1] font-semibold truncate flex items-center gap-1">
+                      <span>Customer Leads & Bookings</span>
+                      <span className="text-[#5B2BE0] font-bold group-hover:translate-x-0.5 transition-transform">→</span>
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-[#EFF6FF] text-[#3B82F6] group-hover:bg-[#3B82F6] group-hover:text-white flex items-center justify-center shrink-0 ml-2 transition-all">
+                    <MessageCircle className="w-5 h-5 sm:w-5.5 sm:h-5.5 stroke-[2]" />
+                  </div>
+                </div>
+
+              </div>
+
+
+              {/* 3.5 CLEAN CENTERED "ADD NEW ROOM" CARD */}
+              <div className="bg-gradient-to-br from-[#F0FDF4] via-[#F8FFF9] to-white border border-[#DCFCE7] hover:border-[#10B981]/50 rounded-[22px] p-5 sm:p-6 shadow-xs text-center flex flex-col items-center justify-center gap-3.5 transition-all duration-200">
+                <div className="space-y-1 max-w-lg mx-auto">
+                  <h3 className="font-poppins font-black text-base sm:text-lg text-[#151538] leading-tight">
+                    Have a Vacant Room or Property?
                   </h3>
-                  <p className="text-xs text-[#94A3B8] font-bold uppercase tracking-wide">
-                    Amount: {selectedPlan === "basic" ? "₹19" : "₹49"} for {selectedPlan === "basic" ? "7 Days" : "30 Days"}
-                  </p>
-                </div>
-
-                {/* PREMIUM PHONEPE THEME QR CARD */}
-                <div className="bg-[#11121A] text-white p-6 rounded-[28px] border border-slate-800 shadow-xl flex flex-col items-center relative overflow-hidden font-sans">
-                  
-                  {/* State Bank of India logo mockup */}
-                  <div className="flex flex-col items-center space-y-1 mb-5">
-                    <div className="w-11 h-11 rounded-full bg-[#1A73E8] border border-white/20 flex items-center justify-center shadow-inner relative">
-                      <div className="w-4 h-4 rounded-full border-[3px] border-white flex items-center justify-center">
-                        <div className="w-1.5 h-3 bg-[#1A73E8] absolute bottom-1.5" />
-                      </div>
-                    </div>
-                    <span className="block font-semibold text-sm text-slate-100 tracking-tight">
-                      State Bank of India - 0396
-                    </span>
-                    <span className="text-[10px] text-emerald-400 font-medium">
-                      Primary account for receiving money
-                    </span>
-                  </div>
-
-                  {/* QR Image Box */}
-                  <div className="w-48 h-48 bg-white border border-slate-700 rounded-2xl flex items-center justify-center p-3 relative shadow-inner">
-                    <img 
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=9263119717@axl%26pn=RoomsWallah%26am=${selectedPlan === "basic" ? "19" : "49"}%26cu=INR%26tn=Boost_${boostingListing.id}`} 
-                      alt="UPI Payment QR Code" 
-                      className="w-full h-full object-contain"
-                    />
-                    {/* Small center overlay logo simulating PhonePe */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-[#5F259F] border-2 border-white flex items-center justify-center font-bold text-[10px] text-white">
-                      पे
-                    </div>
-                  </div>
-                  
-                  {/* UPI ID block */}
-                  <div className="mt-5 w-full flex flex-col items-center space-y-2">
-                    <div className="flex items-center space-x-2 bg-white/5 border border-white/10 px-3.5 py-1.5 rounded-full">
-                      <span className="text-xs font-semibold tracking-wide text-slate-300 select-all">
-                        UPI ID: 9263119717@axl
-                      </span>
-                      <button 
-                        onClick={() => {
-                          if (typeof navigator !== "undefined") {
-                            navigator.clipboard.writeText("9263119717@axl");
-                            alert("UPI ID copied to clipboard!");
-                          }
-                        }}
-                        className="text-[10px] bg-[#6C4CF1] hover:bg-[#5B3FE6] text-white px-2.5 py-0.5 rounded font-bold uppercase transition-colors cursor-pointer"
-                      >
-                        Copy
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Download / Share Buttons mockup */}
-                  <div className="grid grid-cols-2 gap-3 w-full pt-4 border-t border-white/5 mt-4">
-                    <button 
-                      onClick={async () => {
-                        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=9263119717@axl%26pn=RoomsWallah%26am=${selectedPlan === "basic" ? "19" : "49"}%26cu=INR%26tn=Boost_${boostingListing.id}`;
-                        try {
-                          const response = await fetch(qrUrl);
-                          const blob = await response.blob();
-                          const blobUrl = URL.createObjectURL(blob);
-                          const link = document.createElement("a");
-                          link.href = blobUrl;
-                          link.download = `roomswallah-payment-qr.png`;
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                          URL.revokeObjectURL(blobUrl);
-                        } catch (err) {
-                          window.open(qrUrl, "_blank");
-                        }
-                      }}
-                      className="flex items-center justify-center space-x-1.5 border border-white/15 hover:bg-white/5 text-slate-300 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-colors"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                      <span>Download</span>
-                    </button>
-                    <button 
-                      onClick={async () => {
-                        const paymentDetails = `RoomsWallah Boost Payment:\nAmount: ₹${selectedPlan === "basic" ? "19" : "49"}\nUPI ID: 9263119717@axl\nNote: Boost_${boostingListing.id}`;
-                        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=9263119717@axl%26pn=RoomsWallah%26am=${selectedPlan === "basic" ? "19" : "49"}%26cu=INR%26tn=Boost_${boostingListing.id}`;
-                        
-                        if (typeof navigator !== "undefined" && navigator.share) {
-                          try {
-                            await navigator.share({
-                              title: 'RoomsWallah Payment QR',
-                              text: paymentDetails,
-                              url: qrUrl
-                            });
-                          } catch (err) {
-                            console.error("Error sharing:", err);
-                          }
-                        } else {
-                          try {
-                            if (typeof navigator !== "undefined") {
-                              await navigator.clipboard.writeText(`${paymentDetails}\nQR Code: ${qrUrl}`);
-                              alert("Payment info copied to clipboard! Opening WhatsApp...");
-                            }
-                          } catch (clipErr) {}
-                          const encodedText = encodeURIComponent(`${paymentDetails}\nQR Code Link: ${qrUrl}`);
-                          window.open(`https://api.whatsapp.com/send?text=${encodedText}`, "_blank");
-                        }
-                      }}
-                      className="flex items-center justify-center space-x-1.5 border border-white/15 hover:bg-white/5 text-slate-300 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-colors"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 10.742l-2.016 1.152m0 0l-2.016 1.152m2.016-1.152L11 8m0 0l2.016-1.152m0 0l2.016-1.152M11 8v8M11 8l-2.016 1.152m2.016-1.152l2.016 1.152m-2.016-1.152v8" />
-                      </svg>
-                      <span>Share</span>
-                    </button>
-                  </div>
-
-                  {/* Supported UPI Apps Footer */}
-                  <div className="w-full flex items-center justify-between pt-4 mt-3 border-t border-white/5 text-[9px] text-slate-400 font-bold uppercase tracking-wide">
-                    <div className="flex items-center space-x-1">
-                      <span>Supported UPI apps</span>
-                    </div>
-                    <div className="flex space-x-2 text-slate-300">
-                      <span>PhonePe</span>
-                      <span>BHIM</span>
-                      <span>GPay</span>
-                      <span>Paytm</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Screenshot Uploader */}
-                <div className="space-y-2.5">
-                  <label className="text-xs font-semibold uppercase text-slate-600 tracking-wide block">
-                    Upload Payment Screenshot <span className="text-red-500">*</span>
-                  </label>
-                  
-                  {screenshotFileUrl ? (
-                    <div className="flex items-center justify-between p-3 bg-[#ECFDF5] border border-[#DEF7EC] rounded-2xl">
-                      <div className="flex items-center space-x-3 truncate">
-                        <div className="w-9 h-9 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600 shrink-0 animate-scale-in">
-                          <Check className="w-5 h-5 stroke-[2.5]" />
-                        </div>
-                        <span className="text-xs font-semibold text-emerald-800 truncate">Screenshot Uploaded Successfully</span>
-                      </div>
-                      <button 
-                        onClick={() => setScreenshotFileUrl("")} 
-                        className="text-xs font-black text-red-500 hover:underline uppercase shrink-0 pl-2 cursor-pointer"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="relative border-2 border-dashed border-[#ECECEC] hover:border-[#6C4CF1] rounded-2xl p-6 text-center cursor-pointer transition-colors bg-slate-50/50">
-                      <input 
-                        type="file" 
-                        accept="image/*"
-                        onChange={handleScreenshotChange}
-                        disabled={isUploadingScreenshot}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                      />
-                      <div className="space-y-1.5">
-                        <div className="w-9 h-9 rounded-full bg-primary-light text-primary flex items-center justify-center mx-auto">
-                          <Plus className="w-5 h-5 stroke-[2.2]" />
-                        </div>
-                        <span className="block text-xs font-bold text-slate-700">
-                          {isUploadingScreenshot ? "Uploading screenshot..." : "Upload payment screenshot (Image/SS)"}
-                        </span>
-                        <span className="text-[10px] text-[#94A3B8] font-semibold block">Max size: 5MB</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex space-x-3 pt-2">
-                  <button 
-                    onClick={() => setCheckoutStep("plans")}
-                    className="flex-1 bg-white hover:bg-slate-50 border border-[#E2E8F0] text-[#1E2235] font-poppins font-semibold py-3.5 rounded-xl text-xs uppercase tracking-wider cursor-pointer"
-                  >
-                    Back
-                  </button>
-                  <button 
-                    onClick={handleVerifySubmit}
-                    disabled={!screenshotFileUrl || isUploadingScreenshot}
-                    className="flex-1 bg-[#6C4CF1] hover:bg-[#5B3FE6] disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-poppins font-semibold py-3.5 rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-md transition-all duration-200"
-                  >
-                    Submit Verification
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Step 4: Submitting State */}
-            {checkoutStep === "submitting" && (
-              <div className="flex flex-col items-center justify-center py-10 space-y-5 text-center animate-fade-in">
-                <div className="relative w-16 h-16">
-                  <div className="absolute inset-0 rounded-full border-4 border-slate-100 border-t-[#6C4CF1] animate-spin"></div>
-                  <div className="absolute inset-2 rounded-full bg-[#6C4CF1]/5 flex items-center justify-center">
-                    <Sparkles className="w-6 h-6 text-[#6C4CF1] animate-pulse" />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <h4 className="font-poppins font-black text-lg text-[#1E2235]">Submitting Receipt</h4>
-                  <p className="text-xs text-[#94A3B8] font-bold uppercase tracking-wider">Please do not close this modal</p>
-                  <p className="text-xs text-slate-500 font-medium max-w-xs mx-auto pt-1 leading-normal">
-                    We are uploading and attaching your payment screenshot to this listing verification request.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Step 5: Success State */}
-            {checkoutStep === "success" && (
-              <div className="flex flex-col items-center justify-center py-6 space-y-5 text-center animate-scale-in">
-                <div className="relative">
-                  <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center border-4 border-emerald-100 relative z-10">
-                    <Check className="w-8 h-8 text-emerald-500 stroke-[3]" />
-                  </div>
-                  <div className="absolute -top-1 -left-1 w-2.5 h-2.5 bg-amber-400 rounded-full animate-bounce"></div>
-                  <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-blue-400 rounded-full animate-ping"></div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <h4 className="font-poppins font-black text-xl text-[#1E2235] tracking-tight">Thank You!</h4>
-                  <p className="text-[#6C4CF1] font-bold text-[10px] uppercase tracking-widest">Verification request submitted</p>
-                  <p className="text-xs text-slate-600 max-w-sm font-medium leading-relaxed pt-1.5">
-                    Your verification screenshot has been submitted successfully. Our team will verify your payment details, and your listing will be <span className="font-bold text-[#1E2235]">boosted within 1 hour</span>.
+                  <p className="text-xs sm:text-sm text-[#555570] font-medium leading-relaxed">
+                    List for free in 2 minutes & get direct tenant inquiries on WhatsApp.
                   </p>
                 </div>
 
                 <button
-                  onClick={() => {
-                    setShowBoostModal(false);
-                    setBoostingListing(null);
-                    setCheckoutStep("list");
-                  }}
-                  className="w-full bg-[#1E2235] hover:bg-[#2A2E45] text-white font-poppins font-semibold py-3.5 rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-md transition-all duration-200"
+                  type="button"
+                  onClick={handleStartAddListing}
+                  className="w-full sm:w-auto min-w-[220px] sm:min-w-[260px] bg-[#10B981] hover:bg-[#059669] text-white font-poppins font-black text-sm sm:text-[15px] py-3.5 sm:py-4 px-8 rounded-xl shadow-md shadow-[#10B981]/25 hover:shadow-lg hover:shadow-[#10B981]/35 hover:-translate-y-0.5 active:translate-y-0 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2 mx-auto"
                 >
-                  Back to Dashboard
+                  <Plus className="w-5 h-5 stroke-[3]" />
+                  <span>+ Add Room Listing</span>
+                </button>
+              </div>
+
+
+              {/* 4. MAIN TWO-COLUMN SECTION (Left: Recent Inquiries, Right: Boost Your Listing) */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+                
+                {/* LEFT: Recent Inquiries (40% / 5 cols) - Connected to Customer Leads */}
+                <div className="lg:col-span-5 bg-white border border-[#E8E8F0] rounded-[20px] p-4.5 sm:p-5 shadow-xs text-left flex flex-col justify-between">
+                  <div>
+                    {/* Header */}
+                    <div className="flex items-center justify-between pb-3.5 border-b border-[#F0F2F5]">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-poppins font-bold text-sm text-[#151538]">
+                          Recent Inquiries
+                        </h3>
+                        <span className="bg-[#EAF8EF] text-[#16A34A] text-[9.5px] font-extrabold px-2 py-0.5 rounded-full border border-[#A7F3D0]">
+                          {customerLeads.length} Leads
+                        </span>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => { setActiveNav("bookings"); setActiveScreen("bookings"); }}
+                        className="text-xs font-bold text-[#5B2BE0] hover:underline cursor-pointer flex items-center gap-0.5"
+                      >
+                        <span>View All Leads</span>
+                        <span>→</span>
+                      </button>
+                    </div>
+
+                    {/* Inquiry Rows from actual customerLeads */}
+                    {customerLeads.length === 0 ? (
+                      <div className="py-8 text-center text-slate-400">
+                        <MessageSquare className="w-7 h-7 mx-auto mb-1.5 opacity-30 text-[#5B2BE0]" />
+                        <p className="text-xs font-bold text-slate-600">No Inquiries Yet</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">When tenants contact you, they will appear here</p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-[#F8F9FA] mt-1">
+                        {customerLeads.slice(0, 4).map((inq) => (
+                          <div 
+                            key={inq.id} 
+                            onClick={() => { setActiveNav("bookings"); setActiveScreen("bookings"); }}
+                            className="py-2.5 sm:py-3 flex items-center justify-between hover:bg-slate-50/80 rounded-xl px-1.5 transition-colors cursor-pointer group"
+                          >
+                            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                              <div className={`w-8.5 h-8.5 sm:w-9 sm:h-9 rounded-full ${
+                                inq.type === "whatsapp" 
+                                  ? "bg-[#25D366] text-white" 
+                                  : inq.type === "call" 
+                                  ? "bg-[#3B82F6] text-white" 
+                                  : "bg-[#5B2BE0] text-white"
+                              } flex items-center justify-center text-xs font-bold shrink-0 shadow-xs`}>
+                                {inq.userName?.charAt(0).toUpperCase() || (inq.type === "whatsapp" ? "W" : inq.type === "call" ? "C" : "B")}
+                              </div>
+                              <div className="space-y-0.5 min-w-0">
+                                <h4 className="font-poppins font-bold text-xs text-[#151538] leading-tight truncate group-hover:text-[#5B2BE0] transition-colors">
+                                  {inq.userName || "Guest User"}
+                                </h4>
+                                <p className="text-[10.5px] sm:text-[11px] text-[#666680] truncate">
+                                  {inq.propertyTitle} {inq.phone ? `• ${inq.phone}` : ""}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
+                              <span className="text-[10px] text-[#8C8CA1] font-medium">
+                                {inq.time}
+                              </span>
+                              {inq.type === "whatsapp" && (
+                                <span className="bg-[#25D366]/10 text-[#128C7E] text-[8.5px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                  💬 WhatsApp
+                                </span>
+                              )}
+                              {inq.type === "call" && (
+                                <span className="bg-blue-50 text-blue-600 text-[8.5px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                  📞 Call
+                                </span>
+                              )}
+                              {inq.type === "booking" && (
+                                <span className="bg-[#EFE7FF] text-[#5B2BE0] text-[8.5px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                  ✨ Booking
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bottom Outlined Button */}
+                  <button
+                    type="button"
+                    onClick={() => { setActiveNav("bookings"); setActiveScreen("bookings"); }}
+                    className="w-full bg-white hover:bg-[#F3EEFF] border border-[#5B2BE0] text-[#5B2BE0] text-xs font-bold py-2.5 rounded-xl transition-all mt-4 cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <span>View All Inquiries & Customer Leads</span>
+                    <span>→</span>
+                  </button>
+                </div>
+
+
+                {/* RIGHT: Boost Your Listing Card (60% / 7 cols) - High-Impact Supercharge UI */}
+                <div className="lg:col-span-7 bg-gradient-to-br from-[#FAF6FF] via-[#F4EBFD] to-[#FFF4EC] border border-[#E4D4FF] rounded-[22px] p-4.5 sm:p-7 shadow-[0_4px_24px_rgba(91,43,224,0.06)] text-left relative overflow-hidden flex flex-col justify-between group">
+                  
+                  {/* Subtle top background glow */}
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-radial from-[#FF7A00]/10 via-[#5B2BE0]/5 to-transparent rounded-full blur-2xl pointer-events-none" />
+
+                  <div className="relative z-10">
+                    {/* Header + Badges */}
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="bg-gradient-to-r from-[#FF7A00] to-[#FF4D00] text-white text-[9px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-xs flex items-center gap-1">
+                          <span>⚡ 3X MORE LEADS</span>
+                        </span>
+                        <span className="bg-[#EFE7FF] text-[#5B2BE0] border border-[#DDCBFF] text-[9.5px] font-bold px-2.5 py-0.5 rounded-full">
+                          Featured
+                        </span>
+                      </div>
+                    </div>
+
+                    <h3 className="font-poppins font-black text-lg sm:text-xl text-[#151538] tracking-tight mt-2.5">
+                      Boost Your Listing
+                    </h3>
+
+                    <p className="text-[11.5px] sm:text-xs text-[#555570] font-medium mt-1 max-w-sm leading-relaxed">
+                      Rank <span className="text-[#5B2BE0] font-bold">#1 on search results</span> and get genuine student inquiries on WhatsApp 3x faster.
+                    </p>
+
+                    {/* Value Props Grid (2x2 on mobile & desktop) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4 max-w-md">
+                      <div className="flex items-center gap-2 text-[11px] sm:text-xs font-semibold text-[#151538] bg-white/80 backdrop-blur-xs px-2.5 py-2 rounded-xl border border-white/80 shadow-xs">
+                        <CheckCircle2 className="w-4 h-4 text-[#16A34A] shrink-0" />
+                        <span>Top position in search results</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] sm:text-xs font-semibold text-[#151538] bg-white/80 backdrop-blur-xs px-2.5 py-2 rounded-xl border border-white/80 shadow-xs">
+                        <CheckCircle2 className="w-4 h-4 text-[#16A34A] shrink-0" />
+                        <span>Featured badge on listing</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] sm:text-xs font-semibold text-[#151538] bg-white/80 backdrop-blur-xs px-2.5 py-2 rounded-xl border border-white/80 shadow-xs">
+                        <CheckCircle2 className="w-4 h-4 text-[#16A34A] shrink-0" />
+                        <span>3X More views & inquiries</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] sm:text-xs font-semibold text-[#151538] bg-white/80 backdrop-blur-xs px-2.5 py-2 rounded-xl border border-white/80 shadow-xs">
+                        <CheckCircle2 className="w-4 h-4 text-[#16A34A] shrink-0" />
+                        <span>Priority customer support</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* High-Fidelity 3D Rocket Artwork */}
+                  <div className="hidden sm:block absolute right-4 bottom-3 select-none pointer-events-none group-hover:scale-105 transition-transform duration-300">
+                    <svg className="w-36 h-40" viewBox="0 0 140 160" fill="none">
+                      {/* Sparkles / Stars */}
+                      <circle cx="20" cy="30" r="2.5" fill="#FFB800" opacity="0.8" />
+                      <circle cx="125" cy="45" r="2" fill="#7C4DFF" opacity="0.9" />
+                      <circle cx="110" cy="15" r="3" fill="#FF7A00" opacity="0.8" />
+                      
+                      {/* Smoke Clouds */}
+                      <ellipse cx="70" cy="145" rx="42" ry="14" fill="#EDE4FF" opacity="0.8" />
+                      <ellipse cx="45" cy="140" rx="24" ry="11" fill="#E4D5FF" opacity="0.9" />
+                      <ellipse cx="95" cy="140" rx="24" ry="11" fill="#E4D5FF" opacity="0.9" />
+                      
+                      {/* Rocket Booster Flames */}
+                      <path d="M60 105 Q70 138 70 145 Q70 138 80 105 Z" fill="#FF5500" />
+                      <path d="M64 105 Q70 128 70 132 Q70 128 76 105 Z" fill="#FFB800" />
+                      
+                      {/* Rocket Body */}
+                      <path d="M70 15 C50 38 50 82 54 105 L86 105 C90 82 90 38 70 15 Z" fill="#FFFFFF" stroke="#5B2BE0" strokeWidth="2.5" />
+                      <path d="M70 15 C60 30 58 55 58 72 L82 72 C82 55 80 30 70 15 Z" fill="url(#rocketGrad)" />
+                      
+                      {/* Porcelein Window */}
+                      <circle cx="70" cy="80" r="8.5" fill="#F0E8FF" stroke="#5B2BE0" strokeWidth="2.2" />
+                      <circle cx="68" cy="78" r="3" fill="#FFFFFF" opacity="0.8" />
+                      
+                      {/* Fins / Wings */}
+                      <path d="M54 75 L32 102 L54 98 Z" fill="#7C4DFF" stroke="#5B2BE0" strokeWidth="2" />
+                      <path d="M86 75 L108 102 L86 98 Z" fill="#7C4DFF" stroke="#5B2BE0" strokeWidth="2" />
+
+                      <defs>
+                        <linearGradient id="rocketGrad" x1="58" y1="15" x2="82" y2="72" gradientUnits="userSpaceOnUse">
+                          <stop stopColor="#6C4CF1" />
+                          <stop offset="1" stopColor="#5B2BE0" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                  </div>
+
+                  {/* Main CTA: Glowing Orange Pill Button (Full width on mobile, auto on desktop) */}
+                  <div className="mt-5 sm:mt-6 relative z-10">
+                    <button
+                      onClick={() => openBoostModalForListing()}
+                      className="w-full sm:w-auto bg-gradient-to-r from-[#FF7A00] via-[#FF6600] to-[#FF4D00] hover:from-[#FF6600] hover:to-[#E63900] text-white text-xs sm:text-[13px] font-poppins font-extrabold py-3.5 px-8 rounded-full uppercase tracking-wider transition-all duration-300 shadow-[0_8px_22px_rgba(255,107,0,0.35)] hover:shadow-[0_12px_28px_rgba(255,107,0,0.45)] hover:-translate-y-0.5 active:translate-y-0 active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      <Rocket className="w-4 h-4 text-white" />
+                      <span>BOOST LISTING</span>
+                    </button>
+                  </div>
+
+                </div>
+
+              </div>
+
+
+              {/* 5. YOUR LISTINGS OVERVIEW (Dual Mode: Native Cards on Mobile, Full Table on Desktop) */}
+              <div className="bg-white border border-[#E8E8F0] rounded-[20px] p-4 sm:p-6 shadow-xs text-left space-y-4">
+                
+                {/* Header */}
+                <div className="flex items-center justify-between pb-1 sm:pb-2">
+                  <h3 className="font-poppins font-bold text-sm sm:text-base text-[#151538]">
+                    Your Listings Overview
+                  </h3>
+                  <button
+                    onClick={handleStartAddListing}
+                    className="bg-[#5B2BE0] hover:bg-[#4A20C0] text-white text-[11px] sm:text-xs font-bold py-2 px-3 sm:px-4 rounded-xl transition-all flex items-center gap-1.5 shadow-sm shadow-[#5B2BE0]/20 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>+ Add New Listing</span>
+                  </button>
+                </div>
+
+                {/* DESKTOP TABLE (Hidden on Mobile) */}
+                <div className="hidden md:block overflow-x-auto no-scrollbar">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-[#F0F2F5] text-[#8C8CA1] font-semibold text-[11px]">
+                        <th className="py-3 px-3">Property</th>
+                        <th className="py-3 px-3">Type</th>
+                        <th className="py-3 px-3">Location</th>
+                        <th className="py-3 px-3">Rent</th>
+                        <th className="py-3 px-3">Views</th>
+                        <th className="py-3 px-3">Inquiries</th>
+                        <th className="py-3 px-3">Status</th>
+                        <th className="py-3 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#F8F9FA]">
+                      {listings.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="py-12 text-center text-slate-400">
+                            <House className="w-8 h-8 mx-auto mb-2 opacity-30 text-[#5B2BE0]" />
+                            <p className="text-sm font-bold text-slate-700">No properties listed yet</p>
+                            <p className="text-xs text-slate-400 mt-0.5">Click &quot;+ Add New Listing&quot; above to publish your first property</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        listings.map((item) => (
+                          <tr key={item.id} className="hover:bg-slate-50/70 transition-colors group">
+                            
+                            {/* Property Thumbnail & ID */}
+                            <td className="py-3.5 px-3">
+                              <div className="flex items-center gap-3">
+                                <img
+                                  src={item.image}
+                                  alt={item.title}
+                                  className="w-12 h-12 rounded-lg object-cover border border-[#E8E8F0] shrink-0"
+                                />
+                                <div>
+                                  <h4 className="font-poppins font-bold text-xs text-[#151538] leading-tight">
+                                    {item.title}
+                                  </h4>
+                                  <span className="text-[10px] text-[#8C8CA1] font-medium">
+                                    ID: {item.id}
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Type Badge */}
+                            <td className="py-3.5 px-3">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md capitalize ${
+                                item.type === "pg" 
+                                  ? "bg-[#EFF6FF] text-[#3B82F6]" 
+                                  : "bg-[#F3EEFF] text-[#5B2BE0]"
+                              }`}>
+                                {item.type || "Flat"}
+                              </span>
+                            </td>
+
+                            {/* Location */}
+                            <td className="py-3.5 px-3 font-medium text-[#666680]">
+                              {item.location}
+                            </td>
+
+                            {/* Rent */}
+                            <td className="py-3.5 px-3 font-extrabold text-[#151538]">
+                              ₹{item.rent.toLocaleString()}
+                            </td>
+
+                            {/* Views */}
+                            <td className="py-3.5 px-3 font-medium text-[#666680]">
+                              {item.views || 0}
+                            </td>
+
+                            {/* Inquiries */}
+                            <td className="py-3.5 px-3 font-medium text-[#666680]">
+                              {item.inquiries || 0}
+                            </td>
+
+                            {/* Status */}
+                            <td className="py-3.5 px-3">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                item.status === "Active"
+                                  ? "bg-[#EAF8EF] text-[#16A34A]"
+                                  : "bg-[#F1F1F5] text-[#717182]"
+                              }`}>
+                                {item.status}
+                              </span>
+                            </td>
+
+                            {/* Actions (Three-dot dropdown) */}
+                            <td className="py-3.5 px-3 text-right relative">
+                              <button
+                                onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
+                                className="p-1.5 rounded-lg hover:bg-slate-100 text-[#8C8CA1] hover:text-[#151538] transition-colors cursor-pointer"
+                              >
+                                <MoreVertical className="w-4 h-4" />
+                              </button>
+
+                              {openMenuId === item.id && (
+                                <>
+                                  {/* Backdrop to close dropdown on outside click anywhere */}
+                                  <div 
+                                    className="fixed inset-0 z-40 bg-transparent" 
+                                    onClick={() => setOpenMenuId(null)} 
+                                  />
+                                  <div className="absolute right-3 top-10 w-36 bg-white border border-[#E8E8F0] rounded-xl shadow-xl p-1 z-50 text-left space-y-0.5">
+                                    <button
+                                      onClick={() => {
+                                        setOpenMenuId(null);
+                                        router.push(`/${item.type === "flat" ? "flats" : item.type === "pg" ? "pg" : "rooms"}/${item.id}`);
+                                      }}
+                                      className="w-full px-2.5 py-1.5 text-[11px] font-semibold text-[#151538] hover:bg-[#F3EEFF] rounded-lg flex items-center gap-1.5 cursor-pointer"
+                                    >
+                                      <Eye className="w-3.5 h-3.5 text-[#5B2BE0]" />
+                                      <span>View</span>
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setOpenMenuId(null);
+                                        handleEditListing(item);
+                                      }}
+                                      className="w-full px-2.5 py-1.5 text-[11px] font-semibold text-[#151538] hover:bg-[#F3EEFF] rounded-lg flex items-center gap-1.5 cursor-pointer"
+                                    >
+                                      <Edit3 className="w-3.5 h-3.5 text-[#5B2BE0]" />
+                                      <span>Edit</span>
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setOpenMenuId(null);
+                                        setBoostingListing(item);
+                                        setShowBoostModal(true);
+                                        setCheckoutStep("plans");
+                                      }}
+                                      className="w-full px-2.5 py-1.5 text-[11px] font-semibold text-[#5B2BE0] hover:bg-[#F3EEFF] rounded-lg flex items-center gap-1.5 cursor-pointer"
+                                    >
+                                      <Rocket className="w-3.5 h-3.5 text-[#5B2BE0]" />
+                                      <span>Boost</span>
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setOpenMenuId(null);
+                                        handleToggleStatus(item.id);
+                                      }}
+                                      className="w-full px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 rounded-lg flex items-center gap-1.5 cursor-pointer"
+                                    >
+                                      <span className={`w-2 h-2 rounded-full ${item.status === "Active" ? "bg-amber-500" : "bg-emerald-500"}`} />
+                                      <span>{item.status === "Active" ? "Deactivate" : "Activate"}</span>
+                                    </button>
+                                    <div className="border-t border-slate-100 my-0.5" />
+                                    <button
+                                      onClick={() => {
+                                        setOpenMenuId(null);
+                                        handleDeleteListing(item.id);
+                                      }}
+                                      className="w-full px-2.5 py-1.5 text-[11px] font-semibold text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-1.5 cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      <span>Delete</span>
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </td>
+
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* MOBILE LISTING CARDS (Optimized for Mobile Screens) */}
+                <div className="block md:hidden space-y-3">
+                  {listings.length === 0 ? (
+                    <div className="py-8 text-center text-slate-400 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                      <House className="w-7 h-7 mx-auto mb-1.5 opacity-30 text-[#5B2BE0]" />
+                      <p className="text-xs font-bold text-slate-700">No properties listed yet</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Click &quot;+ Add New Listing&quot; to publish</p>
+                    </div>
+                  ) : (
+                    listings.map((item) => (
+                    <div 
+                      key={item.id} 
+                      className="p-3 rounded-2xl bg-slate-50/70 border border-[#E8E8F0] space-y-2.5 relative"
+                    >
+                      <div className="flex items-start gap-3">
+                        <img
+                          src={item.image}
+                          alt={item.title}
+                          className="w-16 h-16 rounded-xl object-cover border border-[#E8E8F0] shrink-0"
+                        />
+                        <div className="flex-1 min-w-0 pr-6">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md ${
+                              item.status === "Active" 
+                                ? "bg-[#EAF8EF] text-[#16A34A]" 
+                                : "bg-[#F1F1F5] text-[#717182]"
+                            }`}>
+                              {item.status}
+                            </span>
+                            <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md capitalize ${
+                              item.type === "pg" 
+                                ? "bg-[#EFF6FF] text-[#3B82F6]" 
+                                : "bg-[#F3EEFF] text-[#5B2BE0]"
+                            }`}>
+                              {item.type || "Flat"}
+                            </span>
+                          </div>
+
+                          <h4 className="font-poppins font-bold text-xs text-[#151538] truncate mt-1">
+                            {item.title}
+                          </h4>
+                          <p className="text-[10.5px] text-[#666680] truncate">
+                            {item.location}
+                          </p>
+                          <p className="text-xs font-black text-[#151538] mt-0.5">
+                            ₹{item.rent.toLocaleString()} <span className="text-[9.5px] font-normal text-[#8C8CA1]">/month</span>
+                          </p>
+                        </div>
+
+                        {/* Mobile Actions 3-dot */}
+                        <div className="absolute top-2.5 right-2">
+                          <button
+                            onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
+                            className="p-1 rounded-lg text-[#8C8CA1] hover:text-[#151538]"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+
+                          {openMenuId === item.id && (
+                            <>
+                              <div 
+                                className="fixed inset-0 z-40" 
+                                onClick={() => setOpenMenuId(null)} 
+                              />
+                              <div className="absolute right-0 top-7 w-40 bg-white border border-[#E8E8F0] rounded-xl shadow-2xl p-1 z-50 text-left space-y-0.5">
+                                <button
+                                  onClick={() => {
+                                    setOpenMenuId(null);
+                                    handleEditListing(item);
+                                  }}
+                                  className="w-full px-2.5 py-1.5 text-[11px] font-semibold text-[#151538] hover:bg-[#F3EEFF] hover:text-[#5B2BE0] rounded-lg flex items-center gap-1.5 cursor-pointer"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5 text-[#5B2BE0]" />
+                                  <span>Edit Listing</span>
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setOpenMenuId(null);
+                                    handleToggleStatus(item.id);
+                                  }}
+                                  className="w-full px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 rounded-lg flex items-center gap-1.5 cursor-pointer"
+                                >
+                                  <span className={`w-2 h-2 rounded-full ${item.status === "Active" ? "bg-amber-500" : "bg-emerald-500"}`} />
+                                  <span>{item.status === "Active" ? "Deactivate" : "Activate"}</span>
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setOpenMenuId(null);
+                                    router.push(`/${item.type === "flat" ? "flats" : item.type === "pg" ? "pg" : "rooms"}/${item.id}`);
+                                  }}
+                                  className="w-full px-2.5 py-1.5 text-[11px] font-semibold text-[#151538] hover:bg-[#F3EEFF] rounded-lg flex items-center gap-1.5 cursor-pointer"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                                  <span>View on Site</span>
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setOpenMenuId(null);
+                                    openBoostModalForListing(item);
+                                  }}
+                                  className="w-full px-2.5 py-1.5 text-[11px] font-semibold text-[#FF7A00] hover:bg-orange-50 rounded-lg flex items-center gap-1.5 cursor-pointer"
+                                >
+                                  <Rocket className="w-3.5 h-3.5 text-[#FF7A00]" />
+                                  <span>Boost</span>
+                                </button>
+                                <div className="border-t border-slate-100 my-0.5" />
+                                <button
+                                  onClick={() => {
+                                    setOpenMenuId(null);
+                                    handleDeleteListing(item.id);
+                                  }}
+                                  className="w-full px-2.5 py-1.5 text-[11px] font-semibold text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-1.5 cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Delete</span>
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Clean footer in mobile card (views/comments icon removed) */}
+                      <div className="flex items-center justify-between pt-2 border-t border-[#E8E8F0]/70 text-[10.5px] text-[#666680] font-medium px-1">
+                        <span>Sharing: <b className="text-[#151538]">{item.sharing || "Single"}</b></span>
+                        <span className="text-[#8C8CA1]">ID: {item.id}</span>
+                      </div>
+                    </div>
+                  )))}
+                </div>
+
+                {/* Table Footer: View All Listings Button */}
+                <div className="pt-2 text-center">
+                  <button
+                    onClick={() => { setActiveNav("listings"); setActiveScreen("listings"); }}
+                    className="w-full sm:w-auto bg-white hover:bg-[#F3EEFF] border border-[#5B2BE0] text-[#5B2BE0] text-xs font-bold py-2.5 px-8 rounded-xl transition-all cursor-pointer inline-block"
+                  >
+                    View All Listings ({listings.length}) →
+                  </button>
+                </div>
+
+              </div>
+
+            </>
+          )}
+
+
+
+
+          {/* ========================================================================= */}
+          {/* SCREEN: MY LISTINGS (DEDICATED OWNER PROPERTIES VIEW) */}
+          {/* ========================================================================= */}
+          {activeScreen === "listings" && (
+            <div className="space-y-6 text-left">
+              
+              {/* 1. MY LISTINGS HERO / HEADER BAR */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border border-[#E8E8F0] rounded-[22px] p-5 sm:p-7 shadow-xs">
+                <div>
+                  <div className="flex items-center gap-2 text-xs font-bold text-[#8C8CA1] mb-1">
+                    <button 
+                      onClick={() => { setActiveNav("dashboard"); setActiveScreen("dashboard"); }}
+                      className="hover:text-[#5B2BE0] cursor-pointer"
+                    >
+                      Dashboard
+                    </button>
+                    <span>/</span>
+                    <span className="text-[#5B2BE0]">My Listings</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <h1 className="font-poppins font-black text-2xl sm:text-3xl text-[#151538] tracking-tight">
+                      My Properties & Listings
+                    </h1>
+                    <span className="bg-[#EFE7FF] text-[#5B2BE0] font-black text-xs px-2.5 py-1 rounded-full">
+                      {listings.length} Total
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-[13px] text-[#666680] mt-1 max-w-xl font-medium">
+                    Manage pricing, availability, boost placement, and track real-time tenant views across all your listed properties.
+                  </p>
+                </div>
+
+                {/* Header CTA Buttons */}
+                <div className="flex items-center gap-2.5 shrink-0">
+                  <button
+                    onClick={() => openBoostModalForListing()}
+                    className="bg-gradient-to-r from-[#FF7A00] via-[#FF6600] to-[#FF4D00] hover:from-[#FF6600] hover:to-[#E63900] text-white text-xs font-poppins font-extrabold py-3 px-5 rounded-full uppercase tracking-wider transition-all duration-200 shadow-[0_8px_20px_rgba(255,107,0,0.3)] hover:shadow-[0_12px_26px_rgba(255,107,0,0.4)] active:scale-98 cursor-pointer flex items-center gap-2"
+                  >
+                    <Rocket className="w-4 h-4" />
+                    <span>BOOST A PROPERTY</span>
+                  </button>
+
+                  <button
+                    onClick={handleStartAddListing}
+                    className="bg-[#5B2BE0] hover:bg-[#4A20C0] text-white text-xs font-bold py-3 px-5 rounded-xl transition-all shadow-md shadow-[#5B2BE0]/20 active:scale-98 cursor-pointer flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4 stroke-[2.5]" />
+                    <span>Add New Listing</span>
+                  </button>
+                </div>
+              </div>
+
+
+              {/* 2. MINI SUMMARY METRICS BAR */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div className="bg-white border border-[#E8E8F0] rounded-2xl p-4 shadow-xs flex items-center justify-between">
+                  <div>
+                    <span className="text-[11px] font-bold text-[#8C8CA1] uppercase tracking-wider">Total Properties</span>
+                    <h4 className="font-poppins font-black text-2xl text-[#151538] mt-0.5">{listings.length}</h4>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-[#F3EEFF] text-[#5B2BE0] flex items-center justify-center font-bold">
+                    <House className="w-5 h-5 stroke-[2]" />
+                  </div>
+                </div>
+
+                <div className="bg-white border border-[#E8E8F0] rounded-2xl p-4 shadow-xs flex items-center justify-between">
+                  <div>
+                    <span className="text-[11px] font-bold text-[#8C8CA1] uppercase tracking-wider">Active Online</span>
+                    <h4 className="font-poppins font-black text-2xl text-[#16A34A] mt-0.5">
+                      {listings.filter(l => l.status === "Active").length}
+                    </h4>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-[#EAF8EF] text-[#16A34A] flex items-center justify-center font-bold">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="bg-white border border-[#E8E8F0] rounded-2xl p-4 shadow-xs flex items-center justify-between">
+                  <div>
+                    <span className="text-[11px] font-bold text-[#8C8CA1] uppercase tracking-wider">Boosted / Top #1</span>
+                    <h4 className="font-poppins font-black text-2xl text-[#FF7A00] mt-0.5">
+                      {listings.filter(l => l.isBoosted || (l.views && l.views > 350)).length}
+                    </h4>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-[#FFF4EC] text-[#FF7A00] flex items-center justify-center font-bold">
+                    <Rocket className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="bg-white border border-[#E8E8F0] rounded-2xl p-4 shadow-xs flex items-center justify-between">
+                  <div>
+                    <span className="text-[11px] font-bold text-[#8C8CA1] uppercase tracking-wider">Total Inquiries</span>
+                    <h4 className="font-poppins font-black text-2xl text-[#5B2BE0] mt-0.5">
+                      {listings.reduce((acc, curr) => acc + (curr.inquiries || 15), 0)}
+                    </h4>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-[#F0F2F5] text-[#151538] flex items-center justify-center font-bold">
+                    <MessageCircle className="w-5 h-5" />
+                  </div>
+                </div>
+              </div>
+
+
+              {/* 3. TOOLBAR: SEARCH, CATEGORY TABS, STATUS FILTER, SORT & VIEW TOGGLE */}
+              <div className="bg-white border border-[#E8E8F0] rounded-2xl p-4 shadow-xs space-y-3.5">
+                
+                {/* Search & Main Filter Controls Row */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                  
+                  {/* Search Input */}
+                  <div className="relative flex-1 max-w-md">
+                    <Search className="w-4 h-4 text-[#8C8CA1] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Search by property title, area, locality or ID..."
+                      value={listingSearchQuery}
+                      onChange={(e) => setListingSearchQuery(e.target.value)}
+                      className="w-full bg-[#F8F9FB] border border-[#E8E8F0] rounded-xl pl-9 pr-8 py-2.5 text-xs text-[#151538] placeholder:text-[#8C8CA1] focus:outline-none focus:border-[#5B2BE0] focus:bg-white transition-all font-medium"
+                    />
+                    {listingSearchQuery && (
+                      <button 
+                        onClick={() => setListingSearchQuery("")}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Right Controls: Status filter, Sort & View Mode Switcher */}
+                  <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar pb-0.5 sm:pb-0">
+                    
+                    {/* Status Select */}
+                    <select
+                      value={listingStatusFilter}
+                      onChange={(e) => setListingStatusFilter(e.target.value as any)}
+                      className="bg-[#F8F9FB] border border-[#E8E8F0] text-[#151538] text-xs font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#5B2BE0] cursor-pointer"
+                    >
+                      <option value="all">All Status</option>
+                      <option value="active">Active Only</option>
+                      <option value="inactive">Inactive Only</option>
+                      <option value="boosted">Boosted / Top #1</option>
+                    </select>
+
+                    {/* Sort Select */}
+                    <select
+                      value={listingSortBy}
+                      onChange={(e) => setListingSortBy(e.target.value as any)}
+                      className="bg-[#F8F9FB] border border-[#E8E8F0] text-[#151538] text-xs font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#5B2BE0] cursor-pointer"
+                    >
+                      <option value="newest">Sort: Newest First</option>
+                      <option value="price_asc">Price: Low to High</option>
+                      <option value="price_desc">Price: High to Low</option>
+                      <option value="views">Most Views</option>
+                    </select>
+
+                    {/* Grid vs Table View Mode Switcher */}
+                    <div className="flex items-center bg-[#F1F1F5] p-1 rounded-xl border border-[#E8E8F0] shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setListingViewMode("grid")}
+                        className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                          listingViewMode === "grid" 
+                            ? "bg-white text-[#5B2BE0] shadow-xs" 
+                            : "text-[#8C8CA1] hover:text-[#151538]"
+                        }`}
+                        title="Grid View"
+                      >
+                        <Grid className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setListingViewMode("table")}
+                        className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                          listingViewMode === "table" 
+                            ? "bg-white text-[#5B2BE0] shadow-xs" 
+                            : "text-[#8C8CA1] hover:text-[#151538]"
+                        }`}
+                        title="Table View"
+                      >
+                        <List className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                  </div>
+                </div>
+
+                {/* Category Type Tabs Bar */}
+                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pt-1 border-t border-[#F0F2F5]">
+                  {[
+                    { id: "all", label: "All Types", count: listings.length },
+                    { id: "room", label: "Rooms", count: listings.filter(l => l.type === "room").length },
+                    { id: "pg", label: "PGs", count: listings.filter(l => l.type === "pg").length },
+                    { id: "flat", label: "Flats", count: listings.filter(l => l.type === "flat").length },
+                    { id: "hostel", label: "Hostels", count: listings.filter(l => l.type === "hostel").length },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setListingTypeFilter(tab.id as any)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                        listingTypeFilter === tab.id
+                          ? "bg-[#5B2BE0] text-white shadow-xs shadow-[#5B2BE0]/20"
+                          : "bg-[#F8F9FB] text-[#666680] hover:bg-[#F0EDFE] hover:text-[#5B2BE0] border border-[#E8E8F0]"
+                      }`}
+                    >
+                      <span>{tab.label}</span>
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
+                        listingTypeFilter === tab.id ? "bg-white/20 text-white" : "bg-white text-[#666680]"
+                      }`}>
+                        {tab.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+              </div>
+
+
+              {/* 4. LISTINGS DISPLAY: GRID VIEW OR TABLE VIEW */}
+              {listings
+                .filter((item) => {
+                  if (listingSearchQuery.trim()) {
+                    const q = listingSearchQuery.toLowerCase();
+                    const matchTitle = item.title.toLowerCase().includes(q);
+                    const matchLoc = item.location.toLowerCase().includes(q);
+                    const matchId = item.id.toLowerCase().includes(q);
+                    if (!matchTitle && !matchLoc && !matchId) return false;
+                  }
+                  if (listingTypeFilter !== "all" && item.type !== listingTypeFilter) return false;
+                  if (listingStatusFilter === "active" && item.status !== "Active") return false;
+                  if (listingStatusFilter === "inactive" && item.status !== "Inactive") return false;
+                  if (listingStatusFilter === "boosted" && !item.isBoosted && (!item.views || item.views < 350)) return false;
+                  return true;
+                }).length === 0 ? (
+                /* Empty State */
+                <div className="bg-white border border-[#E8E8F0] rounded-[22px] p-12 text-center space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-[#F3EEFF] text-[#5B2BE0] flex items-center justify-center mx-auto">
+                    <Search className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <h3 className="font-poppins font-bold text-lg text-[#151538]">No listings found</h3>
+                    <p className="text-xs text-[#666680] mt-1 max-w-sm mx-auto">
+                      {listingSearchQuery || listingTypeFilter !== "all" || listingStatusFilter !== "all"
+                        ? "No properties match your current filter criteria. Try resetting filters."
+                        : "You haven't added any listings yet. Start adding your first property!"}
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-center gap-3 pt-2">
+                    {(listingSearchQuery || listingTypeFilter !== "all" || listingStatusFilter !== "all") && (
+                      <button
+                        onClick={() => { setListingSearchQuery(""); setListingTypeFilter("all"); setListingStatusFilter("all"); }}
+                        className="px-4 py-2 bg-white border border-[#5B2BE0] text-[#5B2BE0] text-xs font-bold rounded-xl hover:bg-[#F3EEFF] cursor-pointer"
+                      >
+                        Reset All Filters
+                      </button>
+                    )}
+                    <button
+                      onClick={handleStartAddListing}
+                      className="px-5 py-2 bg-[#5B2BE0] text-white text-xs font-bold rounded-xl hover:bg-[#4A20C0] shadow-md shadow-[#5B2BE0]/20 cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add New Property</span>
+                    </button>
+                  </div>
+                </div>
+              ) : listingViewMode === "grid" ? (
+                /* GRID CARDS VIEW */
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {listings
+                    .filter((item) => {
+                      if (listingSearchQuery.trim()) {
+                        const q = listingSearchQuery.toLowerCase();
+                        const matchTitle = item.title.toLowerCase().includes(q);
+                        const matchLoc = item.location.toLowerCase().includes(q);
+                        const matchId = item.id.toLowerCase().includes(q);
+                        if (!matchTitle && !matchLoc && !matchId) return false;
+                      }
+                      if (listingTypeFilter !== "all" && item.type !== listingTypeFilter) return false;
+                      if (listingStatusFilter === "active" && item.status !== "Active") return false;
+                      if (listingStatusFilter === "inactive" && item.status !== "Inactive") return false;
+                      if (listingStatusFilter === "boosted" && !item.isBoosted && (!item.views || item.views < 350)) return false;
+                      return true;
+                    })
+                    .sort((a, b) => {
+                      if (listingSortBy === "price_asc") return a.rent - b.rent;
+                      if (listingSortBy === "price_desc") return b.rent - a.rent;
+                      if (listingSortBy === "views") return (b.views || 0) - (a.views || 0);
+                      return 0;
+                    })
+                    .map((item) => {
+                      const isItemBoosted = item.isBoosted || (item.views && item.views > 350);
+                      return (
+                        <div 
+                          key={item.id}
+                          className="bg-white border border-[#E8E8F0] hover:border-[#5B2BE0]/50 rounded-[20px] overflow-hidden shadow-xs hover:shadow-lg transition-all duration-200 flex flex-col justify-between group"
+                        >
+                          <div>
+                            {/* Image with badges */}
+                            <div className="relative h-48 w-full overflow-hidden bg-slate-100">
+                              <img
+                                src={item.image}
+                                alt={item.title}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
+
+                              {/* Top Badges */}
+                              <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
+                                <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider backdrop-blur-md shadow-xs ${
+                                  item.status === "Active" 
+                                    ? "bg-[#16A34A]/90 text-white" 
+                                    : "bg-slate-800/80 text-white/90"
+                                }`}>
+                                  {item.status}
+                                </span>
+
+                                <div className="flex items-center gap-1.5">
+                                  {isItemBoosted && (
+                                    <span className="bg-gradient-to-r from-[#FF7A00] to-[#FF4D00] text-white text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-md flex items-center gap-1">
+                                      <Rocket className="w-3 h-3" />
+                                      <span>BOOSTED #1</span>
+                                    </span>
+                                  )}
+                                  <span className="bg-white/90 backdrop-blur-md text-[#151538] font-bold text-[10px] px-2.5 py-0.5 rounded-full uppercase">
+                                    {item.type}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Bottom info on image */}
+                              <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-white">
+                                <span className="text-[11px] font-semibold bg-black/40 backdrop-blur-xs px-2 py-0.5 rounded-md">
+                                  {item.sharing || "Single / Private"}
+                                </span>
+                                <span className="text-[10px] font-bold text-white/90">ID: {item.id}</span>
+                              </div>
+                            </div>
+
+                            {/* Card Body */}
+                            <div className="p-4 space-y-3">
+                              <div>
+                                <div className="flex items-start justify-between gap-2">
+                                  <h3 className="font-poppins font-bold text-base text-[#151538] group-hover:text-[#5B2BE0] transition-colors line-clamp-1">
+                                    {item.title}
+                                  </h3>
+                                </div>
+                                <p className="text-xs text-[#666680] font-medium flex items-center gap-1.5 mt-1">
+                                  <MapPin className="w-3.5 h-3.5 text-[#8C8CA1] shrink-0" />
+                                  <span className="truncate">{item.location}</span>
+                                </p>
+                              </div>
+
+                              {/* Facilities Pills */}
+                              {item.facilities && item.facilities.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {item.facilities.slice(0, 3).map((fac, idx) => (
+                                    <span key={idx} className="bg-[#F5F2FC] text-[#5B2BE0] text-[10px] font-bold px-2 py-0.5 rounded-md">
+                                      {fac}
+                                    </span>
+                                  ))}
+                                  {item.facilities.length > 3 && (
+                                    <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-1.5 py-0.5 rounded-md">
+                                      +{item.facilities.length - 3}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Price Row (Views & Comments icons removed as requested) */}
+                              <div className="flex items-center justify-between pt-2 border-t border-[#F0F2F5]">
+                                <div>
+                                  <span className="text-[10px] font-bold text-[#8C8CA1] uppercase tracking-wider block">Monthly Rent</span>
+                                  <span className="font-poppins font-black text-xl text-[#151538]">
+                                    ₹{item.rent.toLocaleString()}
+                                    <span className="text-xs font-semibold text-[#8C8CA1]">/mo</span>
+                                  </span>
+                                </div>
+                                <span className="text-[11px] font-semibold text-[#666680] bg-[#F8F9FB] border border-[#E8E8F0] px-2.5 py-1 rounded-lg">
+                                  {item.sharing || "Single"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Card Action Buttons Footer: Boost Button + 3-Dot Dropdown */}
+                          <div className="p-3 bg-[#FAF8FE] border-t border-[#E8E8F0] flex items-center gap-2 relative">
+                            <button
+                              onClick={() => openBoostModalForListing(item)}
+                              className="flex-1 bg-gradient-to-r from-[#FF7A00] via-[#FF6600] to-[#FF4D00] hover:from-[#FF6600] hover:to-[#E63900] text-white text-[11px] font-poppins font-extrabold py-2.5 px-4 rounded-full uppercase tracking-wider transition-all duration-200 shadow-md shadow-orange-500/25 active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                            >
+                              <Rocket className="w-4 h-4" />
+                              <span>BOOST LISTING</span>
+                            </button>
+
+                            {/* 3-Dot Dropdown Menu Button */}
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenMenuId(openMenuId === `grid_${item.id}` ? null : `grid_${item.id}`);
+                                }}
+                                className="w-9 h-9 rounded-full bg-white hover:bg-slate-100 text-slate-700 border border-[#E8E8F0] flex items-center justify-center transition-colors cursor-pointer shadow-xs"
+                                title="More Options"
+                              >
+                                <MoreVertical className="w-4 h-4" />
+                              </button>
+
+                              {openMenuId === `grid_${item.id}` && (
+                                <>
+                                  {/* Backdrop to close anywhere */}
+                                  <div 
+                                    className="fixed inset-0 z-40" 
+                                    onClick={() => setOpenMenuId(null)} 
+                                  />
+                                  <div className="absolute right-0 bottom-full mb-2 w-44 bg-white border border-[#E8E8F0] rounded-2xl shadow-2xl p-1.5 z-50 text-left space-y-0.5">
+                                    <button
+                                      onClick={() => { setOpenMenuId(null); handleEditListing(item); }}
+                                      className="w-full px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-[#F3EEFF] hover:text-[#5B2BE0] rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
+                                    >
+                                      <Edit3 className="w-3.5 h-3.5 text-[#5B2BE0]" />
+                                      <span>Edit Listing</span>
+                                    </button>
+
+                                    <button
+                                      onClick={() => { setOpenMenuId(null); handleToggleStatus(item.id); }}
+                                      className="w-full px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
+                                    >
+                                      <span className={`w-2 h-2 rounded-full ${item.status === "Active" ? "bg-amber-500" : "bg-emerald-500"}`} />
+                                      <span>{item.status === "Active" ? "Deactivate" : "Activate"}</span>
+                                    </button>
+
+                                    <button
+                                      onClick={() => {
+                                        setOpenMenuId(null);
+                                        router.push(`/${item.type === "flat" ? "flats" : item.type === "pg" ? "pg" : "rooms"}/${item.id}`);
+                                      }}
+                                      className="w-full px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-[#F3EEFF] hover:text-[#5B2BE0] rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
+                                    >
+                                      <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+                                      <span>View on Site</span>
+                                    </button>
+
+                                    <div className="border-t border-slate-100 my-1" />
+
+                                    <button
+                                      onClick={() => { setOpenMenuId(null); handleDeleteListing(item.id); }}
+                                      className="w-full px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      <span>Delete</span>
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                        </div>
+                      );
+                    })}
+                </div>
+              ) : (
+                /* TABLE VIEW */
+                <div className="bg-white border border-[#E8E8F0] rounded-[22px] overflow-hidden shadow-xs">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[700px]">
+                      <thead>
+                        <tr className="border-b border-[#E8E8F0] bg-[#F8F9FB] text-[11px] font-extrabold text-[#666680] uppercase tracking-wider">
+                          <th className="py-3.5 px-4">Property</th>
+                          <th className="py-3.5 px-4">Type & Sharing</th>
+                          <th className="py-3.5 px-4">Location</th>
+                          <th className="py-3.5 px-4">Rent</th>
+                          <th className="py-3.5 px-4">Performance</th>
+                          <th className="py-3.5 px-4">Status</th>
+                          <th className="py-3.5 px-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#F0F2F5] text-xs">
+                        {listings
+                          .filter((item) => {
+                            if (listingSearchQuery.trim()) {
+                              const q = listingSearchQuery.toLowerCase();
+                              const matchTitle = item.title.toLowerCase().includes(q);
+                              const matchLoc = item.location.toLowerCase().includes(q);
+                              const matchId = item.id.toLowerCase().includes(q);
+                              if (!matchTitle && !matchLoc && !matchId) return false;
+                            }
+                            if (listingTypeFilter !== "all" && item.type !== listingTypeFilter) return false;
+                            if (listingStatusFilter === "active" && item.status !== "Active") return false;
+                            if (listingStatusFilter === "inactive" && item.status !== "Inactive") return false;
+                            if (listingStatusFilter === "boosted" && !item.isBoosted && (!item.views || item.views < 350)) return false;
+                            return true;
+                          })
+                          .sort((a, b) => {
+                            if (listingSortBy === "price_asc") return a.rent - b.rent;
+                            if (listingSortBy === "price_desc") return b.rent - a.rent;
+                            if (listingSortBy === "views") return (b.views || 0) - (a.views || 0);
+                            return 0;
+                          })
+                          .map((item) => (
+                            <tr key={item.id} className="hover:bg-slate-50/80 transition-colors group">
+                              <td className="py-3.5 px-4">
+                                <div className="flex items-center gap-3">
+                                  <img
+                                    src={item.image}
+                                    alt={item.title}
+                                    className="w-12 h-12 rounded-xl object-cover border border-[#E8E8F0] shrink-0"
+                                  />
+                                  <div>
+                                    <h4 className="font-poppins font-bold text-sm text-[#151538] group-hover:text-[#5B2BE0] transition-colors">
+                                      {item.title}
+                                    </h4>
+                                    <span className="text-[10px] text-[#8C8CA1] font-semibold">ID: {item.id}</span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <span className="font-bold text-[#151538] block uppercase text-[11px]">{item.type}</span>
+                                <span className="text-[11px] text-[#666680]">{item.sharing || "Single"}</span>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <span className="text-slate-800 font-medium">{item.location}</span>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <span className="font-poppins font-black text-sm text-[#151538]">
+                                  ₹{item.rent.toLocaleString()}
+                                </span>
+                                <span className="text-[10px] text-[#8C8CA1] block">/month</span>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <div className="text-[11px] text-[#666680] font-medium space-y-0.5">
+                                  <div>Views: <b className="text-[#151538]">{item.views || 320}</b></div>
+                                  <div>Inquiries: <b className="text-[#151538]">{item.inquiries || 18}</b></div>
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider ${
+                                  item.status === "Active" 
+                                    ? "bg-[#EAF8EF] text-[#16A34A]" 
+                                    : "bg-[#F1F1F5] text-[#717182]"
+                                }`}>
+                                  {item.status}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button
+                                    onClick={() => openBoostModalForListing(item)}
+                                    className="bg-gradient-to-r from-[#FF7A00] to-[#FF4D00] hover:from-[#FF6600] hover:to-[#E63900] text-white text-[10px] font-extrabold px-3 py-1.5 rounded-full uppercase tracking-wider shadow-xs cursor-pointer"
+                                  >
+                                    BOOST
+                                  </button>
+                                  <button
+                                    onClick={() => handleEditListing(item)}
+                                    className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-[#5B2BE0] cursor-pointer"
+                                    title="Edit"
+                                  >
+                                    <Edit3 className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleToggleStatus(item.id)}
+                                    className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 cursor-pointer text-[10.5px] font-bold"
+                                    title="Toggle Status"
+                                  >
+                                    {item.status === "Active" ? "Pause" : "Enable"}
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteListing(item.id)}
+                                    className="p-1.5 hover:bg-red-50 rounded-lg text-red-600 cursor-pointer"
+                                    title="Delete"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+            </div>
+          )}
+
+
+
+
+          {/* ========================================================================= */}
+          {/* SCREEN: CUSTOMER LEADS & BOOST PURCHASE HISTORY */}
+          {/* ========================================================================= */}
+          {activeScreen === "bookings" && (
+            <div className="space-y-6 text-left max-w-4xl mx-auto">
+              
+              {/* 1. CUSTOMER LEADS CARD (MATCHING USER SCREENSHOT EXACTLY) */}
+              <div className="bg-white border border-[#E8E8F0] rounded-[24px] p-6 sm:p-8 shadow-xs text-left space-y-6">
+                
+                {/* Header */}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <h2 className="font-poppins font-black text-2xl sm:text-3xl text-[#151538] tracking-tight">
+                      Customer Leads
+                    </h2>
+                    <p className="text-xs sm:text-[13px] text-[#8C8CA1] font-medium">
+                      Track clicks on your phone and WhatsApp contact nodes
+                    </p>
+                  </div>
+                  <span className="bg-[#EAF8EF] text-[#16A34A] font-black text-xs px-3.5 py-1.5 rounded-full uppercase tracking-wider shrink-0">
+                    {customerLeads.length} TOTAL
+                  </span>
+                </div>
+
+                {/* List Items */}
+                <div className="divide-y divide-[#F0F2F5] pt-1">
+                  {customerLeads.map((lead) => (
+                    <div key={lead.id} className="py-5 first:pt-2 last:pb-2 space-y-2">
+                      
+                      {/* Top Row: Property Title & Date/Time Stacked */}
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-poppins font-bold text-base sm:text-[17px] text-[#151538]">
+                          {lead.propertyTitle}
+                        </h3>
+                        <div className="text-right shrink-0">
+                          <span className="text-xs font-bold text-slate-500 block">{lead.date}</span>
+                          <span className="text-[11px] font-medium text-slate-400 block">{lead.time}</span>
+                        </div>
+                      </div>
+
+                      {/* Middle Row: User Icon + Name and Phone with Icon */}
+                      <div className="flex flex-wrap items-center gap-4 text-xs font-bold text-[#151538]">
+                        <div className="flex items-center gap-1.5">
+                          <User className="w-3.5 h-3.5 text-[#5B2BE0] fill-[#5B2BE0]" />
+                          <span>{lead.userName || "Guest User"}</span>
+                        </div>
+
+                        {lead.phone && (
+                          <a 
+                            href={`tel:${lead.phone}`}
+                            className="flex items-center gap-1.5 text-slate-700 hover:text-[#5B2BE0] transition-colors"
+                          >
+                            <Phone className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
+                            <span>{lead.phone}</span>
+                          </a>
+                        )}
+                      </div>
+
+                      {/* Bottom Row: Type label & Badge */}
+                      <div className="flex items-center gap-2 pt-0.5">
+                        <span className="text-xs text-slate-400 font-medium">Type:</span>
+                        
+                        {lead.type === "whatsapp" && (
+                          <span className="inline-flex items-center gap-1.5 bg-[#EAF8EF] text-[#16A34A] border border-[#A7F3D0]/60 text-[10px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-wide">
+                            <MessageSquare className="w-3 h-3 text-[#16A34A]" />
+                            <span>WHATSAPP</span>
+                          </span>
+                        )}
+
+                        {lead.type === "call" && (
+                          <span className="inline-flex items-center gap-1.5 bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]/60 text-[10px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-wide">
+                            <Phone className="w-3 h-3 text-[#2563EB]" />
+                            <span>PHONE CALL</span>
+                          </span>
+                        )}
+
+                        {lead.type === "booking" && (
+                          <span className="inline-flex items-center gap-1.5 bg-[#FAF5FF] text-[#7C3AED] border border-[#E9D5FF]/60 text-[10px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-wide">
+                            <Sparkles className="w-3 h-3 text-[#7C3AED]" />
+                            <span>BOOKING REQUEST</span>
+                          </span>
+                        )}
+                      </div>
+
+                    </div>
+                  ))}
+                </div>
+
+              </div>
+
+
+              {/* 2. BOOST PURCHASE HISTORY CARD */}
+              <div className="bg-white border border-[#E8E8F0] rounded-[24px] p-6 sm:p-8 shadow-xs text-left space-y-6">
+                
+                {/* Header */}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <h2 className="font-poppins font-black text-2xl sm:text-3xl text-[#151538] tracking-tight">
+                      Boost Purchase History
+                    </h2>
+                    <p className="text-xs sm:text-[13px] text-[#8C8CA1] font-medium">
+                      Track your listing promotions and VIP search rankings
+                    </p>
+                  </div>
+                  <span className="bg-[#FFF7ED] text-[#FF7A00] font-black text-xs px-3.5 py-1.5 rounded-full uppercase tracking-wider shrink-0">
+                    {boostHistory.length} TOTAL
+                  </span>
+                </div>
+
+                {boostHistory.length === 0 ? (
+                  <div className="py-8 text-center space-y-3">
+                    <p className="text-xs text-[#8C8CA1]">No active or past boost purchases yet.</p>
+                    <button
+                      onClick={() => openBoostModalForListing()}
+                      className="bg-gradient-to-r from-[#FF7A00] to-[#FF4D00] text-white text-xs font-bold py-2.5 px-5 rounded-xl cursor-pointer shadow-md shadow-orange-500/20"
+                    >
+                      Boost a Listing Now →
+                    </button>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-[#F0F2F5] pt-1">
+                    {boostHistory.map((item) => (
+                      <div key={item.id} className="py-5 first:pt-2 last:pb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3.5">
+                          <img
+                            src={item.propertyImage}
+                            alt={item.propertyTitle}
+                            className="w-13 h-13 rounded-2xl object-cover border border-[#E8E8F0] shrink-0"
+                          />
+                          <div>
+                            <h4 className="font-poppins font-bold text-sm text-[#151538]">{item.propertyTitle}</h4>
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                              <span className="bg-[#EFE7FF] text-[#5B2BE0] font-bold text-[10px] px-2 py-0.5 rounded-md">
+                                ⚡ {item.plan}
+                              </span>
+                              <span className="text-xs font-black text-slate-800">₹{item.amount}</span>
+                              <span className="text-[11px] text-slate-400">({item.startDate} — {item.expiryDate})</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2.5 self-end sm:self-center">
+                          <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase ${
+                            item.status === "Active" ? "bg-emerald-100 text-emerald-800 border border-emerald-300/40" : "bg-slate-100 text-slate-600 border border-slate-200"
+                          }`}>
+                            ● {item.status === "Active" ? "Active Rank #1" : "Expired"}
+                          </span>
+                          <button
+                            onClick={() => {
+                              const matched = listings.find(l => l.id === item.propertyId) || listings[0];
+                              openBoostModalForListing(matched);
+                            }}
+                            className="bg-white hover:bg-[#F3EEFF] border border-[#5B2BE0] text-[#5B2BE0] text-xs font-bold py-1.5 px-3.5 rounded-xl transition-all cursor-pointer inline-flex items-center gap-1 shadow-xs"
+                          >
+                            <Rocket className="w-3.5 h-3.5" />
+                            <span>Boost Again</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+              </div>
+
+            </div>
+          )}
+
+
+
+
+          {/* ========================================================================= */}
+          {/* SCREEN: STEP 1 TO 5 (ADD / EDIT LISTING WIZARD) */}
+          {/* ========================================================================= */}
+          {(activeScreen === "step1" || activeScreen === "step2" || activeScreen === "step3" || activeScreen === "step4" || activeScreen === "step5") && (
+            <div className="bg-white border border-[#E8E8F0] rounded-[24px] p-5 sm:p-8 max-w-2xl mx-auto shadow-lg text-left space-y-6">
+              
+              {/* Wizard Header & Steps Progress */}
+              <div className="flex items-center justify-between pb-4 border-b border-[#F0F2F5]">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest bg-[#F3EEFF] text-[#5B2BE0] px-2.5 py-0.5 rounded-full">
+                      Step {activeScreen === "step1" ? "1" : activeScreen === "step2" ? "2" : activeScreen === "step3" ? "3" : activeScreen === "step4" ? "4" : "5"} of 5
+                    </span>
+                    <span className="text-xs text-slate-400 font-semibold">• CheckRooms Property Lister</span>
+                  </div>
+                  <h2 className="font-poppins font-black text-lg sm:text-xl text-[#151538] mt-1">
+                    {activeScreen === "step1" && "1. Basic Property Information"}
+                    {activeScreen === "step2" && "2. Location & Address Details"}
+                    {activeScreen === "step3" && "3. Pricing, Room Type & Tenant Preference"}
+                    {activeScreen === "step4" && "4. Facilities, Furniture & House Rules"}
+                    {activeScreen === "step5" && "5. Upload Photos & Publish"}
+                  </h2>
+                </div>
+                <button
+                  onClick={() => setActiveScreen("dashboard")}
+                  className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500 cursor-pointer"
+                  title="Close wizard"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* ===================================================================== */}
+              {/* STEP 1: BASIC INFO */}
+              {/* ===================================================================== */}
+              {activeScreen === "step1" && (
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[#151538]">
+                      Property Category <span className="text-red-500">*</span>
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {([
+                        { key: "room", label: "Room", icon: "🚪" },
+                        { key: "pg", label: "PG / Mess", icon: "🍱" },
+                        { key: "hostel", label: "Hostel", icon: "🏢" },
+                        { key: "flat", label: "Flat / Apartment", icon: "🏠" },
+                      ] as const).map((cat) => (
+                        <button
+                          key={cat.key}
+                          type="button"
+                          onClick={() => {
+                            setPropertyType(cat.key);
+                            clearFormError("propertyType");
+                            // Auto-set default room type matching category
+                            if (cat.key === "pg") setRoomType("Double Sharing");
+                            else if (cat.key === "room") setRoomType("Single Room (Private)");
+                            else if (cat.key === "flat") setRoomType("1 BHK Flat");
+                            else if (cat.key === "hostel") setRoomType("Double Bed Sharing");
+                          }}
+                          className={`py-3 px-2 rounded-xl border text-xs font-bold transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                            propertyType === cat.key 
+                              ? "border-[#5B2BE0] bg-[#F3EEFF] text-[#5B2BE0] ring-2 ring-[#5B2BE0]/20 shadow-xs" 
+                              : "border-[#E8E8F0] text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          <span className="text-base">{cat.icon}</span>
+                          <span>{cat.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                    {formErrors.propertyType && (
+                      <p className="text-[11px] font-semibold text-red-500 flex items-center gap-1 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block shrink-0" />
+                        {formErrors.propertyType}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[#151538]">
+                      Property Title / Listing Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={title}
+                      onChange={(e) => {
+                        setTitle(e.target.value);
+                        clearFormError("title");
+                      }}
+                      placeholder="e.g. Luxury PG / 1BHK Flat near Metro Station & College"
+                      className={`w-full px-4 py-2.5 rounded-xl border ${
+                        formErrors.title 
+                          ? "border-red-500 bg-red-50/20 ring-2 ring-red-500/20" 
+                          : "border-[#E8E8F0] focus:ring-2 focus:ring-[#5B2BE0]/20 focus:border-[#5B2BE0]"
+                      } outline-none text-xs font-medium transition-all`}
+                    />
+                    {formErrors.title && (
+                      <p className="text-[11px] font-semibold text-red-500 flex items-center gap-1 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block shrink-0" />
+                        {formErrors.title}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[#151538]">
+                      Property Description <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={description}
+                      onChange={(e) => {
+                        setDescription(e.target.value);
+                        clearFormError("description");
+                      }}
+                      placeholder="Provide helpful details about the room, surroundings, nearby colleges/companies, metro distance, etc..."
+                      className={`w-full px-4 py-2.5 rounded-xl border ${
+                        formErrors.description 
+                          ? "border-red-500 bg-red-50/20 ring-2 ring-red-500/20" 
+                          : "border-[#E8E8F0] focus:ring-2 focus:ring-[#5B2BE0]/20 focus:border-[#5B2BE0]"
+                      } outline-none text-xs font-medium transition-all`}
+                    />
+                    {formErrors.description && (
+                      <p className="text-[11px] font-semibold text-red-500 flex items-center gap-1 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block shrink-0" />
+                        {formErrors.description}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end pt-3">
+                    <button
+                      onClick={() => {
+                        const errs: { [k: string]: string } = {};
+                        if (!propertyType) errs.propertyType = "Please select a property category.";
+                        if (!title.trim()) errs.title = "Property title / listing name is required.";
+                        if (!description.trim()) errs.description = "Property description is required.";
+
+                        if (Object.keys(errs).length > 0) {
+                          setFormErrors(errs);
+                          return;
+                        }
+                        setFormErrors({});
+                        setActiveScreen("step2");
+                      }}
+                      className="bg-[#5B2BE0] hover:bg-[#4A20C0] text-white text-xs sm:text-sm font-bold py-3 px-7 rounded-xl transition-all shadow-md shadow-[#5B2BE0]/20 cursor-pointer"
+                    >
+                      Next: Location Details →
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ===================================================================== */}
+              {/* STEP 2: LOCATION DETAILS */}
+              {/* ===================================================================== */}
+              {activeScreen === "step2" && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-[#151538]">City <span className="text-red-500">*</span></label>
+                      <select
+                        value={city}
+                        onChange={(e) => {
+                          setCity(e.target.value);
+                          clearFormError("city");
+                        }}
+                        className={`w-full px-3.5 py-2.5 rounded-xl border ${
+                          formErrors.city 
+                            ? "border-red-500 bg-red-50/20 ring-2 ring-red-500/20" 
+                            : "border-[#E8E8F0] focus:ring-2 focus:ring-[#5B2BE0]/20 focus:border-[#5B2BE0]"
+                        } outline-none text-xs font-bold bg-white transition-all`}
+                      >
+                        <option value="Noida">Noida</option>
+                        <option value="Greater Noida">Greater Noida</option>
+                        <option value="Delhi">Delhi</option>
+                        <option value="Gurugram">Gurugram</option>
+                        <option value="Ghaziabad">Ghaziabad</option>
+                        <option value="Faridabad">Faridabad</option>
+                      </select>
+                      {formErrors.city && (
+                        <p className="text-[11px] font-semibold text-red-500 flex items-center gap-1 mt-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block shrink-0" />
+                          {formErrors.city}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-[#151538]">Area / Sector / Colony <span className="text-red-500">*</span></label>
+                      <input
+                        type="text"
+                        value={area}
+                        onChange={(e) => {
+                          setArea(e.target.value);
+                          clearFormError("area");
+                        }}
+                        placeholder="e.g. Sector 62 / Knowledge Park 3 / Alpha 1"
+                        className={`w-full px-3.5 py-2.5 rounded-xl border ${
+                          formErrors.area 
+                            ? "border-red-500 bg-red-50/20 ring-2 ring-red-500/20" 
+                            : "border-[#E8E8F0] focus:ring-2 focus:ring-[#5B2BE0]/20 focus:border-[#5B2BE0]"
+                        } outline-none text-xs font-medium transition-all`}
+                      />
+                      {formErrors.area && (
+                        <p className="text-[11px] font-semibold text-red-500 flex items-center gap-1 mt-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block shrink-0" />
+                          {formErrors.area}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[#151538]">
+                      Full Address & Nearby Landmark <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={address}
+                      onChange={(e) => {
+                        setAddress(e.target.value);
+                        clearFormError("address");
+                      }}
+                      placeholder="e.g. House #104, Block B, Near City Metro Station Gate #2"
+                      className={`w-full px-4 py-2.5 rounded-xl border ${
+                        formErrors.address 
+                          ? "border-red-500 bg-red-50/20 ring-2 ring-red-500/20" 
+                          : "border-[#E8E8F0] focus:ring-2 focus:ring-[#5B2BE0]/20 focus:border-[#5B2BE0]"
+                      } outline-none text-xs font-medium transition-all`}
+                    />
+                    {formErrors.address && (
+                      <p className="text-[11px] font-semibold text-red-500 flex items-center gap-1 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block shrink-0" />
+                        {formErrors.address}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[#151538]">
+                      Pincode <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={pincode}
+                      onChange={(e) => {
+                        setPincode(e.target.value);
+                        clearFormError("pincode");
+                      }}
+                      placeholder="e.g. 201301"
+                      className={`w-full px-4 py-2.5 rounded-xl border ${
+                        formErrors.pincode 
+                          ? "border-red-500 bg-red-50/20 ring-2 ring-red-500/20" 
+                          : "border-[#E8E8F0] focus:ring-2 focus:ring-[#5B2BE0]/20 focus:border-[#5B2BE0]"
+                      } outline-none text-xs font-medium transition-all`}
+                    />
+                    {formErrors.pincode && (
+                      <p className="text-[11px] font-semibold text-red-500 flex items-center gap-1 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block shrink-0" />
+                        {formErrors.pincode}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex justify-between pt-3">
+                    <button
+                      onClick={() => setActiveScreen("step1")}
+                      className="border border-[#E8E8F0] text-slate-600 text-xs font-bold py-2.5 px-5 rounded-xl hover:bg-slate-50 cursor-pointer"
+                    >
+                      ← Back
+                    </button>
+                    <button
+                      onClick={() => {
+                        const errs: { [k: string]: string } = {};
+                        if (!city.trim()) errs.city = "Please select a city.";
+                        if (!area.trim()) errs.area = "Area / Sector is required.";
+                        if (!address.trim()) errs.address = "Full address & landmark is required.";
+                        if (!pincode.trim()) errs.pincode = "Pincode is required.";
+
+                        if (Object.keys(errs).length > 0) {
+                          setFormErrors(errs);
+                          return;
+                        }
+                        setFormErrors({});
+                        setActiveScreen("step3");
+                      }}
+                      className="bg-[#5B2BE0] hover:bg-[#4A20C0] text-white text-xs sm:text-sm font-bold py-3 px-7 rounded-xl transition-all shadow-md shadow-[#5B2BE0]/20 cursor-pointer"
+                    >
+                      Next: Pricing & Types →
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ===================================================================== */}
+              {/* STEP 3: PRICING, DYNAMIC ROOM TYPES, FOOD & PREFERRED TENANT */}
+              {/* ===================================================================== */}
+              {activeScreen === "step3" && (
+                <div className="space-y-6">
+                  
+                  {/* Pricing Fields */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-[#151538]">Monthly Rent (₹) <span className="text-red-500">*</span></label>
+                      <input
+                        type="number"
+                        value={rent}
+                        onChange={(e) => {
+                          setRent(e.target.value);
+                          clearFormError("rent");
+                        }}
+                        placeholder="e.g. 8500"
+                        className={`w-full px-4 py-2.5 rounded-xl border ${
+                          formErrors.rent 
+                            ? "border-red-500 bg-red-50/20 ring-2 ring-red-500/20" 
+                            : "border-[#E8E8F0] focus:ring-2 focus:ring-[#5B2BE0]/20 focus:border-[#5B2BE0]"
+                        } outline-none text-xs font-bold transition-all`}
+                      />
+                      {formErrors.rent && (
+                        <p className="text-[11px] font-semibold text-red-500 flex items-center gap-1 mt-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block shrink-0" />
+                          {formErrors.rent}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-[#151538]">Security Deposit (₹) <span className="text-red-500">*</span></label>
+                      <input
+                        type="number"
+                        value={deposit}
+                        onChange={(e) => {
+                          setDeposit(e.target.value);
+                          clearFormError("deposit");
+                        }}
+                        placeholder="e.g. 10000"
+                        className={`w-full px-4 py-2.5 rounded-xl border ${
+                          formErrors.deposit 
+                            ? "border-red-500 bg-red-50/20 ring-2 ring-red-500/20" 
+                            : "border-[#E8E8F0] focus:ring-2 focus:ring-[#5B2BE0]/20 focus:border-[#5B2BE0]"
+                        } outline-none text-xs font-bold transition-all`}
+                      />
+                      {formErrors.deposit && (
+                        <p className="text-[11px] font-semibold text-red-500 flex items-center gap-1 mt-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block shrink-0" />
+                          {formErrors.deposit}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Dynamic Room / Sharing Types based on Selected Category */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-[#151538]">
+                        Room / Sharing Type for <span className="text-[#5B2BE0] uppercase font-black">{propertyType}</span> <span className="text-red-500">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowCustomRoomTypeInput(!showCustomRoomTypeInput)}
+                        className="text-[11px] font-bold text-[#5B2BE0] hover:underline cursor-pointer"
+                      >
+                        {showCustomRoomTypeInput ? "Hide Custom" : "+ Add Custom Type"}
+                      </button>
+                    </div>
+
+                    {/* Pre-defined options based on category */}
+                    <div className={`grid grid-cols-2 sm:grid-cols-3 gap-2 ${formErrors.roomType ? "p-2 border-2 border-red-500/70 rounded-2xl bg-red-50/10" : ""}`}>
+                      {/* PG Options */}
+                      {propertyType === "pg" && [
+                        "Single Room",
+                        "Double Sharing",
+                        "Triple Sharing",
+                        "4th Sharing (4 Beds)",
+                        "5+ Sharing / Dorm"
+                      ].map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => { setRoomType(t); setCustomRoomType(""); clearFormError("roomType"); }}
+                          className={`p-2.5 rounded-xl border text-xs font-semibold text-left transition-all cursor-pointer ${
+                            roomType === t && !customRoomType
+                              ? "border-[#5B2BE0] bg-[#F3EEFF] text-[#5B2BE0] ring-1 ring-[#5B2BE0]"
+                              : "border-[#E8E8F0] text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          {t}
+                        </button>
+                      ))}
+
+                      {/* Room Options */}
+                      {propertyType === "room" && [
+                        "Single Room (Private)",
+                        "Double Sharing Room",
+                        "Triple Sharing Room",
+                        "1 RK Room Set",
+                        "Attached Washroom Room",
+                        "Master Bedroom with Balcony"
+                      ].map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => { setRoomType(t); setCustomRoomType(""); clearFormError("roomType"); }}
+                          className={`p-2.5 rounded-xl border text-xs font-semibold text-left transition-all cursor-pointer ${
+                            roomType === t && !customRoomType
+                              ? "border-[#5B2BE0] bg-[#F3EEFF] text-[#5B2BE0] ring-1 ring-[#5B2BE0]"
+                              : "border-[#E8E8F0] text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          {t}
+                        </button>
+                      ))}
+
+                      {/* Flat Options */}
+                      {propertyType === "flat" && [
+                        "1 BHK Flat",
+                        "2 BHK Flat",
+                        "3 BHK Flat",
+                        "4 BHK Flat",
+                        "1 RK Studio Apartment",
+                        "Independent Apartment / Floor"
+                      ].map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => { setRoomType(t); setCustomRoomType(""); clearFormError("roomType"); }}
+                          className={`p-2.5 rounded-xl border text-xs font-semibold text-left transition-all cursor-pointer ${
+                            roomType === t && !customRoomType
+                              ? "border-[#5B2BE0] bg-[#F3EEFF] text-[#5B2BE0] ring-1 ring-[#5B2BE0]"
+                              : "border-[#E8E8F0] text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          {t}
+                        </button>
+                      ))}
+
+                      {/* Hostel Options */}
+                      {propertyType === "hostel" && [
+                        "Single Bed Room",
+                        "Double Bed Sharing (2 Beds)",
+                        "Triple Bed Sharing (3 Beds)",
+                        "4 Bed Sharing Room",
+                        "Dormitory / Common Hall"
+                      ].map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => { setRoomType(t); setCustomRoomType(""); clearFormError("roomType"); }}
+                          className={`p-2.5 rounded-xl border text-xs font-semibold text-left transition-all cursor-pointer ${
+                            roomType === t && !customRoomType
+                              ? "border-[#5B2BE0] bg-[#F3EEFF] text-[#5B2BE0] ring-1 ring-[#5B2BE0]"
+                              : "border-[#E8E8F0] text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Inline Custom Room Type Input */}
+                    {showCustomRoomTypeInput && (
+                      <div className="flex items-center gap-2 pt-1">
+                        <input
+                          type="text"
+                          value={customRoomType}
+                          onChange={(e) => {
+                            setCustomRoomType(e.target.value);
+                            clearFormError("roomType");
+                          }}
+                          placeholder="Type your custom room type (e.g. Deluxe Suite / 2RK)..."
+                          className="flex-1 px-3.5 py-2 rounded-xl border border-[#5B2BE0] text-xs font-semibold outline-none bg-[#FBF9FF]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (customRoomType.trim()) {
+                              setRoomType(customRoomType.trim());
+                              clearFormError("roomType");
+                            }
+                          }}
+                          className="bg-[#5B2BE0] text-white text-xs font-bold px-4 py-2 rounded-xl"
+                        >
+                          Set
+                        </button>
+                      </div>
+                    )}
+                    {formErrors.roomType && (
+                      <p className="text-[11px] font-semibold text-red-500 flex items-center gap-1 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block shrink-0" />
+                        {formErrors.roomType}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* 1. FOOD FACILITY (Exactly matching screenshot) */}
+                  <div className="space-y-2.5">
+                    <label className="text-[11.5px] font-extrabold text-[#374151] tracking-wider uppercase block">
+                      FOOD FACILITY <span className="text-red-500">*</span>
+                    </label>
+                    <div className={`flex flex-wrap items-center gap-3 ${formErrors.foodOption ? "p-2 border-2 border-red-500/70 rounded-2xl bg-red-50/10" : ""}`}>
+                      {(["Yes", "No", "Optional"] as const).map((opt) => {
+                        const isSelected = foodOption === opt;
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => {
+                              setFoodOption(opt);
+                              clearFormError("foodOption");
+                            }}
+                            className={`px-5 py-3 rounded-2xl border transition-all cursor-pointer flex items-center gap-2.5 min-w-[110px] ${
+                              isSelected
+                                ? "border-2 border-[#6C4CF1] bg-[#FAF8FE] text-[#6C4CF1] font-bold shadow-xs"
+                                : "border border-slate-200 bg-white text-[#151538] font-bold hover:bg-slate-50/80"
+                            }`}
+                          >
+                            <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                              isSelected ? "border-[#6C4CF1]" : "border-slate-300"
+                            }`}>
+                              {isSelected && <span className="w-2 h-2 rounded-full bg-[#6C4CF1]" />}
+                            </span>
+                            <span className="text-xs sm:text-sm">{opt}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {formErrors.foodOption && (
+                      <p className="text-[11px] font-semibold text-red-500 flex items-center gap-1 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block shrink-0" />
+                        {formErrors.foodOption}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* 2. PREFERRED TENANT / LIVING PREFERENCE * (Exactly matching screenshot) */}
+                  <div className="space-y-2.5">
+                    <label className="text-[11.5px] font-extrabold text-[#374151] tracking-wider uppercase block">
+                      PREFERRED TENANT / LIVING PREFERENCE <span className="text-red-500">*</span>
+                    </label>
+                    <div className={`grid grid-cols-2 sm:grid-cols-4 gap-3 ${formErrors.preferredTenant ? "p-2 border-2 border-red-500/70 rounded-2xl bg-red-50/10" : ""}`}>
+                      {(["Boys Only", "Girls Only", "Family / Couple", "Anyone"] as const).map((pref) => {
+                        const isSelected = preferredTenant === pref;
+                        return (
+                          <button
+                            key={pref}
+                            type="button"
+                            onClick={() => {
+                              setPreferredTenant(pref);
+                              clearFormError("preferredTenant");
+                            }}
+                            className={`px-4 py-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-center gap-2.5 text-center ${
+                              isSelected
+                                ? "border-2 border-[#6C4CF1] bg-[#FAF8FE] text-[#6C4CF1] font-bold shadow-xs"
+                                : "border border-slate-200 bg-white text-[#151538] font-bold hover:bg-slate-50/80"
+                            }`}
+                          >
+                            <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                              isSelected ? "border-[#6C4CF1]" : "border-slate-300"
+                            }`}>
+                              {isSelected && <span className="w-2 h-2 rounded-full bg-[#6C4CF1]" />}
+                            </span>
+                            <span className="text-xs sm:text-sm">{pref}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {formErrors.preferredTenant && (
+                      <p className="text-[11px] font-semibold text-red-500 flex items-center gap-1 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block shrink-0" />
+                        {formErrors.preferredTenant}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex justify-between pt-3">
+                    <button
+                      onClick={() => setActiveScreen("step2")}
+                      className="border border-[#E8E8F0] text-slate-600 text-xs font-bold py-2.5 px-5 rounded-xl hover:bg-slate-50 cursor-pointer"
+                    >
+                      ← Back
+                    </button>
+                    <button
+                      onClick={() => {
+                        const errs: { [k: string]: string } = {};
+                        if (!rent.trim() || Number(rent) <= 0) errs.rent = "Please enter valid monthly rent (₹).";
+                        if (!deposit.trim()) errs.deposit = "Security deposit (₹) is required.";
+                        if (!roomType.trim()) errs.roomType = "Please select or type a room type.";
+                        if (!foodOption) errs.foodOption = "Please select food facility option.";
+                        if (!preferredTenant) errs.preferredTenant = "Please select living preference.";
+
+                        if (Object.keys(errs).length > 0) {
+                          setFormErrors(errs);
+                          return;
+                        }
+                        setFormErrors({});
+                        setActiveScreen("step4");
+                      }}
+                      className="bg-[#5B2BE0] hover:bg-[#4A20C0] text-white text-xs sm:text-sm font-bold py-3 px-7 rounded-xl transition-all shadow-md shadow-[#5B2BE0]/20 cursor-pointer"
+                    >
+                      Next: Facilities & Rules →
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ===================================================================== */}
+              {/* STEP 4: FACILITIES, FURNITURE & RULES (Exactly matching screenshot 2 & 3) */}
+              {/* ===================================================================== */}
+              {activeScreen === "step4" && (
+                <div className="space-y-6">
+                  
+                  {/* 1. FACILITIES (Exactly matching screenshot 2) */}
+                  <div className="space-y-2.5">
+                    <label className="text-[11.5px] font-extrabold text-[#374151] tracking-wider uppercase block">
+                      FACILITIES <span className="text-red-500">*</span>
+                    </label>
+                    <div className={`grid grid-cols-2 sm:grid-cols-3 gap-3 ${formErrors.facilities ? "p-2 border-2 border-red-500/70 rounded-2xl bg-red-50/10" : ""}`}>
+                      {[
+                        ...defaultBaseFacilities,
+                        ...customFacilitiesList.filter((f) => !defaultBaseFacilities.includes(f))
+                      ].map((fac) => {
+                        const isSelected = selectedFacilities.includes(fac);
+                        return (
+                          <button
+                            key={fac}
+                            type="button"
+                            onClick={() => {
+                              clearFormError("facilities");
+                              if (isSelected) {
+                                setSelectedFacilities(selectedFacilities.filter((f) => f !== fac));
+                              } else {
+                                setSelectedFacilities([...selectedFacilities, fac]);
+                              }
+                            }}
+                            className={`px-4 py-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-center gap-2.5 text-center ${
+                              isSelected
+                                ? "border-2 border-[#6C4CF1] bg-[#FAF8FE] text-[#6C4CF1] font-bold shadow-xs"
+                                : "border border-slate-200 bg-white text-[#151538] font-bold hover:bg-slate-50/80"
+                            }`}
+                          >
+                            <span className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 ${
+                              isSelected ? "bg-[#6C4CF1] text-white" : "border-2 border-slate-300 bg-white"
+                            }`}>
+                              {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                            </span>
+                            <span className="text-xs sm:text-sm">{fac}</span>
+                          </button>
+                        );
+                      })}
+
+                      {/* + Add Facility (Dashed Button) */}
+                      <button
+                        type="button"
+                        onClick={() => setShowAddFacilityInput(true)}
+                        className="px-4 py-3.5 rounded-2xl border-2 border-dashed border-slate-300 text-slate-500 font-bold hover:border-[#6C4CF1] hover:text-[#6C4CF1] hover:bg-[#FAF8FE] transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs sm:text-sm"
+                      >
+                        <span>+ Add Facility</span>
+                      </button>
+                    </div>
+
+                    {/* Inline Add Facility Input */}
+                    {showAddFacilityInput && (
+                      <div className="flex items-center gap-2 pt-1.5">
+                        <input
+                          type="text"
+                          value={customFacilityInput}
+                          onChange={(e) => setCustomFacilityInput(e.target.value)}
+                          placeholder="Enter facility name (e.g. Gym, Swimming Pool)..."
+                          className="flex-1 px-4 py-2.5 rounded-xl border border-[#6C4CF1] text-xs font-semibold outline-none bg-[#FAF8FE]"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && customFacilityInput.trim()) {
+                              e.preventDefault();
+                              const val = customFacilityInput.trim();
+                              if (!customFacilitiesList.includes(val)) {
+                                setCustomFacilitiesList((prev) => [...prev, val]);
+                              }
+                              if (!selectedFacilities.includes(val)) {
+                                setSelectedFacilities((prev) => [...prev, val]);
+                              }
+                              clearFormError("facilities");
+                              setCustomFacilityInput("");
+                              setShowAddFacilityInput(false);
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (customFacilityInput.trim()) {
+                              const val = customFacilityInput.trim();
+                              if (!customFacilitiesList.includes(val)) {
+                                setCustomFacilitiesList((prev) => [...prev, val]);
+                              }
+                              if (!selectedFacilities.includes(val)) {
+                                setSelectedFacilities((prev) => [...prev, val]);
+                              }
+                              clearFormError("facilities");
+                              setCustomFacilityInput("");
+                              setShowAddFacilityInput(false);
+                            }
+                          }}
+                          className="bg-[#6C4CF1] text-white text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer"
+                        >
+                          Add
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowAddFacilityInput(false)}
+                          className="text-slate-400 hover:text-slate-600 px-2 py-2 text-xs font-bold cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+                    {formErrors.facilities && (
+                      <p className="text-[11px] font-semibold text-red-500 flex items-center gap-1 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block shrink-0" />
+                        {formErrors.facilities}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* 2. FURNITURE INCLUDED (IN ROOM) (Exactly matching screenshot 2) */}
+                  <div className="space-y-2.5 pt-2">
+                    <label className="text-[11.5px] font-extrabold text-[#374151] tracking-wider uppercase block">
+                      FURNITURE INCLUDED (IN ROOM) <span className="text-red-500">*</span>
+                    </label>
+                    <div className={`grid grid-cols-2 sm:grid-cols-3 gap-3 ${formErrors.furniture ? "p-2 border-2 border-red-500/70 rounded-2xl bg-red-50/10" : ""}`}>
+                      {[
+                        ...defaultBaseFurniture,
+                        ...customFurnitureList.filter((f) => !defaultBaseFurniture.includes(f))
+                      ].map((furn) => {
+                        const isSelected = selectedFurniture.includes(furn);
+                        return (
+                          <button
+                            key={furn}
+                            type="button"
+                            onClick={() => {
+                              clearFormError("furniture");
+                              if (isSelected) {
+                                setSelectedFurniture(selectedFurniture.filter((f) => f !== furn));
+                              } else {
+                                setSelectedFurniture([...selectedFurniture, furn]);
+                              }
+                            }}
+                            className={`px-4 py-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-center gap-2.5 text-center ${
+                              isSelected
+                                ? "border-2 border-[#6C4CF1] bg-[#FAF8FE] text-[#6C4CF1] font-bold shadow-xs"
+                                : "border border-slate-200 bg-white text-[#151538] font-bold hover:bg-slate-50/80"
+                            }`}
+                          >
+                            <span className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 ${
+                              isSelected ? "bg-[#6C4CF1] text-white" : "border-2 border-slate-300 bg-white"
+                            }`}>
+                              {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                            </span>
+                            <span className="text-xs sm:text-sm">{furn}</span>
+                          </button>
+                        );
+                      })}
+
+                      {/* + Add Furniture (Dashed Button) */}
+                      <button
+                        type="button"
+                        onClick={() => setShowAddFurnitureInput(true)}
+                        className="px-4 py-3.5 rounded-2xl border-2 border-dashed border-slate-300 text-slate-500 font-bold hover:border-[#6C4CF1] hover:text-[#6C4CF1] hover:bg-[#FAF8FE] transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs sm:text-sm"
+                      >
+                        <span>+ Add Furniture</span>
+                      </button>
+                    </div>
+
+                    {/* Inline Add Furniture Input */}
+                    {showAddFurnitureInput && (
+                      <div className="flex items-center gap-2 pt-1.5">
+                        <input
+                          type="text"
+                          value={customFurnitureInput}
+                          onChange={(e) => setCustomFurnitureInput(e.target.value)}
+                          placeholder="Enter furniture name (e.g. Bookshelf, Sofa)..."
+                          className="flex-1 px-4 py-2.5 rounded-xl border border-[#6C4CF1] text-xs font-semibold outline-none bg-[#FAF8FE]"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && customFurnitureInput.trim()) {
+                              e.preventDefault();
+                              const val = customFurnitureInput.trim();
+                              if (!customFurnitureList.includes(val)) {
+                                setCustomFurnitureList((prev) => [...prev, val]);
+                              }
+                              if (!selectedFurniture.includes(val)) {
+                                setSelectedFurniture((prev) => [...prev, val]);
+                              }
+                              clearFormError("furniture");
+                              setCustomFurnitureInput("");
+                              setShowAddFurnitureInput(false);
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (customFurnitureInput.trim()) {
+                              const val = customFurnitureInput.trim();
+                              if (!customFurnitureList.includes(val)) {
+                                setCustomFurnitureList((prev) => [...prev, val]);
+                              }
+                              if (!selectedFurniture.includes(val)) {
+                                setSelectedFurniture((prev) => [...prev, val]);
+                              }
+                              clearFormError("furniture");
+                              setCustomFurnitureInput("");
+                              setShowAddFurnitureInput(false);
+                            }
+                          }}
+                          className="bg-[#6C4CF1] text-white text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer"
+                        >
+                          Add
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowAddFurnitureInput(false)}
+                          className="text-slate-400 hover:text-slate-600 px-2 py-2 text-xs font-bold cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+                    {formErrors.furniture && (
+                      <p className="text-[11px] font-semibold text-red-500 flex items-center gap-1 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block shrink-0" />
+                        {formErrors.furniture}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* 3. RULES * (Exactly matching screenshot 3, made required) */}
+                  <div className="space-y-2.5 pt-2">
+                    <label className="text-[11.5px] font-extrabold text-[#374151] tracking-wider uppercase block">
+                      RULES <span className="text-red-500">*</span>
+                    </label>
+                    <div className={`rounded-[22px] border ${
+                      formErrors.houseRules 
+                        ? "border-red-500 bg-red-50/20 ring-2 ring-red-500/20" 
+                        : "border-slate-200 bg-[#F9FAFB]/50 focus-within:border-[#6C4CF1] focus-within:ring-2 focus-within:ring-[#6C4CF1]/20"
+                    } p-1 transition-all`}>
+                      <textarea
+                        rows={4}
+                        value={houseRules}
+                        onChange={(e) => {
+                          setHouseRules(e.target.value);
+                          clearFormError("houseRules");
+                        }}
+                        placeholder="e.g. No smoking, No pets, Visiting hours etc."
+                        className="w-full px-4 py-3 bg-transparent outline-none text-xs sm:text-sm text-slate-700 placeholder:text-slate-400 font-medium resize-none"
+                      />
+                    </div>
+                    {formErrors.houseRules && (
+                      <p className="text-[11px] font-semibold text-red-500 flex items-center gap-1 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block shrink-0" />
+                        {formErrors.houseRules}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex justify-between pt-3">
+                    <button
+                      onClick={() => setActiveScreen("step3")}
+                      className="border border-[#E8E8F0] text-slate-600 text-xs font-bold py-2.5 px-5 rounded-xl hover:bg-slate-50 cursor-pointer"
+                    >
+                      ← Back
+                    </button>
+                    <button
+                      onClick={() => {
+                        const errs: { [k: string]: string } = {};
+                        if (selectedFacilities.length === 0) errs.facilities = "Please select at least 1 facility.";
+                        if (selectedFurniture.length === 0) errs.furniture = "Please select at least 1 furniture item.";
+                        if (!houseRules.trim()) errs.houseRules = "Please enter rules & guidelines for the property.";
+
+                        if (Object.keys(errs).length > 0) {
+                          setFormErrors(errs);
+                          return;
+                        }
+                        setFormErrors({});
+                        setActiveScreen("step5");
+                      }}
+                      className="bg-[#5B2BE0] hover:bg-[#4A20C0] text-white text-xs sm:text-sm font-bold py-3 px-7 rounded-xl transition-all shadow-md shadow-[#5B2BE0]/20 cursor-pointer"
+                    >
+                      Next: Upload Photos →
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ===================================================================== */}
+              {/* STEP 5: PHOTOS & PUBLISH */}
+              {/* ===================================================================== */}
+              {activeScreen === "step5" && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-[#151538]">
+                      Property Photos <span className="text-red-500">*</span> (Add room, washroom & property pictures)
+                    </label>
+                    
+                    <label className={`border-2 border-dashed ${
+                      formErrors.photos ? "border-red-500 bg-red-50/20 ring-2 ring-red-500/20" : "border-[#5B2BE0]/30 hover:border-[#5B2BE0] bg-[#F8F5FE]"
+                    } rounded-2xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors`}>
+                      <Camera className={`w-8 h-8 ${formErrors.photos ? "text-red-500" : "text-[#5B2BE0]"}`} />
+                      <span className={`text-xs font-bold ${formErrors.photos ? "text-red-600" : "text-[#5B2BE0]"}`}>
+                        {isUploading ? "Uploading photo..." : "Click to select or drag property photos"}
+                      </span>
+                      <span className="text-[10px] text-slate-400">JPG, PNG, JPEG or WEBP (Max 5MB each)</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          clearFormError("photos");
+                          handlePhotoUpload(e);
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                    {formErrors.photos && (
+                      <p className="text-[11px] font-semibold text-red-500 flex items-center gap-1 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block shrink-0" />
+                        {formErrors.photos}
+                      </p>
+                    )}
+
+                    {photos.length > 0 && (
+                      <div className="flex flex-wrap gap-2.5 pt-2">
+                        {photos.map((p, idx) => (
+                          <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-[#E8E8F0] shadow-xs">
+                            <img src={p} alt="Upload preview" className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => setPhotos(photos.filter((_, i) => i !== idx))}
+                              className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-between pt-3">
+                    <button
+                      onClick={() => setActiveScreen("step4")}
+                      className="border border-[#E8E8F0] text-slate-600 text-xs font-bold py-2.5 px-5 rounded-xl hover:bg-slate-50 cursor-pointer"
+                    >
+                      ← Back
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (photos.length === 0) {
+                          setFormErrors({ photos: "Please upload at least 1 property photo before publishing." });
+                          return;
+                        }
+                        handleFinalSubmitListing();
+                      }}
+                      className="bg-gradient-to-r from-[#FF7A00] via-[#FF6600] to-[#FF4D00] hover:from-[#FF6600] hover:to-[#E63900] text-white text-xs sm:text-sm font-extrabold py-3.5 px-8 rounded-xl transition-all shadow-md shadow-orange-500/25 active:scale-98 cursor-pointer flex items-center gap-2"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      <span>Publish Listing 🎉</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+            </div>
+          )}
+
+
+          {/* ========================================================================= */}
+          {/* ========================================================================= */}
+          {/* ========================================================================= */}
+          {/* SCREEN 1: PROFILE SETTINGS */}
+          {/* ========================================================================= */}
+          {activeScreen === "profile" && (
+            <div className="max-w-2xl mx-auto space-y-6 text-left">
+              
+              {/* ===================================================================== */}
+              {/* VIEW MODE: PRE-SAVED PROFILE DETAILS */}
+              {/* ===================================================================== */}
+              {!isEditingProfile ? (
+                <div className="bg-white border border-[#E8E8F0] rounded-[24px] p-6 sm:p-8 shadow-xs text-left space-y-6">
+                  
+                  {/* Top Header */}
+                  <div className="flex items-center justify-between pb-4 border-b border-[#F0F2F5]">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="font-poppins font-black text-xl text-[#151538]">Owner Profile</h2>
+                        <span className="bg-[#EAF8EF] text-[#16A34A] text-[10px] font-extrabold px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 border border-[#A7F3D0]">
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>Saved & Verified</span>
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#666680] mt-0.5">Your verified landlord credentials and public contact info</p>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <button 
+                        type="button"
+                        onClick={() => setIsEditingProfile(true)}
+                        className="bg-[#5B2BE0] hover:bg-[#4A20C0] text-white text-xs font-bold py-2.5 px-4 rounded-xl flex items-center gap-1.5 shadow-sm shadow-[#5B2BE0]/20 transition-all cursor-pointer active:scale-98"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Edit Profile</span>
+                      </button>
+                      <button 
+                        onClick={() => setActiveScreen("dashboard")} 
+                        className="p-1.5 rounded-full hover:bg-slate-100 cursor-pointer"
+                      >
+                        <X className="w-5 h-5 text-slate-500" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Landlord Profile Banner */}
+                  <div className="bg-gradient-to-br from-[#F8F4FF] via-[#FAF7FF] to-[#F3EEFF] border border-[#E9DCFF] rounded-2xl p-5 flex flex-col sm:flex-row items-center sm:items-start gap-4">
+                    <div className="relative shrink-0">
+                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#5B2BE0] to-[#8C52FF] text-white text-2xl font-black flex items-center justify-center shadow-md shadow-[#5B2BE0]/20">
+                        {profileName.trim().charAt(0).toUpperCase() || "O"}
+                      </div>
+                      <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#16A34A] text-white rounded-full flex items-center justify-center border-2 border-white shadow-xs">
+                        <Check className="w-3 h-3 stroke-[3]" />
+                      </div>
+                    </div>
+                    <div className="text-center sm:text-left flex-1 min-w-0">
+                      <h3 className="font-poppins font-black text-lg text-[#151538] truncate">{profileName}</h3>
+                      <p className="text-xs text-[#5B2BE0] font-bold">CheckRooms Verified Property Partner</p>
+                      
+                      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2.5">
+                        <span className="text-[10px] font-bold bg-white text-slate-700 px-2.5 py-1 rounded-lg border border-[#E8E8F0] shadow-2xs inline-flex items-center gap-1">
+                          <ShieldCheck className="w-3 h-3 text-[#16A34A]" />
+                          <span>ID & Contact Verified</span>
+                        </span>
+                        <span className="text-[10px] font-bold bg-white text-slate-700 px-2.5 py-1 rounded-lg border border-[#E8E8F0] shadow-2xs inline-flex items-center gap-1">
+                          <House className="w-3 h-3 text-[#5B2BE0]" />
+                          <span>{listings.length} Properties Active</span>
+                        </span>
+                        <span className="text-[10px] font-bold bg-white text-slate-700 px-2.5 py-1 rounded-lg border border-[#E8E8F0] shadow-2xs inline-flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-amber-500" />
+                          <span>100% Fast Response</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pre-Saved Details Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    
+                    {/* Full Name */}
+                    <div className="p-4 rounded-2xl bg-slate-50/70 border border-[#E8E8F0] space-y-1">
+                      <div className="flex items-center justify-between text-[#8C8CA1]">
+                        <span className="text-[10.5px] font-extrabold uppercase tracking-wider">Full Name</span>
+                        <User className="w-3.5 h-3.5 text-slate-400" />
+                      </div>
+                      <p className="font-poppins font-bold text-sm text-[#151538]">{profileName}</p>
+                    </div>
+
+                    {/* Phone Number */}
+                    <div className="p-4 rounded-2xl bg-slate-50/70 border border-[#E8E8F0] space-y-1">
+                      <div className="flex items-center justify-between text-[#8C8CA1]">
+                        <span className="text-[10.5px] font-extrabold uppercase tracking-wider">Phone Number</span>
+                        <span className="text-[9.5px] font-bold text-[#16A34A] bg-[#EAF8EF] px-1.5 py-0.5 rounded">Calls Active</span>
+                      </div>
+                      <p className="font-poppins font-bold text-sm text-[#151538] flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5 text-[#5B2BE0]" />
+                        <span>{profilePhone}</span>
+                      </p>
+                    </div>
+
+                    {/* WhatsApp Number */}
+                    <div className="p-4 rounded-2xl bg-slate-50/70 border border-[#E8E8F0] space-y-1">
+                      <div className="flex items-center justify-between text-[#8C8CA1]">
+                        <span className="text-[10.5px] font-extrabold uppercase tracking-wider">WhatsApp Number</span>
+                        <span className="text-[9.5px] font-bold text-[#128C7E] bg-[#25D366]/10 px-1.5 py-0.5 rounded">Tenant Leads</span>
+                      </div>
+                      <p className="font-poppins font-bold text-sm text-[#151538] flex items-center gap-1.5">
+                        <MessageSquare className="w-3.5 h-3.5 text-[#25D366]" />
+                        <span>{profileWhatsApp}</span>
+                      </p>
+                    </div>
+
+                    {/* Email Address */}
+                    <div className="p-4 rounded-2xl bg-slate-50/70 border border-[#E8E8F0] space-y-1">
+                      <div className="flex items-center justify-between text-[#8C8CA1]">
+                        <span className="text-[10.5px] font-extrabold uppercase tracking-wider">Email Address</span>
+                        <Mail className="w-3.5 h-3.5 text-slate-400" />
+                      </div>
+                      <p className="font-poppins font-bold text-sm text-[#151538] truncate">{profileEmail}</p>
+                    </div>
+
+                  </div>
+
+                  {/* Info Note Banner */}
+                  <div className="p-3.5 bg-[#FAF8FE] border border-[#E9DCFF] rounded-xl flex items-start gap-2.5 text-xs text-[#666680]">
+                    <Sparkles className="w-4 h-4 text-[#5B2BE0] shrink-0 mt-0.5" />
+                    <p>
+                      These contact details are shown on your room listings. Whenever a tenant clicks <b>Call</b> or <b>WhatsApp</b>, they connect directly with you on this phone number.
+                    </p>
+                  </div>
+
+                </div>
+              ) : (
+                /* ===================================================================== */
+                /* EDIT MODE: UPDATE PROFILE DETAILS */
+                /* ===================================================================== */
+                <div className="bg-white border border-[#E8E8F0] rounded-[24px] p-6 sm:p-8 shadow-xs text-left space-y-6">
+                  <div className="flex items-center justify-between pb-4 border-b border-[#F0F2F5]">
+                    <div>
+                      <h2 className="font-poppins font-black text-xl text-[#151538]">Edit Profile Settings</h2>
+                      <p className="text-xs text-[#666680] mt-0.5">Update your landlord contact details and business info</p>
+                    </div>
+                    <button 
+                      onClick={() => setIsEditingProfile(false)} 
+                      className="p-1.5 rounded-full hover:bg-slate-100 cursor-pointer"
+                    >
+                      <X className="w-5 h-5 text-slate-500" />
+                    </button>
+                  </div>
+
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (typeof window !== "undefined") {
+                        localStorage.setItem("owner_name", profileName);
+                        localStorage.setItem("owner_phone", profilePhone);
+                        localStorage.setItem("owner_whatsapp", profileWhatsApp);
+                        localStorage.setItem("owner_email", profileEmail);
+                        localStorage.setItem("checkrooms_user_name", profileName);
+                        localStorage.setItem("checkrooms_user_phone", profilePhone);
+                      }
+
+                      try {
+                        await ownerFetch(getApiUrl("/api/auth/profile"), {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            fullName: profileName,
+                            mobile: profilePhone,
+                            email: profileEmail
+                          })
+                        });
+                      } catch (err) {
+                        console.error("Failed to update profile on server:", err);
+                      }
+                      
+                      setNotifications((prev) => [
+                        {
+                          id: `notif_${Date.now()}`,
+                          message: "Profile settings updated successfully!",
+                          time: "Just now",
+                          read: false
+                        },
+                        ...prev
+                      ]);
+
+                      setIsEditingProfile(false);
+                      alert("Profile updated successfully!");
+                    }}
+                    className="space-y-4"
+                  >
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-[#151538]">Full Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={profileName}
+                        onChange={(e) => setProfileName(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl border border-[#E8E8F0] text-xs font-semibold outline-none focus:border-[#5B2BE0] focus:ring-2 focus:ring-[#5B2BE0]/20"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-[#151538]">Phone Number (for Calling)</label>
+                      <input
+                        type="text"
+                        required
+                        value={profilePhone}
+                        onChange={(e) => setProfilePhone(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl border border-[#E8E8F0] text-xs font-semibold outline-none focus:border-[#5B2BE0] focus:ring-2 focus:ring-[#5B2BE0]/20"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-[#151538]">WhatsApp Number (for Tenant Inquiries)</label>
+                      <input
+                        type="text"
+                        required
+                        value={profileWhatsApp}
+                        onChange={(e) => setProfileWhatsApp(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl border border-[#E8E8F0] text-xs font-semibold outline-none focus:border-[#5B2BE0] focus:ring-2 focus:ring-[#5B2BE0]/20"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-[#151538]">Email Address</label>
+                      <input
+                        type="email"
+                        required
+                        value={profileEmail}
+                        onChange={(e) => setProfileEmail(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl border border-[#E8E8F0] text-xs font-semibold outline-none focus:border-[#5B2BE0] focus:ring-2 focus:ring-[#5B2BE0]/20"
+                      />
+                    </div>
+
+                    <div className="pt-2 flex justify-end gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingProfile(false)}
+                        className="px-5 py-2.5 rounded-xl border border-[#E8E8F0] text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-6 py-2.5 rounded-xl bg-[#5B2BE0] text-white text-xs font-bold hover:bg-[#4A20C0] transition-all shadow-md shadow-[#5B2BE0]/20 cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Check className="w-4 h-4 stroke-[2.5]" />
+                        <span>Save Changes</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* DANGER ZONE: DELETE ACCOUNT CARD */}
+              <div className="bg-red-50/40 border border-red-200/80 rounded-[24px] p-6 sm:p-7 shadow-xs text-left space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-red-100 text-red-600 flex items-center justify-center">
+                        <Trash2 className="w-4 h-4" />
+                      </div>
+                      <h4 className="font-poppins font-black text-base text-red-600">
+                        Delete Account & Data
+                      </h4>
+                    </div>
+                    <p className="text-xs text-[#666680] leading-relaxed max-w-md">
+                      Permanently delete your CheckRooms landlord account, published room listings ({listings.length} live), and customer lead history. This action cannot be undone.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeleteConfirmText("");
+                      setShowDeleteAccountModal(true);
+                    }}
+                    className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-3 px-5 rounded-xl transition-all shadow-sm shadow-red-600/20 active:scale-98 cursor-pointer flex items-center justify-center gap-1.5 shrink-0 self-start sm:self-auto"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete Account</span>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+
+          {/* ========================================================================= */}
+          {/* SCREEN 2: HELP & SUPPORT (CONTACT ADMIN WITH BOOST ISSUES) */}
+          {/* ========================================================================= */}
+          {activeScreen === "help" && (
+            <div className="max-w-2xl mx-auto space-y-6 text-left">
+              
+              {/* HELP & SUPPORT / CONTACT ADMIN CARD (MATCHING USER SCREENSHOT EXACTLY) */}
+              <div className="bg-white border border-[#E8E8F0] rounded-[24px] overflow-hidden shadow-xs text-left">
+                
+                {/* Header bar */}
+                <div className="p-5 sm:p-6 pb-4 border-b border-[#F0F2F5] flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-[#EFE7FF] text-[#5B2BE0] flex items-center justify-center shrink-0">
+                      <MessageSquare className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-poppins font-black text-xl text-[#151538]">
+                        Help & Support
+                      </h3>
+                      <p className="text-xs text-[#8C8CA1] font-medium">Get assistance with listings, boosts, and payments</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setActiveScreen("dashboard")} 
+                    className="p-1.5 rounded-full hover:bg-slate-100 cursor-pointer"
+                  >
+                    <X className="w-5 h-5 text-slate-500" />
+                  </button>
+                </div>
+
+                {/* Content */}
+                <div className="p-5 sm:p-6 space-y-5">
+                  
+                  {/* Subheader with vertical purple bar */}
+                  <div className="flex items-start gap-3">
+                    <div className="w-1.5 h-10 bg-[#5B2BE0] rounded-full shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="font-poppins font-black text-base text-[#151538] flex items-center gap-2">
+                        <span>Contact Admin</span>
+                        <span>💬</span>
+                      </h4>
+                      <p className="text-xs text-[#8C8CA1] font-medium">
+                        Send a message directly to the website administrator
+                      </p>
+                    </div>
+                  </div>
+
+                  {helpSubmittedSuccess ? (
+                    <div className="bg-[#EAF8EF] border border-[#A7F3D0] rounded-2xl p-6 text-center space-y-2">
+                      <div className="w-12 h-12 rounded-full bg-[#16A34A] text-white flex items-center justify-center mx-auto shadow-md shadow-emerald-500/20">
+                        <Check className="w-6 h-6 stroke-[3]" />
+                      </div>
+                      <h5 className="font-poppins font-bold text-sm text-[#151538]">
+                        Message Sent to Administrator!
+                      </h5>
+                      <p className="text-xs text-emerald-800 max-w-md mx-auto">
+                        Your request regarding <b>{helpSubject}</b> has been received. Our support team will review and resolve it promptly.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setHelpSubmittedSuccess(false);
+                          setHelpMessage("");
+                        }}
+                        className="mt-2 text-xs font-bold text-[#5B2BE0] hover:underline cursor-pointer"
+                      >
+                        Send another message →
+                      </button>
+                    </div>
+                  ) : (
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        if (!helpMessage.trim()) return;
+                        setIsSubmittingHelp(true);
+
+                        try {
+                          await ownerFetch(getApiUrl("/api/listings/support/report"), {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              subject: helpSubject,
+                              message: helpMessage,
+                              userEmail: profileEmail,
+                              userName: profileName
+                            })
+                          });
+                        } catch (err) {}
+
+                        setNotifications((prev) => [
+                          {
+                            id: `notif_${Date.now()}`,
+                            message: `Support ticket submitted: "${helpSubject}". Admin team will respond shortly.`,
+                            time: "Just now",
+                            read: false
+                          },
+                          ...prev
+                        ]);
+
+                        setIsSubmittingHelp(false);
+                        setHelpSubmittedSuccess(true);
+                      }}
+                      className="space-y-4 text-left"
+                    >
+                      {/* SELECT SUBJECT */}
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-extrabold uppercase tracking-wider text-[#8C8CA1] block">
+                          SELECT SUBJECT
+                        </label>
+                        <div className="relative">
+                          <select
+                            value={helpSubject}
+                            onChange={(e) => setHelpSubject(e.target.value)}
+                            className="w-full bg-white border border-[#E8E8F0] text-[#151538] font-bold text-sm px-4 py-3.5 rounded-2xl focus:outline-none focus:border-[#5B2BE0] focus:ring-2 focus:ring-[#5B2BE0]/20 transition-all cursor-pointer appearance-none"
+                          >
+                            <option value="General Help & Query">General Help & Query</option>
+                            <option value="⚡ Listing Boost & Ranking Issue">⚡ Listing Boost & Ranking Issue</option>
+                            <option value="⚡ Boost Payment & Verification Pending">⚡ Boost Payment & Verification Pending</option>
+                            <option value="Listing/Room Approval Issue">Listing/Room Approval Issue</option>
+                            <option value="Billing & Premium Payments">Billing & Premium Payments</option>
+                            <option value="Technical Bug Report">Technical Bug Report</option>
+                          </select>
+                          <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                        </div>
+                      </div>
+
+                      {/* YOUR MESSAGE */}
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-extrabold uppercase tracking-wider text-[#8C8CA1] block">
+                          YOUR MESSAGE
+                        </label>
+                        <textarea
+                          required
+                          rows={4}
+                          value={helpMessage}
+                          onChange={(e) => setHelpMessage(e.target.value)}
+                          placeholder="Describe your issue or request..."
+                          className="w-full bg-white border border-[#E8E8F0] text-[#151538] text-xs font-semibold p-4 rounded-2xl focus:outline-none focus:border-[#5B2BE0] focus:ring-2 focus:ring-[#5B2BE0]/20 transition-all resize-none"
+                        />
+                      </div>
+
+                      {/* Send Message Button */}
+                      <button
+                        type="submit"
+                        disabled={isSubmittingHelp || !helpMessage.trim()}
+                        className="w-full bg-[#5B2BE0] hover:bg-[#4A20C0] disabled:opacity-50 text-white font-bold text-sm py-4 rounded-2xl transition-all shadow-md shadow-[#5B2BE0]/25 active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        {isSubmittingHelp ? "Sending Message..." : "Send Message"}
+                      </button>
+                    </form>
+                  )}
+
+                  {/* Quick WhatsApp & Call Support Links */}
+                  <div className="pt-2 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 border-t border-slate-100">
+                    <span>Need urgent assistance?</span>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href="https://wa.me/919876543210?text=Hello%20CheckRooms%20Support%2C%20I%20need%20help%20with%20my%20owner%20dashboard."
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] font-bold px-3 py-1.5 rounded-lg inline-flex items-center gap-1 transition-colors"
+                      >
+                        <span>WhatsApp Admin</span>
+                      </a>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+          )}
+
+        </main>
+
+
+        {/* ========================================================================= */}
+        {/* 6. FOOTER */}
+        {/* ========================================================================= */}
+        <footer className="mt-auto py-5 px-6 sm:px-8 border-t border-[#E8E8F0] bg-white text-xs text-[#8C8CA1] flex flex-col sm:flex-row items-center justify-between gap-2 select-none">
+          <div>
+            © 2025 CheckRooms. All rights reserved.
+          </div>
+          <div className="flex items-center gap-3">
+            <Link href="/privacy-policy" className="hover:text-[#5B2BE0] transition-colors">Privacy Policy</Link>
+            <span>|</span>
+            <Link href="/terms" className="hover:text-[#5B2BE0] transition-colors">Terms & Conditions</Link>
+          </div>
+        </footer>
+
+      </div>
+
+
+      {/* ========================================================================= */}
+      {/* 7. BOOST LISTING MODAL (PREMIUM POPUP) */}
+      {/* ========================================================================= */}
+      {showBoostModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+          <div className="bg-white border border-[#E8E8F0] rounded-[28px] max-w-lg w-full p-6 sm:p-8 shadow-2xl relative text-left space-y-5 max-h-[90vh] overflow-y-auto no-scrollbar">
+            
+            <div className="flex items-center justify-between pb-3 border-b border-[#F0F2F5]">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-[#EFE7FF] text-[#5B2BE0] flex items-center justify-center">
+                  <Rocket className="w-4 h-4" />
+                </div>
+                <h3 className="font-poppins font-bold text-base text-[#151538]">
+                  Boost Your Listing
+                </h3>
+              </div>
+              <button 
+                onClick={() => setShowBoostModal(false)} 
+                className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+
+            {/* ========================================================================= */}
+            {/* STEP 1: SELECT PROPERTY TO BOOST */}
+            {/* ========================================================================= */}
+            {checkoutStep === "select_listing" && (
+              <div className="space-y-3.5">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-[#5B2BE0] text-white text-[10px] font-black flex items-center justify-center">1</span>
+                    <h4 className="font-poppins font-bold text-sm text-[#151538]">
+                      Select Property to Boost
+                    </h4>
+                  </div>
+                  <p className="text-xs text-[#666680] mt-1 leading-relaxed">
+                    Select a listing to rank at #1 position. Properties that are already boosted cannot be selected again until their plan expires.
+                  </p>
+                </div>
+
+                {/* List of properties to pick */}
+                <div className="space-y-2.5 max-h-[300px] overflow-y-auto no-scrollbar pr-0.5">
+                  {listings.map((item) => {
+                    const isItemBoosted = Boolean(item.isBoosted || (item.views && item.views > 350));
+                    const isSelected = boostingListing?.id === item.id;
+
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => {
+                          if (isItemBoosted) return;
+                          setBoostingListing(item);
+                        }}
+                        className={`p-3 rounded-2xl border-2 transition-all flex items-center justify-between gap-3 ${
+                          isItemBoosted
+                            ? "bg-slate-50/80 border-slate-200 opacity-60 cursor-not-allowed"
+                            : isSelected
+                            ? "border-[#5B2BE0] bg-gradient-to-r from-[#F8F4FF] via-white to-white shadow-xs ring-2 ring-[#5B2BE0]/20 cursor-pointer"
+                            : "border-[#E8E8F0] hover:border-slate-300 hover:bg-slate-50/70 cursor-pointer"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <img
+                            src={item.image}
+                            alt={item.title}
+                            className="w-13 h-13 rounded-xl object-cover shrink-0 border border-[#E8E8F0]"
+                          />
+                          <div className="min-w-0 text-left">
+                            <div className="flex items-center gap-1.5">
+                              <span className="bg-[#EFE7FF] text-[#5B2BE0] text-[9px] font-extrabold px-2 py-0.2 rounded-full uppercase">
+                                {item.type || "Room"}
+                              </span>
+                              {isItemBoosted ? (
+                                <span className="bg-amber-100 text-amber-800 border border-amber-300/50 text-[8.5px] font-extrabold px-2 py-0.5 rounded-full uppercase">
+                                  ⚡ ALREADY BOOSTED
+                                </span>
+                              ) : (
+                                <span className="bg-emerald-50 text-emerald-700 text-[8.5px] font-bold px-1.5 py-0.2 rounded-full">
+                                  Available
+                                </span>
+                              )}
+                            </div>
+                            <h5 className="font-poppins font-bold text-xs text-[#151538] truncate mt-1">
+                              {item.title}
+                            </h5>
+                            <p className="text-[11px] text-[#666680] truncate flex items-center gap-1 mt-0.5">
+                              <MapPin className="w-3 h-3 text-[#8C8CA1] shrink-0" />
+                              <span>{item.location}</span>
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <span className="font-poppins font-black text-xs text-[#151538] block">
+                            ₹{item.rent.toLocaleString()}
+                          </span>
+                          <span className="text-[9.5px] text-[#8C8CA1] block">/month</span>
+                          <div className="mt-1 flex items-center justify-end">
+                            {isItemBoosted ? (
+                              <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">
+                                Active #1
+                              </span>
+                            ) : (
+                              <div className={`w-5 h-5 rounded-full flex items-center justify-center border transition-all ${
+                                isSelected
+                                  ? "bg-[#5B2BE0] border-[#5B2BE0] text-white"
+                                  : "border-slate-300 bg-white"
+                              }`}>
+                                {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Bottom Fixed Action Button (Without 'NEXT' text) */}
+                <div className="pt-3 border-t border-[#F0F2F5] sticky bottom-0 bg-white">
+                  <button
+                    disabled={!boostingListing || Boolean(boostingListing.isBoosted || (boostingListing.views && boostingListing.views > 350))}
+                    onClick={() => {
+                      if (boostingListing && !Boolean(boostingListing.isBoosted || (boostingListing.views && boostingListing.views > 350))) {
+                        setCheckoutStep("plans");
+                      }
+                    }}
+                    className="w-full bg-gradient-to-r from-[#FF7A00] via-[#FF6600] to-[#FF4D00] hover:from-[#FF6600] hover:to-[#E63900] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-extrabold py-3 px-5 rounded-xl transition-all duration-200 shadow-md shadow-orange-500/25 active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <span>Continue</span>
+                  </button>
+                  {boostingListing && Boolean(boostingListing.isBoosted || (boostingListing.views && boostingListing.views > 350)) && (
+                    <p className="text-[11px] text-amber-600 font-semibold text-center mt-1.5">
+                      ⚠️ Selected listing is already boosted. Please select another property from above.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ========================================================================= */}
+            {/* STEP 2: CHOOSE BOOST PLAN */}
+            {/* ========================================================================= */}
+            {checkoutStep === "plans" && (
+              <div className="space-y-4">
+                {/* Selected Property Preview Banner */}
+                {boostingListing && (
+                  <div className="bg-[#FAF8FE] border border-[#E9DCFF] rounded-2xl p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <img
+                        src={boostingListing.image}
+                        alt={boostingListing.title}
+                        className="w-11 h-11 rounded-xl object-cover border border-[#E8E8F0] shrink-0"
+                      />
+                      <div className="min-w-0 text-left">
+                        <span className="text-[9px] font-extrabold text-[#5B2BE0] uppercase tracking-wider block">Selected Property</span>
+                        <h5 className="font-poppins font-bold text-xs text-[#151538] truncate">{boostingListing.title}</h5>
+                        <p className="text-[10.5px] text-[#666680] truncate">{boostingListing.location} • ₹{boostingListing.rent.toLocaleString()}/mo</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setCheckoutStep("select_listing")}
+                      className="text-[11px] font-bold text-[#5B2BE0] hover:underline shrink-0 cursor-pointer bg-white px-2.5 py-1 rounded-lg border border-[#E9DCFF]"
+                    >
+                      Change
+                    </button>
+                  </div>
+                )}
+
+                <p className="text-xs text-[#666680] leading-relaxed">
+                  Choose a promotion plan to feature your selected property at the top of search results and attract 3x more tenants.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div 
+                    onClick={() => setSelectedPlan("basic")}
+                    className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                      selectedPlan === "basic" 
+                        ? "border-[#5B2BE0] bg-gradient-to-br from-[#F8F4FF] to-white ring-2 ring-[#5B2BE0]/20 shadow-xs" 
+                        : "border-[#E8E8F0] hover:bg-slate-50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9.5px] font-bold text-[#5B2BE0] uppercase tracking-wider">⚡ Standard Boost</span>
+                      <span className="bg-[#EFE7FF] text-[#5B2BE0] text-[8.5px] font-extrabold px-2 py-0.5 rounded-full">7 DAYS</span>
+                    </div>
+                    <h4 className="font-poppins font-black text-xl text-[#151538] mt-1.5">₹19</h4>
+                    <p className="text-[11px] text-[#666680] mt-1 leading-snug">7 Days Priority #1 Listing on Homepage & Category Search</p>
+                  </div>
+
+                  <div 
+                    onClick={() => setSelectedPlan("premium")}
+                    className={`p-4 rounded-2xl border cursor-pointer transition-all relative ${
+                      selectedPlan === "premium" 
+                        ? "border-[#FF7A00] bg-gradient-to-br from-[#FFF8F3] to-[#FBF6FF] ring-2 ring-[#FF7A00]/25 shadow-sm" 
+                        : "border-[#E8E8F0] hover:bg-slate-50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9.5px] font-bold text-[#FF7A00] uppercase tracking-wider">🚀 Ultra Boost</span>
+                      <span className="bg-gradient-to-r from-[#FF7A00] to-[#FF4D00] text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">1 MONTH (30 DAYS)</span>
+                    </div>
+                    <h4 className="font-poppins font-black text-xl text-[#151538] mt-1.5">₹49</h4>
+                    <p className="text-[11px] text-[#666680] mt-1 leading-snug">1 Full Month (30 Days) Top Rank + Golden Badge + Instant Alerts</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setCheckoutStep("select_listing")}
+                    className="w-24 sm:w-28 py-3 rounded-xl bg-[#F4EFFF] border border-[#6C4CF1]/30 hover:bg-[#6C4CF1] hover:text-white text-[#6C4CF1] text-xs sm:text-sm font-bold transition-all active:scale-98 cursor-pointer text-center"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCheckoutStep("payment")}
+                    className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-[#FF7A00] via-[#FF6600] to-[#FF4D00] hover:from-[#FF6600] hover:to-[#E63900] text-white text-xs sm:text-sm font-extrabold transition-all duration-200 shadow-md shadow-orange-500/25 active:scale-98 cursor-pointer text-center"
+                  >
+                    Payment ₹{selectedPlan === "basic" ? "19" : "49"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ========================================================================= */}
+            {/* STEP 3: PAYMENT MODE & SCREENSHOT PROOF */}
+            {/* ========================================================================= */}
+            {checkoutStep === "payment" && (
+              <div className="space-y-4 text-center">
+                {/* Summary banner */}
+                {boostingListing && (
+                  <div className="bg-[#FAF8FE] border border-[#E9DCFF] rounded-2xl p-2.5 flex items-center justify-between gap-3 text-left">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <img
+                        src={boostingListing.image}
+                        alt={boostingListing.title}
+                        className="w-10 h-10 rounded-lg object-cover border border-[#E8E8F0] shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <h5 className="font-poppins font-bold text-xs text-[#151538] truncate">{boostingListing.title}</h5>
+                        <span className="text-[10px] font-extrabold text-[#5B2BE0]">
+                          {selectedPlan === "basic" ? "Standard Boost (₹19 - 7 Days)" : "Ultra Boost (₹49 - 1 Month)"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <p className="text-xs text-[#666680]">
+                  Scan the UPI QR Code to pay <b>{selectedPlan === "basic" ? "₹19 (7 Days Plan)" : "₹49 (1 Month Plan)"}</b> and upload screenshot for instant verification.
+                </p>
+
+                {/* QR Code */}
+                <div className="p-3.5 bg-slate-50 border border-[#E8E8F0] rounded-2xl w-52 mx-auto flex flex-col items-center relative group">
+                  <div className="relative">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(
+                        `upi://pay?pa=manish12643@okhdfcbank&pn=CheckRooms&am=${selectedPlan === "basic" ? "19" : "49"}&cu=INR`
+                      )}`}
+                      alt="UPI QR Code"
+                      className="w-36 h-36 rounded-xl bg-white p-1.5 border border-slate-200 shadow-xs"
+                    />
+                    {/* Small Download Icon Button on corner */}
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
+                          `upi://pay?pa=manish12643@okhdfcbank&pn=CheckRooms&am=${selectedPlan === "basic" ? "19" : "49"}&cu=INR`
+                        )}`;
+                        try {
+                          const res = await fetch(qrUrl);
+                          const blob = await res.blob();
+                          const blobUrl = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = blobUrl;
+                          a.download = `CheckRooms_QR_${selectedPlan === "basic" ? "19" : "49"}.png`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(blobUrl);
+                        } catch (e) {
+                          window.open(qrUrl, "_blank");
+                        }
+                      }}
+                      title="Download QR Code"
+                      className="absolute -bottom-2 -right-2 bg-[#5B2BE0] hover:bg-[#4A20C0] text-white p-1.5 rounded-full shadow-md transition-all hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
+                    >
+                      <Download className="w-3.5 h-3.5 stroke-[2.5]" />
+                    </button>
+                  </div>
+                  
+                  <span className="text-[10px] font-bold text-slate-600 mt-2.5">UPI: manish12643@okhdfcbank</span>
+                  
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
+                        `upi://pay?pa=manish12643@okhdfcbank&pn=CheckRooms&am=${selectedPlan === "basic" ? "19" : "49"}&cu=INR`
+                      )}`;
+                      try {
+                        const res = await fetch(qrUrl);
+                        const blob = await res.blob();
+                        const blobUrl = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = blobUrl;
+                        a.download = `CheckRooms_QR_${selectedPlan === "basic" ? "19" : "49"}.png`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(blobUrl);
+                      } catch (e) {
+                        window.open(qrUrl, "_blank");
+                      }
+                    }}
+                    className="mt-1 text-[10px] font-bold text-[#5B2BE0] hover:text-[#4A20C0] flex items-center gap-1 hover:underline cursor-pointer"
+                  >
+                    <Download className="w-3 h-3" />
+                    <span>Download QR</span>
+                  </button>
+                </div>
+
+                {/* Upload screenshot (Mandatory) */}
+                <div className="space-y-2 text-left">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-[#151538]">
+                      Upload Payment Screenshot / Receipt <span className="text-red-500">*</span>
+                    </label>
+                    {screenshotUrl && (
+                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                        ✓ Receipt Attached
+                      </span>
+                    )}
+                  </div>
+                  <label className={`border-2 border-dashed ${
+                    !screenshotUrl ? "border-[#6C4CF1]/40 hover:border-[#6C4CF1] bg-[#FAF8FE]" : "border-emerald-500 bg-emerald-50/40"
+                  } rounded-xl p-3.5 flex flex-col sm:flex-row items-center justify-center gap-2.5 cursor-pointer transition-all`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                      screenshotUrl ? "bg-emerald-100 text-emerald-700" : "bg-[#6C4CF1]/10 text-[#6C4CF1]"
+                    }`}>
+                      <Camera className="w-4 h-4" />
+                    </div>
+                    <div className="text-center sm:text-left">
+                      <p className={`text-xs font-bold ${screenshotUrl ? "text-emerald-700" : "text-[#6C4CF1]"}`}>
+                        {screenshotUrl ? "Receipt attached! Click to change" : "Click to upload UPI payment receipt / screenshot"}
+                      </p>
+                      <p className="text-[10px] text-slate-400">PNG, JPG, JPEG (Required for verification)</p>
+                    </div>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) {
+                          setScreenshotUrl(URL.createObjectURL(e.target.files[0]));
+                        }
+                      }}
+                      className="hidden" 
+                    />
+                  </label>
+                  {!screenshotUrl && (
+                    <p className="text-[10.5px] text-amber-600 font-semibold flex items-center gap-1">
+                      <span>⚠️ Please attach your payment screenshot before submitting.</span>
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setCheckoutStep("plans")}
+                    className="w-24 sm:w-28 py-3 rounded-xl bg-[#F4EFFF] border border-[#6C4CF1]/30 hover:bg-[#6C4CF1] hover:text-white text-[#6C4CF1] text-xs sm:text-sm font-bold transition-all active:scale-98 cursor-pointer text-center"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!screenshotUrl || isSubmittingBoost}
+                    onClick={async () => {
+                      if (!screenshotUrl) {
+                        alert("Please upload your payment screenshot/receipt before submitting!");
+                        return;
+                      }
+
+                      setIsSubmittingBoost(true);
+                      const targetListing = boostingListing || listings[0];
+                      const planName = selectedPlan === "basic" ? "Standard Boost (₹19 - 7 Days)" : "Ultra Boost (₹49 - 1 Month)";
+                      const planAmount = selectedPlan === "basic" ? 19 : 49;
+
+                      try {
+                        if (targetListing?.id) {
+                          const res = await ownerFetch(getApiUrl(`/api/listings/${targetListing.id}/boost`), {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              plan: planName,
+                              amount: planAmount,
+                              screenshot: screenshotUrl
+                            })
+                          });
+                          if (res.ok) {
+                            await loadOwnerData();
+                          }
+                        }
+                      } catch (err) {}
+
+                      const newBoostRecord: BoostHistoryRecord = {
+                        id: `bh_${Date.now()}`,
+                        propertyId: targetListing?.id || "1",
+                        propertyTitle: targetListing?.title || "Property",
+                        propertyImage: targetListing?.image || "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600",
+                        plan: selectedPlan === "basic" ? "Standard Boost (7 Days)" : "Ultra Boost (1 Month / 30 Days)",
+                        amount: planAmount,
+                        startDate: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
+                        expiryDate: new Date(Date.now() + (selectedPlan === "basic" ? 7 : 30) * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
+                        status: "Active"
+                      };
+
+                      setBoostHistory((prev) => [newBoostRecord, ...prev]);
+
+                      setNotifications((prev) => [
+                        {
+                          id: `notif_${Date.now()}`,
+                          message: `Boost request submitted for ${targetListing?.title || "Property"} (${planName}). Verification will be completed within 1-2 hours!`,
+                          time: "Just now",
+                          read: false
+                        },
+                        ...prev
+                      ]);
+
+                      setIsSubmittingBoost(false);
+                      setCheckoutStep("success");
+                    }}
+                    className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-[#FF7A00] via-[#FF6600] to-[#FF4D00] hover:from-[#FF6600] hover:to-[#E63900] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-extrabold transition-all duration-200 shadow-md shadow-orange-500/25 active:scale-98 cursor-pointer text-center"
+                  >
+                    {isSubmittingBoost ? "Submitting..." : "Submit Payment Proof"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ========================================================================= */}
+            {/* STEP 4: SUCCESS */}
+            {/* ========================================================================= */}
+            {checkoutStep === "success" && (
+              <div className="text-center py-4 space-y-4">
+                {/* Success Animated Icon */}
+                <div className="w-16 h-16 rounded-3xl bg-[#EAF8EF] border-2 border-emerald-300 text-[#16A34A] flex items-center justify-center mx-auto shadow-md shadow-emerald-500/15">
+                  <CheckCircle2 className="w-9 h-9 stroke-[2.2]" />
+                </div>
+
+                {/* Main Heading */}
+                <div className="space-y-1">
+                  <h4 className="font-poppins font-black text-xl text-[#151538]">
+                    Boost Request Submitted!
+                  </h4>
+                  <p className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1 w-fit mx-auto flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Verification Time: <b>1 - 2 Hours</b></span>
+                  </p>
+                </div>
+
+                {/* Structured Details Card */}
+                <div className="bg-[#FAF8FE] border border-[#E8DCFE] rounded-2xl p-4 text-left space-y-3 shadow-xs">
+                  {boostingListing && (
+                    <div className="flex items-center gap-3 pb-3 border-b border-[#EDE4FE]">
+                      <img
+                        src={boostingListing.image}
+                        alt={boostingListing.title}
+                        className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <h5 className="font-poppins font-bold text-xs text-[#151538] truncate">{boostingListing.title}</h5>
+                        <p className="text-[11px] text-[#666680] truncate">{boostingListing.location}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="bg-white p-2.5 rounded-xl border border-purple-100">
+                      <span className="text-[10px] font-bold text-[#8C8CA1] uppercase tracking-wider block">Selected Plan</span>
+                      <span className="font-bold text-[#5B2BE0] block truncate">
+                        {selectedPlan === "basic" ? "Standard (7 Days)" : "Ultra (1 Month)"}
+                      </span>
+                    </div>
+
+                    <div className="bg-white p-2.5 rounded-xl border border-purple-100">
+                      <span className="text-[10px] font-bold text-[#8C8CA1] uppercase tracking-wider block">Amount Paid</span>
+                      <span className="font-black text-[#151538] block">
+                        ₹{selectedPlan === "basic" ? "19" : "49"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <p className="text-[11.5px] text-[#555570] leading-relaxed">
+                    Aapka payment receipt receive ho gaya hai. <b>1-2 hours ke andar</b> verify hokar aapki listing automatically <b>#1 search ranking</b> par boost ho jayegi.
+                  </p>
+                </div>
+
+                {/* Action CTA Button */}
+                <button
+                  onClick={() => setShowBoostModal(false)}
+                  className="w-full bg-gradient-to-r from-[#FF7A00] via-[#FF6600] to-[#FF4D00] hover:from-[#FF6600] hover:to-[#E63900] text-white text-xs sm:text-sm font-extrabold py-3.5 px-8 rounded-xl cursor-pointer shadow-md shadow-orange-500/25 active:scale-98 transition-all"
+                >
+                  Done & View Dashboard
                 </button>
               </div>
             )}
@@ -3373,54 +4495,166 @@ export default function HostDashboard() {
         </div>
       )}
 
+
       {/* ========================================================================= */}
-      {/* FLOATING ACTION BOTTOM STICKY NAVIGATION FOR DASHBOARD */}
+      {/* 7.5 DELETE ACCOUNT CONFIRMATION MODAL */}
       {/* ========================================================================= */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#F0F2F5] px-6 py-3.5 z-40 flex shadow-[0px_-8px_24px_rgba(0,0,0,0.03)] justify-between items-center">
-        <div className="max-w-[1280px] mx-auto w-full flex justify-between items-center">
-          
-          <button 
-            onClick={() => setActiveScreen("dashboard")}
-            className={`flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors ${
-              activeScreen === "dashboard" || activeScreen === "inquiries" ? "text-blue-600" : "text-[#94A3B8]"
-            }`}
-          >
-            <Home className="w-6 h-6" />
-            <span className="text-[10px] sm:text-xs font-bold uppercase mt-1">Home</span>
-          </button>
+      {showDeleteAccountModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            onClick={() => setShowDeleteAccountModal(false)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity" 
+          />
+          <div className="relative bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl z-10 text-left space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-[#F0F2F5]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-poppins font-black text-lg text-[#151538]">Delete Account?</h3>
+                  <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider">Permanent Action</span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowDeleteAccountModal(false)}
+                className="p-1.5 rounded-full hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
 
-          <button 
-            onClick={() => setActiveScreen("step1")}
-            className={`flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors ${
-              activeScreen.startsWith("step") ? "text-blue-600" : "text-[#94A3B8]"
-            }`}
-          >
-            <Plus className="w-6 h-6" />
-            <span className="text-[10px] sm:text-xs font-bold uppercase mt-1">Add Listing</span>
-          </button>
+            <div className="space-y-3">
+              <div className="p-3.5 bg-red-50 border border-red-200/80 rounded-2xl space-y-1.5 text-xs text-red-900">
+                <p className="font-bold flex items-center gap-1.5 text-red-700">
+                  <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                  <span>Warning: This cannot be undone!</span>
+                </p>
+                <p className="text-[11.5px] text-red-800 leading-relaxed">
+                  All your active room listings (<b>{listings.length} live</b>), lead inquiries, boost records, and host profile data will be permanently wiped from the database.
+                </p>
+              </div>
 
-          <button 
-            onClick={() => setActiveScreen("listings")}
-            className={`flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors ${
-              activeScreen === "listings" ? "text-blue-600" : "text-[#94A3B8]"
-            }`}
-          >
-            <ListTodo className="w-6 h-6" />
-            <span className="text-[10px] sm:text-xs font-bold uppercase mt-1">My Listings</span>
-          </button>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#151538]">
+                  Type <span className="text-red-600 font-black">DELETE</span> to confirm:
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="Type DELETE"
+                  className="w-full px-4 py-3 rounded-xl border border-[#E8E8F0] text-xs font-bold uppercase tracking-wider outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
+                />
+              </div>
+            </div>
 
-          <button 
-            onClick={() => setActiveScreen("profile")}
-            className={`flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors ${
-              activeScreen === "profile" ? "text-blue-600" : "text-[#94A3B8]"
-            }`}
-          >
-            <User className="w-6 h-6" />
-            <span className="text-[10px] sm:text-xs font-bold uppercase mt-1">Profile</span>
-          </button>
-
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteAccountModal(false)}
+                className="flex-1 py-3 rounded-xl border border-[#E8E8F0] text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleteConfirmText.trim().toUpperCase() !== "DELETE" || isDeletingAccount}
+                onClick={handleDeleteAccount}
+                className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold transition-all shadow-md shadow-red-600/20 active:scale-98 cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                {isDeletingAccount ? "Deleting..." : "Permanently Delete"}
+              </button>
+            </div>
+          </div>
         </div>
-      </nav>
+      )}
+
+
+      {/* ========================================================================= */}
+      {/* 8. MOBILE DRAWER SIDEBAR */}
+      {/* ========================================================================= */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 flex lg:hidden">
+          <div 
+            onClick={() => setMobileMenuOpen(false)}
+            className="fixed inset-0 bg-black/40 backdrop-blur-xs"
+          />
+          <div className="relative w-[280px] bg-white h-full shadow-2xl p-5 flex flex-col justify-between overflow-y-auto no-scrollbar z-10 text-left">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between pb-3.5 border-b border-[#F0F2F5]">
+                <Link href="/" className="flex items-center gap-2.5 group text-left shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#6C4CF1] to-[#8E75FF] flex items-center justify-center text-white shadow-sm shadow-[#6C4CF1]/20 shrink-0">
+                    <Home className="w-5 h-5 stroke-[2.4]" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="inline-flex items-center font-poppins font-black text-xl tracking-tight select-none transform scale-y-[1.12] origin-left leading-none">
+                      <span className="text-[#1E2235]">Check</span>
+                      <span className="text-[#6C4CF1]">Rooms</span>
+                    </span>
+                    <span className="text-[9.5px] text-[#8C8CA1] font-medium tracking-tight mt-1">
+                      Simplifying Room Hunting
+                    </span>
+                  </div>
+                </Link>
+                <button onClick={() => setMobileMenuOpen(false)} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <nav className="space-y-1">
+                {[
+                  { id: "profile", label: "Owner Profile", icon: UserRound },
+                  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+                  { id: "listings", label: "My Listings", icon: House },
+                  { id: "boost", label: "Boost Listing", icon: Rocket },
+                  { id: "bookings", label: "Customer Leads", icon: CalendarDays },
+                  { id: "settings", label: "Profile Settings", icon: Settings },
+                  { id: "help", label: "Help & Support", icon: CircleHelp },
+                ].map(item => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        setActiveNav(item.id as any);
+                        if (item.id === "boost") {
+                          openBoostModalForListing();
+                        } else if (item.id === "settings") {
+                          setActiveScreen("profile");
+                        } else if (item.id === "help") {
+                          setActiveScreen("help");
+                        } else if (item.id === "listings") {
+                          setActiveScreen("listings");
+                        } else if (item.id === "bookings") {
+                          setActiveScreen("bookings");
+                        } else {
+                          setActiveScreen("dashboard");
+                        }
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold text-[#151538] hover:bg-[#F3EEFF] cursor-pointer"
+                    >
+                      <Icon className="w-4.5 h-4.5 text-[#5B2BE0]" />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Logout</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

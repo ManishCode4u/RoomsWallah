@@ -82,17 +82,17 @@ export default function HomeLayout() {
       const urlParams = new URLSearchParams(window.location.search);
       const urlCity = urlParams.get("city");
       if (urlCity) {
-        localStorage.setItem("roomswallah_user_city", urlCity);
+        localStorage.setItem("checkrooms_user_city", urlCity);
         const urlState = urlParams.get("state");
-        if (urlState) localStorage.setItem("roomswallah_user_state", urlState);
+        if (urlState) localStorage.setItem("checkrooms_user_state", urlState);
         const urlArea = urlParams.get("area");
-        if (urlArea) localStorage.setItem("roomswallah_user_area", urlArea);
+        if (urlArea) localStorage.setItem("checkrooms_user_area", urlArea);
         const urlPincode = urlParams.get("pincode");
-        if (urlPincode) localStorage.setItem("roomswallah_user_pincode", urlPincode);
+        if (urlPincode) localStorage.setItem("checkrooms_user_pincode", urlPincode);
         setSelectedCity(urlCity);
       } else {
         // 2. Sync from localStorage if no URL params
-        const savedCity = localStorage.getItem("roomswallah_user_city");
+        const savedCity = localStorage.getItem("checkrooms_user_city");
         if (savedCity) {
           setSelectedCity(savedCity);
         }
@@ -100,7 +100,7 @@ export default function HomeLayout() {
 
       // 3. Listen to active city updates dispatched from navbar
       const handleCityChange = () => {
-        const updatedCity = localStorage.getItem("roomswallah_user_city");
+        const updatedCity = localStorage.getItem("checkrooms_user_city");
         if (updatedCity) {
           setSelectedCity(updatedCity);
         }
@@ -162,11 +162,11 @@ export default function HomeLayout() {
     const fetchProperties = async () => {
       let apiListings: PropertyListing[] = [];
       try {
-        const savedCity = localStorage.getItem("roomswallah_user_city") || "";
-        const savedState = localStorage.getItem("roomswallah_user_state") || "";
-        const savedPincode = localStorage.getItem("roomswallah_user_pincode") || "";
-        const savedLat = localStorage.getItem("roomswallah_user_lat") || "";
-        const savedLon = localStorage.getItem("roomswallah_user_lon") || "";
+        const savedCity = localStorage.getItem("checkrooms_user_city") || "";
+        const savedState = localStorage.getItem("checkrooms_user_state") || "";
+        const savedPincode = localStorage.getItem("checkrooms_user_pincode") || "";
+        const savedLat = localStorage.getItem("checkrooms_user_lat") || "";
+        const savedLon = localStorage.getItem("checkrooms_user_lon") || "";
 
         let queryParams = [];
         if (savedCity && savedCity !== "India") {
@@ -200,7 +200,7 @@ export default function HomeLayout() {
       let localProps: PropertyListing[] = [];
       if (typeof window !== "undefined") {
         try {
-          localProps = JSON.parse(localStorage.getItem("roomswallah_properties") || "[]");
+          localProps = JSON.parse(localStorage.getItem("checkrooms_properties") || "[]");
         } catch (e) {}
       }
 
@@ -227,7 +227,7 @@ export default function HomeLayout() {
           if (Array.isArray(slotsData) && slotsData.length > 0) {
             promoSlots = slotsData;
             if (typeof window !== "undefined") {
-              localStorage.setItem("roomswallah_promotions", JSON.stringify(slotsData));
+              localStorage.setItem("checkrooms_promotions", JSON.stringify(slotsData));
             }
           }
         }
@@ -237,7 +237,7 @@ export default function HomeLayout() {
 
       if (promoSlots.length === 0 && typeof window !== "undefined") {
         try {
-          promoSlots = JSON.parse(localStorage.getItem("roomswallah_promotions") || "[]");
+          promoSlots = JSON.parse(localStorage.getItem("checkrooms_promotions") || "[]");
         } catch (e) {}
       }
       const activePromoted = new Set<string>(
@@ -251,12 +251,12 @@ export default function HomeLayout() {
     fetchProperties();
 
     if (typeof window !== "undefined") {
-      window.addEventListener("roomswallahPropertiesUpdated", fetchProperties);
+      window.addEventListener("checkroomsPropertiesUpdated", fetchProperties);
     }
 
     return () => {
       if (typeof window !== "undefined") {
-        window.removeEventListener("roomswallahPropertiesUpdated", fetchProperties);
+        window.removeEventListener("checkroomsPropertiesUpdated", fetchProperties);
       }
     };
   }, [selectedCity]);
@@ -287,13 +287,13 @@ export default function HomeLayout() {
         setSavedIds(saved);
       }
       
-      const savedCity = localStorage.getItem("roomswallah_user_city");
+      const savedCity = localStorage.getItem("checkrooms_user_city");
       if (savedCity) {
         setSelectedCity(savedCity);
       }
 
       const handleCityChange = () => {
-        const city = localStorage.getItem("roomswallah_user_city");
+        const city = localStorage.getItem("checkrooms_user_city");
         if (city) {
           setSelectedCity(city);
         }
@@ -309,7 +309,7 @@ export default function HomeLayout() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const handled = localStorage.getItem("roomswallah_location_handled");
+    const handled = localStorage.getItem("checkrooms_location_handled");
     if (handled === "true") return;
 
     const handleScroll = () => {
@@ -326,65 +326,156 @@ export default function HomeLayout() {
   }, []);
 
   const detectLocation = () => {
-    if (typeof window === "undefined" || !navigator.geolocation) {
-      alert("Geolocation is not supported by your browser.");
+    if (typeof window === "undefined") return;
+    setLoadingLocation(true);
+
+    const handleIPFallback = async (reason: string) => {
+      console.warn(`Attempting IP-based location fallback due to: ${reason}`);
+      try {
+        const res = await fetch("https://api.bigdatacloud.net/data/reverse-geocode-client");
+        if (!res.ok) {
+          throw new Error("IP location service returned non-OK response");
+        }
+        const data = await res.json();
+        const detectedCity = data.city || data.locality || "";
+        
+        let matchedCity = "Greater Noida";
+        const cityLower = detectedCity.toLowerCase();
+        if (cityLower.includes("greater noida")) {
+          matchedCity = "Greater Noida";
+        } else if (cityLower.includes("noida")) {
+          matchedCity = "Noida";
+        } else if (cityLower.includes("delhi") || cityLower.includes("new delhi")) {
+          matchedCity = "Delhi";
+        } else if (cityLower.includes("gurgaon") || cityLower.includes("gurugram")) {
+          matchedCity = "Gurugram";
+        } else if (detectedCity) {
+          matchedCity = detectedCity;
+        }
+
+        const matchedArea = data.locality || data.city || "";
+        const matchedState = data.principalSubdivision || "";
+        const matchedPincode = data.postcode || "";
+        const displayName = data.locality && data.city ? `${data.locality}, ${data.city}` : (data.city || matchedCity);
+        const latitude = data.latitude || 28.4595;
+        const longitude = data.longitude || 77.4984;
+
+        localStorage.setItem("checkrooms_user_city", matchedCity);
+        localStorage.setItem("checkrooms_user_area", matchedArea);
+        localStorage.setItem("checkrooms_user_state", matchedState);
+        localStorage.setItem("checkrooms_user_pincode", matchedPincode);
+        localStorage.setItem("checkrooms_user_lat", String(latitude));
+        localStorage.setItem("checkrooms_user_lon", String(longitude));
+        localStorage.setItem("checkrooms_user_display_name", displayName);
+        localStorage.setItem("checkrooms_location_handled", "true");
+
+        window.dispatchEvent(new Event("userCityUpdated"));
+        setShowLocationModal(false);
+      } catch (err) {
+        console.error("IP fallback also failed:", err);
+        // If IP fallback also fails, set default to Greater Noida to keep app functional
+        localStorage.setItem("checkrooms_user_city", "Greater Noida");
+        localStorage.setItem("checkrooms_location_handled", "true");
+        window.dispatchEvent(new Event("userCityUpdated"));
+        setShowLocationModal(false);
+      } finally {
+        setLoadingLocation(false);
+      }
+    };
+
+    if (!navigator.geolocation) {
+      handleIPFallback("Geolocation API not supported");
       return;
     }
-    setLoadingLocation(true);
+
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
-          const res = await fetch(
-            getApiUrl(`/api/location/reverse?lat=${latitude}&lon=${longitude}`)
-          );
-          const data = await res.json();
-          const matchedCity = data.matchedCity || "Greater Noida";
-          const matchedArea = data.area || "";
-          const matchedState = data.state || "";
-          const matchedPincode = data.pincode || "";
-          const displayName = data.displayName || matchedCity;
+          let matchedCity = "Greater Noida";
+          let matchedArea = "";
+          let matchedState = "";
+          let matchedPincode = "";
+          let displayName = "";
 
-          localStorage.setItem("roomswallah_user_city", matchedCity);
-          localStorage.setItem("roomswallah_user_area", matchedArea);
-          localStorage.setItem("roomswallah_user_state", matchedState);
-          localStorage.setItem("roomswallah_user_pincode", matchedPincode);
-          localStorage.setItem("roomswallah_user_lat", String(latitude));
-          localStorage.setItem("roomswallah_user_lon", String(longitude));
-          localStorage.setItem("roomswallah_user_display_name", displayName);
-          localStorage.setItem("roomswallah_location_handled", "true");
+          try {
+            const res = await fetch(
+              getApiUrl(`/api/location/reverse?lat=${latitude}&lon=${longitude}`)
+            );
+            
+            if (!res.ok) {
+              throw new Error("Reverse geocoding response error");
+            }
+            
+            const data = await res.json();
+            matchedCity = data.matchedCity || "Greater Noida";
+            matchedArea = data.area || "";
+            matchedState = data.state || "";
+            matchedPincode = data.pincode || "";
+            displayName = data.displayName || matchedCity;
+          } catch (geocodeErr) {
+            console.warn("Backend geocoding failed, falling back to client-side reverse geocoding:", geocodeErr);
+            const fallbackRes = await fetch(
+              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+            );
+            if (!fallbackRes.ok) {
+              throw new Error("All reverse geocoding services failed");
+            }
+            const data = await fallbackRes.json();
+            const detectedCity = data.city || data.locality || "";
+            matchedCity = detectedCity;
+            const cityLower = detectedCity.toLowerCase();
+            if (cityLower.includes("greater noida")) {
+              matchedCity = "Greater Noida";
+            } else if (cityLower.includes("noida")) {
+              matchedCity = "Noida";
+            } else if (cityLower.includes("delhi") || cityLower.includes("new delhi")) {
+              matchedCity = "Delhi";
+            } else if (cityLower.includes("gurgaon") || cityLower.includes("gurugram")) {
+              matchedCity = "Gurugram";
+            } else if (detectedCity) {
+              matchedCity = detectedCity;
+            }
+
+            matchedArea = data.locality || data.city || "";
+            matchedState = data.principalSubdivision || "";
+            matchedPincode = data.postcode || "";
+            displayName = data.locality && data.city ? `${data.locality}, ${data.city}` : (data.city || matchedCity);
+          }
+
+          localStorage.setItem("checkrooms_user_city", matchedCity);
+          localStorage.setItem("checkrooms_user_area", matchedArea);
+          localStorage.setItem("checkrooms_user_state", matchedState);
+          localStorage.setItem("checkrooms_user_pincode", matchedPincode);
+          localStorage.setItem("checkrooms_user_lat", String(latitude));
+          localStorage.setItem("checkrooms_user_lon", String(longitude));
+          localStorage.setItem("checkrooms_user_display_name", displayName);
+          localStorage.setItem("checkrooms_location_handled", "true");
 
           window.dispatchEvent(new Event("userCityUpdated"));
           setShowLocationModal(false);
         } catch (err) {
           console.error("Error geocoding location:", err);
-          localStorage.setItem("roomswallah_user_city", "Greater Noida");
-          localStorage.setItem("roomswallah_location_handled", "true");
-          window.dispatchEvent(new Event("userCityUpdated"));
-          setShowLocationModal(false);
+          handleIPFallback("GPS geocoding failed");
         } finally {
           setLoadingLocation(false);
         }
       },
       (err) => {
         console.error("Geolocation error:", err);
-        localStorage.setItem("roomswallah_user_city", "Greater Noida");
-        localStorage.setItem("roomswallah_location_handled", "true");
-        window.dispatchEvent(new Event("userCityUpdated"));
-        setShowLocationModal(false);
-        setLoadingLocation(false);
+        handleIPFallback(`Geolocation API error: code ${err.code}, message ${err.message}`);
       }
     );
   };
 
   const handleOtherAddress = () => {
-    localStorage.setItem("roomswallah_location_handled", "true");
+    localStorage.setItem("checkrooms_location_handled", "true");
     setShowLocationModal(false);
     window.dispatchEvent(new Event("openLocationDrawer"));
   };
 
   const handleCloseModal = () => {
-    localStorage.setItem("roomswallah_location_handled", "true");
+    localStorage.setItem("checkrooms_location_handled", "true");
     setShowLocationModal(false);
   };
 
@@ -490,10 +581,41 @@ export default function HomeLayout() {
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
               "@context": "https://schema.org",
-              "@type": "Organization",
-              "name": "RoomsWallah",
-              "url": process.env.NEXT_PUBLIC_SITE_URL || "https://roomswallah.vercel.app",
-              "logo": `${process.env.NEXT_PUBLIC_SITE_URL || "https://roomswallah.vercel.app"}/assets/logo.png`,
+              "@graph": [
+                {
+                  "@type": "Organization",
+                  "@id": `${process.env.NEXT_PUBLIC_SITE_URL || "https://checkrooms.vercel.app"}#organization`,
+                  "name": "CheckRooms",
+                  "url": process.env.NEXT_PUBLIC_SITE_URL || "https://checkrooms.vercel.app",
+                  "logo": `${process.env.NEXT_PUBLIC_SITE_URL || "https://checkrooms.vercel.app"}/assets/logo.png`,
+                  "description": "Find verified rooms, flats, PGs, and hostels with zero brokerage on CheckRooms.",
+                  "email": "hello@checkrooms.com",
+                  "sameAs": [
+                    "https://instagram.com/checkrooms",
+                    "https://facebook.com/checkrooms",
+                    "https://linkedin.com/company/checkrooms",
+                    "https://twitter.com/checkrooms"
+                  ]
+                },
+                {
+                  "@type": "WebSite",
+                  "@id": `${process.env.NEXT_PUBLIC_SITE_URL || "https://checkrooms.vercel.app"}#website`,
+                  "url": process.env.NEXT_PUBLIC_SITE_URL || "https://checkrooms.vercel.app",
+                  "name": "CheckRooms",
+                  "description": "Find rooms, flats, PGs and hostels near you with zero brokerage.",
+                  "publisher": {
+                    "@id": `${process.env.NEXT_PUBLIC_SITE_URL || "https://checkrooms.vercel.app"}#organization`
+                  },
+                  "potentialAction": {
+                    "@type": "SearchAction",
+                    "target": {
+                      "@type": "EntryPoint",
+                      "urlTemplate": `${process.env.NEXT_PUBLIC_SITE_URL || "https://checkrooms.vercel.app"}/rooms?search={search_term_string}`
+                    },
+                    "query-input": "required name=search_term_string"
+                  }
+                }
+              ]
             })
           }}
         />
@@ -896,12 +1018,12 @@ export default function HomeLayout() {
           </section>
 
           {/* ========================================================================= */}
-          {/* WHY ROOMSWALLAH? SECTION */}
+          {/* WHY CHECKROOMS? SECTION */}
           {/* ========================================================================= */}
           <section className="max-w-[1280px] w-full mx-auto px-4 md:px-0 text-left space-y-6">
             <div className="space-y-1">
               <h2 className="font-poppins font-extrabold text-2xl md:text-3xl text-[#1E2235] tracking-tight">
-                Why RoomsWallah?
+                Why CheckRooms?
               </h2>
               <p className="text-xs sm:text-sm text-neutral-500 font-medium">
                 Built for Indian students & professionals
@@ -1149,7 +1271,7 @@ export default function HomeLayout() {
               Where do you want to find rooms?
             </h3>
             <p className="text-[12.5px] text-[#406367] font-semibold max-w-[270px] mx-auto mt-2.5 leading-relaxed px-2">
-              To enjoy all that RoomsWallah has to offer you, we need to know where to look for them.
+              To enjoy all that CheckRooms has to offer you, we need to know where to look for them.
             </p>
 
             {/* Buttons row */}

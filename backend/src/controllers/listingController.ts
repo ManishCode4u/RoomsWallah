@@ -9,23 +9,14 @@ import fs from "fs";
 import path from "path";
 import mongoose from "mongoose";
 
-const SLOTS_FILE = path.join(process.cwd(), "uploads", "slots.json");
-
-const getSlotsFromFile = () => {
-  try {
-    if (fs.existsSync(SLOTS_FILE)) {
-      return JSON.parse(fs.readFileSync(SLOTS_FILE, "utf-8"));
-    }
-  } catch (e) {}
-  return [];
-};
+import { getActiveBoostSlots, calculateBoostDuration } from "../utils/boostManager.js";
 
 const geocodeAddress = async (address: string, area: string, city: string): Promise<{ lat: number; lon: number } | null> => {
   try {
     const query = encodeURIComponent(`${address || area || ""}, ${city || ""}, India`.trim());
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1&countrycodes=in`;
     const response = await fetch(url, {
-      headers: { "User-Agent": "RoomsWallah-API" }
+      headers: { "User-Agent": "CheckRooms-API" }
     });
     if (response.ok) {
       const data: any = await response.json();
@@ -44,7 +35,7 @@ const geocodeAddress = async (address: string, area: string, city: string): Prom
     const query = encodeURIComponent(`${city || ""}, India`.trim());
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1&countrycodes=in`;
     const response = await fetch(url, {
-      headers: { "User-Agent": "RoomsWallah-API" }
+      headers: { "User-Agent": "CheckRooms-API" }
     });
     if (response.ok) {
       const data: any = await response.json();
@@ -209,8 +200,8 @@ export const getListings = async (req: Request, res: Response): Promise<void> =>
       query.$and = andConditions;
     }
 
-    // Load promoted slots to sort active promotions first
-    const activeSlots = getSlotsFromFile();
+    // Load promoted slots to sort active promotions first (with automated expiry check)
+    const activeSlots = await getActiveBoostSlots();
     const promotedIds = activeSlots
       .filter((slot: any) => slot.status === "Active" && slot.listingId)
       .map((slot: any) => slot.listingId);
@@ -659,13 +650,16 @@ export const submitBoostRequest = async (req: Request, res: Response): Promise<v
       return;
     }
 
+    const { durationDays } = calculateBoostDuration(amount, plan);
+
     const boostRequest = new BoostRequest({
       listing: listing._id as any,
       owner: user._id as any,
       plan,
       amount,
       screenshot,
-      status: "Pending"
+      status: "Pending",
+      durationDays
     });
 
     await boostRequest.save();
@@ -675,7 +669,7 @@ export const submitBoostRequest = async (req: Request, res: Response): Promise<v
       const adminNotification = new Notification({
         owner: user._id as any,
         title: "Boost Request Submitted",
-        message: `Your boost request for "${listing.title}" (Plan: ${plan}) has been submitted for manual payment verification.`,
+        message: `Your boost request for "${listing.title}" (Plan: ${plan} - ${durationDays} Days) has been submitted for verification.`,
         type: "system",
         read: false
       });

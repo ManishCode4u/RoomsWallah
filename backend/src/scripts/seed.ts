@@ -167,7 +167,7 @@ for (let i = 1; i <= 22; i++) {
 
 const seedDB = async () => {
   try {
-    const connString = process.env.DATABASE_URL || "mongodb://localhost:27017/roomswallah";
+    const connString = process.env.DATABASE_URL || "mongodb://localhost:27017/checkrooms";
     await mongoose.connect(connString);
     console.log("📡 Connected to MongoDB to seed...");
 

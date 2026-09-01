@@ -2,7 +2,7 @@ import { MetadataRoute } from "next";
 import { getApiUrl } from "@/data/api";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://roomswallah.vercel.app";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://checkrooms.vercel.app";
 
   // Base routes
   const routes = [
@@ -23,7 +23,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Fetch properties dynamically from backend API for dynamic routes
   try {
-    const res = await fetch(getApiUrl("/api/listings"), { cache: "no-store" });
+    const res = await fetch(getApiUrl("/api/listings"), { next: { revalidate: 3600 } });
     if (res.ok) {
       const listings = await res.json();
       if (Array.isArray(listings)) {

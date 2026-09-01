@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 
-// @desc    Reverse geocode coordinates to matching RoomsWallah city
+// @desc    Reverse geocode coordinates to matching CheckRooms city
 // @route   GET /api/location/reverse
 // @access  Public
 export const reverseGeocode = async (req: Request, res: Response): Promise<void> => {
@@ -17,7 +17,7 @@ export const reverseGeocode = async (req: Request, res: Response): Promise<void>
     
     const response = await fetch(nominatimUrl, {
       headers: {
-        "User-Agent": "RoomsWallah-API"
+        "User-Agent": "CheckRooms-API"
       }
     });
 
@@ -80,7 +80,7 @@ export const searchLocations = async (req: Request, res: Response): Promise<void
 
     const response = await fetch(nominatimUrl, {
       headers: {
-        "User-Agent": "RoomsWallah-API"
+        "User-Agent": "CheckRooms-API"
       }
     });
 

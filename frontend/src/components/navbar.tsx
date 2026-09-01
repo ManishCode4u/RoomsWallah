@@ -79,7 +79,7 @@ export default function Navbar() {
       const filtered = prev.filter((t) => t.toLowerCase() !== cleanTerm.toLowerCase());
       const updated = [cleanTerm, ...filtered].slice(0, 5);
       if (typeof window !== "undefined") {
-        localStorage.setItem("roomswallah_recent_searches", JSON.stringify(updated));
+        localStorage.setItem("checkrooms_recent_searches", JSON.stringify(updated));
       }
       return updated;
     });
@@ -88,7 +88,7 @@ export default function Navbar() {
   const clearRecentSearches = () => {
     setRecentSearches([]);
     if (typeof window !== "undefined") {
-      localStorage.removeItem("roomswallah_recent_searches");
+      localStorage.removeItem("checkrooms_recent_searches");
     }
   };
 
@@ -101,7 +101,7 @@ export default function Navbar() {
       setUserAvatar(localStorage.getItem("user_avatar") || "🦊");
 
       // Load recent searches
-      const saved = localStorage.getItem("roomswallah_recent_searches");
+      const saved = localStorage.getItem("checkrooms_recent_searches");
       if (saved) {
         try {
           setRecentSearches(JSON.parse(saved));
@@ -109,7 +109,7 @@ export default function Navbar() {
       }
 
       // Load saved addresses
-      const savedAddrs = localStorage.getItem("roomswallah_user_addresses");
+      const savedAddrs = localStorage.getItem("checkrooms_user_addresses");
       if (savedAddrs) {
         try {
           setAddresses(JSON.parse(savedAddrs));
@@ -142,7 +142,7 @@ export default function Navbar() {
           }
         ];
         setAddresses(initialAddresses);
-        localStorage.setItem("roomswallah_user_addresses", JSON.stringify(initialAddresses));
+        localStorage.setItem("checkrooms_user_addresses", JSON.stringify(initialAddresses));
       }
     }
   }, []);
@@ -151,7 +151,7 @@ export default function Navbar() {
     const updated = addresses.filter(item => item.id !== id);
     setAddresses(updated);
     if (typeof window !== "undefined") {
-      localStorage.setItem("roomswallah_user_addresses", JSON.stringify(updated));
+      localStorage.setItem("checkrooms_user_addresses", JSON.stringify(updated));
     }
     setActiveDropdownId(null);
   };
@@ -181,7 +181,7 @@ export default function Navbar() {
     });
     setAddresses(updated);
     if (typeof window !== "undefined") {
-      localStorage.setItem("roomswallah_user_addresses", JSON.stringify(updated));
+      localStorage.setItem("checkrooms_user_addresses", JSON.stringify(updated));
     }
     setEditingAddressId(null);
   };
@@ -228,38 +228,160 @@ export default function Navbar() {
   }, []);
 
   const detectLocation = () => {
-    if (typeof window === "undefined" || !navigator.geolocation) {
-      alert("Geolocation is not supported by your browser.");
+    if (typeof window === "undefined") return;
+    setLoadingLocation(true);
+
+    const handleIPFallback = async (reason: string) => {
+      console.warn(`Attempting IP-based location fallback due to: ${reason}`);
+      try {
+        const res = await fetch("https://api.bigdatacloud.net/data/reverse-geocode-client");
+        if (!res.ok) {
+          throw new Error("IP location service returned non-OK response");
+        }
+        const data = await res.json();
+        const detectedCity = data.city || data.locality || "";
+        
+        let matchedCity = "Greater Noida";
+        const cityLower = detectedCity.toLowerCase();
+        if (cityLower.includes("greater noida")) {
+          matchedCity = "Greater Noida";
+        } else if (cityLower.includes("noida")) {
+          matchedCity = "Noida";
+        } else if (cityLower.includes("delhi") || cityLower.includes("new delhi")) {
+          matchedCity = "Delhi";
+        } else if (cityLower.includes("gurgaon") || cityLower.includes("gurugram")) {
+          matchedCity = "Gurugram";
+        } else if (detectedCity) {
+          matchedCity = detectedCity;
+        }
+
+        const matchedArea = data.locality || data.city || "";
+        const matchedState = data.principalSubdivision || "";
+        const matchedPincode = data.postcode || "";
+        const displayName = data.locality && data.city ? `${data.locality}, ${data.city}` : (data.city || matchedCity);
+        const latitude = data.latitude || 28.4595;
+        const longitude = data.longitude || 77.4984;
+
+        localStorage.setItem("checkrooms_user_city", matchedCity);
+        localStorage.setItem("checkrooms_user_area", matchedArea);
+        localStorage.setItem("checkrooms_user_state", matchedState);
+        localStorage.setItem("checkrooms_user_pincode", matchedPincode);
+        localStorage.setItem("checkrooms_user_lat", String(latitude));
+        localStorage.setItem("checkrooms_user_lon", String(longitude));
+        localStorage.setItem("checkrooms_user_display_name", displayName);
+        localStorage.setItem("checkrooms_location_handled", "true");
+
+        // Save current location into saved addresses list
+        const currentAddr = {
+          id: "addr-" + Date.now(),
+          label: "Current Location",
+          selected: true,
+          distance: "0.0 km",
+          icon: "MapPin",
+          addressLine1: matchedArea || matchedCity,
+          addressLine2: `${matchedCity}, ${matchedState} ${matchedPincode}`,
+          city: matchedCity,
+          area: matchedArea || matchedCity,
+          state: matchedState
+        };
+
+        setAddresses((prev) => {
+          const updated = prev.map(addr => ({ ...addr, selected: false }));
+          const finalAddresses = [currentAddr, ...updated];
+          localStorage.setItem("checkrooms_user_addresses", JSON.stringify(finalAddresses));
+          return finalAddresses;
+        });
+
+        window.dispatchEvent(new Event("userCityUpdated"));
+        setUserCity(matchedCity);
+        setUserState(matchedState);
+        setUserPincode(matchedPincode);
+        setShowLocationDrawer(false);
+        setShowSearchDrawer(false);
+
+        router.push(`/?city=${encodeURIComponent(matchedCity)}&area=${encodeURIComponent(matchedArea)}&state=${encodeURIComponent(matchedState)}&pincode=${matchedPincode}`);
+      } catch (err) {
+        console.error("IP fallback also failed:", err);
+        // If IP fallback also fails, set default to Greater Noida to keep app functional
+        localStorage.setItem("checkrooms_user_city", "Greater Noida");
+        localStorage.setItem("checkrooms_location_handled", "true");
+        window.dispatchEvent(new Event("userCityUpdated"));
+        setShowLocationDrawer(false);
+        setShowSearchDrawer(false);
+        alert("Unable to detect your location. Defaulting to Greater Noida. Please search manually.");
+      } finally {
+        setLoadingLocation(false);
+      }
+    };
+
+    if (!navigator.geolocation) {
+      handleIPFallback("Geolocation API not supported");
       return;
     }
-    setLoadingLocation(true);
+
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
-          const res = await fetch(
-            getApiUrl(`/api/location/reverse?lat=${latitude}&lon=${longitude}`)
-          );
-          
-          if (!res.ok) {
-            throw new Error("Reverse geocoding response error");
-          }
-          
-          const data = await res.json();
-          const matchedCity = data.matchedCity || "Greater Noida";
-          const matchedArea = data.area || "";
-          const matchedState = data.state || "";
-          const matchedPincode = data.pincode || "";
-          const displayName = data.displayName || matchedCity;
+          let matchedCity = "Greater Noida";
+          let matchedArea = "";
+          let matchedState = "";
+          let matchedPincode = "";
+          let displayName = "";
 
-          localStorage.setItem("roomswallah_user_city", matchedCity);
-          localStorage.setItem("roomswallah_user_area", matchedArea);
-          localStorage.setItem("roomswallah_user_state", matchedState);
-          localStorage.setItem("roomswallah_user_pincode", matchedPincode);
-          localStorage.setItem("roomswallah_user_lat", String(latitude));
-          localStorage.setItem("roomswallah_user_lon", String(longitude));
-          localStorage.setItem("roomswallah_user_display_name", displayName);
-          localStorage.setItem("roomswallah_location_handled", "true");
+          try {
+            const res = await fetch(
+              getApiUrl(`/api/location/reverse?lat=${latitude}&lon=${longitude}`)
+            );
+            
+            if (!res.ok) {
+              throw new Error("Reverse geocoding response error");
+            }
+            
+            const data = await res.json();
+            matchedCity = data.matchedCity || "Greater Noida";
+            matchedArea = data.area || "";
+            matchedState = data.state || "";
+            matchedPincode = data.pincode || "";
+            displayName = data.displayName || matchedCity;
+          } catch (geocodeErr) {
+            console.warn("Backend geocoding failed, falling back to client-side reverse geocoding:", geocodeErr);
+            const fallbackRes = await fetch(
+              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+            );
+            if (!fallbackRes.ok) {
+              throw new Error("All reverse geocoding services failed");
+            }
+            const data = await fallbackRes.json();
+            const detectedCity = data.city || data.locality || "";
+            matchedCity = detectedCity;
+            const cityLower = detectedCity.toLowerCase();
+            if (cityLower.includes("greater noida")) {
+              matchedCity = "Greater Noida";
+            } else if (cityLower.includes("noida")) {
+              matchedCity = "Noida";
+            } else if (cityLower.includes("delhi") || cityLower.includes("new delhi")) {
+              matchedCity = "Delhi";
+            } else if (cityLower.includes("gurgaon") || cityLower.includes("gurugram")) {
+              matchedCity = "Gurugram";
+            } else if (detectedCity) {
+              matchedCity = detectedCity;
+            }
+
+            matchedArea = data.locality || data.city || "";
+            matchedState = data.principalSubdivision || "";
+            matchedPincode = data.postcode || "";
+            displayName = data.locality && data.city ? `${data.locality}, ${data.city}` : (data.city || matchedCity);
+          }
+
+          localStorage.setItem("checkrooms_user_city", matchedCity);
+          localStorage.setItem("checkrooms_user_area", matchedArea);
+          localStorage.setItem("checkrooms_user_state", matchedState);
+          localStorage.setItem("checkrooms_user_pincode", matchedPincode);
+          localStorage.setItem("checkrooms_user_lat", String(latitude));
+          localStorage.setItem("checkrooms_user_lon", String(longitude));
+          localStorage.setItem("checkrooms_user_display_name", displayName);
+          localStorage.setItem("checkrooms_location_handled", "true");
 
           // Save current location into saved addresses list
           const currentAddr = {
@@ -278,7 +400,7 @@ export default function Navbar() {
           setAddresses((prev) => {
             const updated = prev.map(addr => ({ ...addr, selected: false }));
             const finalAddresses = [currentAddr, ...updated];
-            localStorage.setItem("roomswallah_user_addresses", JSON.stringify(finalAddresses));
+            localStorage.setItem("checkrooms_user_addresses", JSON.stringify(finalAddresses));
             return finalAddresses;
           });
 
@@ -292,25 +414,14 @@ export default function Navbar() {
           router.push(`/?city=${encodeURIComponent(matchedCity)}&area=${encodeURIComponent(matchedArea)}&state=${encodeURIComponent(matchedState)}&pincode=${matchedPincode}`);
         } catch (err) {
           console.error("Error geocoding location:", err);
-          alert("Unable to detect your current location. Please try again or search manually.");
+          handleIPFallback("GPS geocoding failed");
         } finally {
           setLoadingLocation(false);
         }
       },
       (err) => {
         console.error("Geolocation error:", err);
-        let errorMsg = "Unable to detect your current location. Please try again or search manually.";
-        
-        if (err.code === err.PERMISSION_DENIED) {
-          errorMsg = "Location permission was denied. Please allow location access in your browser settings or search for your location manually.";
-        } else if (err.code === err.POSITION_UNAVAILABLE) {
-          errorMsg = "Unable to detect your current location. Please try again or search manually.";
-        } else if (err.code === err.TIMEOUT) {
-          errorMsg = "Location detection timed out. Please try again.";
-        }
-        
-        alert(errorMsg);
-        setLoadingLocation(false);
+        handleIPFallback(`Geolocation API error: code ${err.code}, message ${err.message}`);
       },
       {
         enableHighAccuracy: true,
@@ -342,14 +453,14 @@ export default function Navbar() {
       displayName = loc.displayName || city;
     }
 
-    localStorage.setItem("roomswallah_user_city", city);
-    localStorage.setItem("roomswallah_user_area", area);
-    localStorage.setItem("roomswallah_user_state", state);
-    localStorage.setItem("roomswallah_user_pincode", pincode);
-    localStorage.setItem("roomswallah_user_lat", lat);
-    localStorage.setItem("roomswallah_user_lon", lon);
-    localStorage.setItem("roomswallah_user_display_name", displayName);
-    localStorage.setItem("roomswallah_location_handled", "true");
+    localStorage.setItem("checkrooms_user_city", city);
+    localStorage.setItem("checkrooms_user_area", area);
+    localStorage.setItem("checkrooms_user_state", state);
+    localStorage.setItem("checkrooms_user_pincode", pincode);
+    localStorage.setItem("checkrooms_user_lat", lat);
+    localStorage.setItem("checkrooms_user_lon", lon);
+    localStorage.setItem("checkrooms_user_display_name", displayName);
+    localStorage.setItem("checkrooms_location_handled", "true");
 
     window.dispatchEvent(new Event("userCityUpdated"));
     setUserCity(city);
@@ -364,19 +475,19 @@ export default function Navbar() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const savedCity = localStorage.getItem("roomswallah_user_city");
+      const savedCity = localStorage.getItem("checkrooms_user_city");
       if (savedCity) setUserCity(savedCity);
-      const savedState = localStorage.getItem("roomswallah_user_state");
+      const savedState = localStorage.getItem("checkrooms_user_state");
       if (savedState) setUserState(savedState || "");
-      const savedPincode = localStorage.getItem("roomswallah_user_pincode");
+      const savedPincode = localStorage.getItem("checkrooms_user_pincode");
       if (savedPincode) setUserPincode(savedPincode || "");
 
       const handleCityUpdate = () => {
-        const updatedCity = localStorage.getItem("roomswallah_user_city");
+        const updatedCity = localStorage.getItem("checkrooms_user_city");
         if (updatedCity) setUserCity(updatedCity);
-        const updatedState = localStorage.getItem("roomswallah_user_state");
+        const updatedState = localStorage.getItem("checkrooms_user_state");
         if (updatedState) setUserState(updatedState || "");
-        const updatedPincode = localStorage.getItem("roomswallah_user_pincode");
+        const updatedPincode = localStorage.getItem("checkrooms_user_pincode");
         if (updatedPincode) setUserPincode(updatedPincode || "");
       };
 
@@ -555,22 +666,9 @@ export default function Navbar() {
                 <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#6C4CF1] to-[#8E75FF] flex items-center justify-center text-white shadow-md shadow-[#6C4CF1]/20 group-hover:scale-105 transition-transform duration-300">
                   <Home className="w-5 h-5 stroke-[2.5]" />
                 </div>
-                <span className="relative inline-flex items-center font-poppins font-black text-xl tracking-tight select-none">
-                  <span className="relative inline-block text-[#1E2235]">
-                    R
-                    <svg 
-                      className="absolute -bottom-[1px] left-[1px] w-[2.2em] h-[0.4em] text-[#1E2235]" 
-                      viewBox="0 0 100 20" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      strokeWidth="4" 
-                      strokeLinecap="round"
-                    >
-                      <path d="M 5 2 C 10 18, 70 18, 95 2" />
-                    </svg>
-                  </span>
-                  <span className="text-[#1E2235]">ooms</span>
-                  <span className="text-[#6C4CF1]">Wallah</span>
+                <span className="inline-flex items-center font-poppins font-black text-xl tracking-tight select-none transform scale-y-[1.18] origin-left">
+                  <span className="text-[#1E2235]">Check</span>
+                  <span className="text-[#6C4CF1]">Rooms</span>
                 </span>
               </Link>
 
@@ -743,22 +841,9 @@ export default function Navbar() {
                   <div className="w-7 h-7 rounded-lg bg-[#6C4CF1] flex items-center justify-center text-white shadow-sm shadow-[#6C4CF1]/20">
                     <Home className="w-4.5 h-4.5 stroke-[2.5]" />
                   </div>
-                  <span className="relative inline-flex items-center font-poppins font-black text-lg tracking-tight select-none">
-                    <span className="relative inline-block text-[#1E2235]">
-                      R
-                      <svg 
-                        className="absolute -bottom-[1px] left-[1px] w-[2.2em] h-[0.4em] text-[#1E2235]" 
-                        viewBox="0 0 100 20" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        strokeWidth="4" 
-                        strokeLinecap="round"
-                      >
-                        <path d="M 5 2 C 10 18, 70 18, 95 2" />
-                      </svg>
-                    </span>
-                    <span className="text-[#1E2235]">ooms</span>
-                    <span className="text-[#6C4CF1]">Wallah</span>
+                  <span className="inline-flex items-center font-poppins font-black text-lg tracking-tight select-none transform scale-y-[1.18] origin-left">
+                    <span className="text-[#1E2235]">Check</span>
+                    <span className="text-[#6C4CF1]">Rooms</span>
                   </span>
                 </Link>
 
@@ -840,22 +925,9 @@ export default function Navbar() {
                 <div className="w-8.5 h-8.5 rounded-lg bg-primary flex items-center justify-center text-white shadow-sm">
                   <Home className="w-4.5 h-4.5" />
                 </div>
-                <span className="relative inline-flex items-center font-poppins font-black text-lg tracking-tight select-none">
-                  <span className="relative inline-block text-[#1E2235]">
-                    R
-                    <svg 
-                      className="absolute -bottom-[1px] left-[1px] w-[2.2em] h-[0.4em] text-[#1E2235]" 
-                      viewBox="0 0 100 20" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      strokeWidth="4" 
-                      strokeLinecap="round"
-                    >
-                      <path d="M 5 2 C 10 18, 70 18, 95 2" />
-                    </svg>
-                  </span>
-                  <span className="text-[#1E2235]">ooms</span>
-                  <span className="text-[#6C4CF1]">Wallah</span>
+                <span className="inline-flex items-center font-poppins font-black text-lg tracking-tight select-none transform scale-y-[1.18] origin-left">
+                  <span className="text-[#1E2235]">Check</span>
+                  <span className="text-[#6C4CF1]">Rooms</span>
                 </span>
               </Link>
               <button
@@ -1147,13 +1219,13 @@ export default function Navbar() {
                             const updated = addresses.map(addr => ({ ...addr, selected: false }));
                             const finalAddresses = [newAddr, ...updated];
                             setAddresses(finalAddresses);
-                            localStorage.setItem("roomswallah_user_addresses", JSON.stringify(finalAddresses));
+                            localStorage.setItem("checkrooms_user_addresses", JSON.stringify(finalAddresses));
 
                             // Select this new address as current location
-                            localStorage.setItem("roomswallah_user_city", newAddr.city);
-                            localStorage.setItem("roomswallah_user_state", newAddr.state);
-                            localStorage.setItem("roomswallah_user_display_name", `${newAddr.area}, ${newAddr.city}`);
-                            localStorage.setItem("roomswallah_location_handled", "true");
+                            localStorage.setItem("checkrooms_user_city", newAddr.city);
+                            localStorage.setItem("checkrooms_user_state", newAddr.state);
+                            localStorage.setItem("checkrooms_user_display_name", `${newAddr.area}, ${newAddr.city}`);
+                            localStorage.setItem("checkrooms_location_handled", "true");
                             window.dispatchEvent(new Event("userCityUpdated"));
                             setUserCity(newAddr.city);
                             setUserState(newAddr.state);
@@ -1214,12 +1286,12 @@ export default function Navbar() {
                                   selected: addr.id === item.id
                                 }));
                                 setAddresses(updated);
-                                localStorage.setItem("roomswallah_user_addresses", JSON.stringify(updated));
+                                localStorage.setItem("checkrooms_user_addresses", JSON.stringify(updated));
 
-                                localStorage.setItem("roomswallah_user_city", item.city);
-                                localStorage.setItem("roomswallah_user_state", item.state);
-                                localStorage.setItem("roomswallah_user_display_name", `${item.area}, ${item.city}`);
-                                localStorage.setItem("roomswallah_location_handled", "true");
+                                localStorage.setItem("checkrooms_user_city", item.city);
+                                localStorage.setItem("checkrooms_user_state", item.state);
+                                localStorage.setItem("checkrooms_user_display_name", `${item.area}, ${item.city}`);
+                                localStorage.setItem("checkrooms_location_handled", "true");
                                 window.dispatchEvent(new Event("userCityUpdated"));
                                 setUserCity(item.city);
                                 setUserState(item.state);

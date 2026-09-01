@@ -442,11 +442,39 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       if (email === "") {
         owner.email = undefined;
       } else {
-        owner.email = email;
+        const normalizedEmail = email.toLowerCase().trim();
+        if (owner.email !== normalizedEmail) {
+          const existingEmail = await Owner.findOne({
+            email: normalizedEmail,
+            _id: { $ne: owner._id }
+          });
+          if (existingEmail) {
+            res.status(400).json({ message: "This email address is already associated with another account." });
+            return;
+          }
+        }
+        owner.email = normalizedEmail;
+      }
+    }
+    if (mobile !== undefined) {
+      if (mobile === "") {
+        owner.mobile = undefined;
+      } else {
+        const trimmedMobile = mobile.trim();
+        if (owner.mobile !== trimmedMobile) {
+          const existingMobile = await Owner.findOne({
+            mobile: trimmedMobile,
+            _id: { $ne: owner._id }
+          });
+          if (existingMobile) {
+            res.status(400).json({ message: "This mobile number is already associated with another account." });
+            return;
+          }
+        }
+        owner.mobile = trimmedMobile;
       }
     }
     if (profileImage !== undefined) owner.profileImage = profileImage;
-    if (mobile !== undefined) owner.mobile = mobile;
     if (alternateMobile !== undefined) owner.alternateMobile = alternateMobile;
     if (city !== undefined) owner.city = city;
     if (state !== undefined) owner.state = state;
@@ -463,8 +491,15 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       message: "Profile updated successfully",
       owner: updatedOwner
     });
-  } catch (error) {
+  } catch (error: any) {
     logRequestAndError(req.body, error);
+    if (error?.code === 11000) {
+      res.status(400).json({
+        message: "An account with this email or mobile number already exists.",
+        error: error.message
+      });
+      return;
+    }
     res.status(500).json({ 
       message: "Server error updating profile", 
       error: (error as Error).message 

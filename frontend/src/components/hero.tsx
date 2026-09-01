@@ -11,7 +11,7 @@ export default function Hero() {
       <div className="absolute right-0 top-0 bottom-0 w-[50%] hidden md:block z-0">
         <Image
           src="/assets/auto-building.jpg"
-          alt="RoomsWallah Cozy Room"
+          alt="CheckRooms Cozy Room"
           fill
           priority
           className="object-cover object-[30%_center]"
@@ -30,7 +30,7 @@ export default function Hero() {
       <div className="absolute inset-0 md:hidden z-0">
         <Image
           src="/assets/auto-building.jpg"
-          alt="RoomsWallah Cozy Room"
+          alt="CheckRooms Cozy Room"
           fill
           priority
           className="object-cover object-[35%_center]"
@@ -55,7 +55,7 @@ export default function Hero() {
         >
           {/* Tag/Logo Subtitle */}
           <div className="text-[10px] sm:text-xs font-black uppercase tracking-[0.25em] text-white/90">
-            ROOMSWALLAH
+            CHECKROOMS
           </div>
 
           {/* Heading */}

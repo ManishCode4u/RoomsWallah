@@ -69,7 +69,7 @@ const getWhatsAppLink = (phoneOrUrl: string, title: string) => {
   // If it's a 10 digit Indian number, append 91 prefix
   const phoneWithCountry = cleaned.length === 10 ? `91${cleaned}` : cleaned;
   
-  const message = encodeURIComponent(`Hi, I'm interested in your property listing: "${title}" posted on RoomsWallah. Is it still available?`);
+  const message = encodeURIComponent(`Hi, I'm interested in your property listing: "${title}" posted on CheckRooms. Is it still available?`);
   return `https://api.whatsapp.com/send?phone=${phoneWithCountry}&text=${message}`;
 };
 
@@ -107,7 +107,7 @@ export default function PropertyDetailsView({
       const saved = JSON.parse(localStorage.getItem("saved_listings") || "[]");
       setIsSaved(saved.includes(property.id));
       if (property.title) {
-        document.title = `${property.title} - RoomsWallah`;
+        document.title = `${property.title} - CheckRooms`;
       }
     }
   }, [property.id, property.title]);
@@ -716,7 +716,7 @@ export default function PropertyDetailsView({
                 Report this Listing ⚠️
               </h3>
               <p className="font-poppins text-[11px] text-slate-500 font-bold mt-0.5">
-                Help us keep RoomsWallah safe and authentic
+                Help us keep CheckRooms safe and authentic
               </p>
             </div>
 
@@ -778,7 +778,7 @@ export default function PropertyDetailsView({
                       }
 
                       // Also maintain local storage for user dashboard backward compatibility
-                      const reps = localStorage.getItem("roomswallah_reports") || "[]";
+                      const reps = localStorage.getItem("checkrooms_reports") || "[]";
                       let parsedReps = JSON.parse(reps);
                       const newReport = {
                         id: Math.random().toString(36).substring(2, 9),
@@ -790,7 +790,7 @@ export default function PropertyDetailsView({
                         status: "Pending"
                       };
                       parsedReps.unshift(newReport);
-                      localStorage.setItem("roomswallah_reports", JSON.stringify(parsedReps));
+                      localStorage.setItem("checkrooms_reports", JSON.stringify(parsedReps));
 
                       alert("Thank you! Your report has been submitted to the Admin for review.");
                       setReportMessage("");

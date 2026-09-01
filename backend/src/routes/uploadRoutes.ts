@@ -22,7 +22,7 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 // Upload buffer helper for Cloudinary
-const uploadToCloudinary = (fileBuffer: Buffer, originalName: string, folder: string = "roomswallah/general"): Promise<any> => {
+const uploadToCloudinary = (fileBuffer: Buffer, originalName: string, folder: string = "checkrooms/general"): Promise<any> => {
   return new Promise((resolve, reject) => {
     const uniqueName = path.parse(originalName).name + "-" + Date.now();
     const uploadStream = cloudinary.uploader.upload_stream(
@@ -64,9 +64,10 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: FileFilterCallb
   }
 };
 
-// Multer Middleware
-const upload = multer({
-  storage,
+// Multer memory storage configuration for Cloudinary uploads
+const memoryStorage = multer.memoryStorage();
+const uploadReceiptMulter = multer({
+  storage: memoryStorage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB file size limit
   fileFilter,
 });
@@ -95,7 +96,7 @@ router.post(
     }
 
     try {
-      const uploadResult = await uploadToCloudinary(req.file.buffer, req.file.originalname, "roomswallah/listings");
+      const uploadResult = await uploadToCloudinary(req.file.buffer, req.file.originalname, "checkrooms/listings");
       res.status(200).json({
         message: "Image uploaded successfully",
         imageUrl: uploadResult.secure_url,
@@ -157,14 +158,6 @@ router.post(
   }
 );
 
-// Multer memory storage configuration for receipts
-const memoryStorage = multer.memoryStorage();
-const uploadReceiptMulter = multer({
-  storage: memoryStorage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB file size limit
-  fileFilter,
-});
-
 // @desc    Upload a payment receipt to Cloudinary
 // @route   POST /api/upload/receipt
 // @access  Private (Owner/User only)
@@ -189,7 +182,7 @@ router.post(
     }
 
     try {
-      const uploadResult = await uploadToCloudinary(req.file.buffer, req.file.originalname, "roomswallah/payment-receipts");
+      const uploadResult = await uploadToCloudinary(req.file.buffer, req.file.originalname, "checkrooms/payment-receipts");
       res.status(200).json({
         message: "Receipt uploaded successfully",
         imageUrl: uploadResult.secure_url,

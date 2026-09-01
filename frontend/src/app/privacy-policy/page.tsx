@@ -5,9 +5,21 @@ import Navbar from "@/components/navbar";
 import MobileNav from "@/components/mobile-nav";
 import Footer from "@/components/footer";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://checkrooms.vercel.app";
+
 export const metadata: Metadata = {
-  title: "Privacy Policy",
-  description: "Read the Privacy Policy of RoomsWallah. Learn how we handle and protect your personal information, listings data, and account details.",
+  title: "Privacy Policy - User Data & Security | CheckRooms",
+  description: "Read the Privacy Policy of CheckRooms. Learn how we collect, protect, and process user data, listings, and privacy preferences.",
+  alternates: {
+    canonical: `${siteUrl}/privacy-policy`,
+  },
+  openGraph: {
+    title: "Privacy Policy | CheckRooms",
+    description: "Read the Privacy Policy of CheckRooms. Learn how we collect, protect, and process user data.",
+    url: `${siteUrl}/privacy-policy`,
+    siteName: "CheckRooms",
+    type: "website",
+  },
 };
 
 export default function PrivacyPolicyPage() {
@@ -34,7 +46,7 @@ export default function PrivacyPolicyPage() {
                 Privacy Policy
               </h1>
               <p className="text-sm sm:text-base text-[#64748B] max-w-xl mx-auto font-medium">
-                Last updated: July 16, 2026. Learn how RoomsWallah collects, uses, protects, and discloses your personal data.
+                Last updated: July 16, 2026. Learn how CheckRooms collects, uses, protects, and discloses your personal data.
               </p>
             </div>
 
@@ -50,7 +62,7 @@ export default function PrivacyPolicyPage() {
                   </h2>
                 </div>
                 <p className="text-sm text-[#64748B] leading-relaxed font-medium">
-                  Welcome to RoomsWallah. We respect your privacy and want you to understand how we handle your information. This Privacy Policy applies to our website, mobile interface, and any services offered under the RoomsWallah brand.
+                  Welcome to CheckRooms. We respect your privacy and want you to understand how we handle your information. This Privacy Policy applies to our website, mobile interface, and any services offered under the CheckRooms brand.
                 </p>
                 <p className="text-sm text-[#64748B] leading-relaxed font-medium">
                   By using our platform to search for rooms, PG accommodations, hostels, or listing your property, you agree to the collection and use of information in accordance with this policy.
@@ -102,7 +114,7 @@ export default function PrivacyPolicyPage() {
                   </h3>
                 </div>
                 <p className="text-sm text-[#64748B] leading-relaxed font-medium">
-                  RoomsWallah uses the collected data to provide a seamless search and listing experience. Specifically, we use information:
+                  CheckRooms uses the collected data to provide a seamless search and listing experience. Specifically, we use information:
                 </p>
                 <ul className="list-disc pl-5 text-xs sm:text-sm text-[#64748B] space-y-2 font-medium">
                   <li>To verify listings and verify owner identities for trust & safety.</li>
@@ -173,8 +185,8 @@ export default function PrivacyPolicyPage() {
                 <p className="text-xs sm:text-sm text-[#64748B] font-medium leading-relaxed">
                   If you have any questions about this Privacy Policy, wish to request account deletion, or want to verify what data is stored on our systems, please write to us at:
                 </p>
-                <a href="mailto:privacy@roomswallah.com" className="text-sm font-bold text-[#6C4CF1] hover:underline block w-fit pt-0.5">
-                  privacy@roomswallah.com
+                <a href="mailto:privacy@checkrooms.com" className="text-sm font-bold text-[#6C4CF1] hover:underline block w-fit pt-0.5">
+                  privacy@checkrooms.com
                 </a>
               </div>
 

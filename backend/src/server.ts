@@ -51,6 +51,7 @@ const allowedOrigins = [
   CORS_ORIGIN,
   "http://localhost:3000",
   "http://127.0.0.1:3000",
+  "https://checkrooms.vercel.app",
   "https://roomswallah.vercel.app"
 ];
 app.use(cors({
@@ -99,21 +100,24 @@ app.get("/api/health", (req: Request, res: Response) => {
   res.json({
     status: "healthy",
     timestamp: new Date(),
-    service: "RoomsWallah Backend API"
+    service: "CheckRooms Backend API"
   });
 });
 
 // Centralized error handling middleware
 app.use(errorHandler);
 
+import { startBoostExpiryScheduler } from "./utils/boostManager.js";
+
 // Start server
 const server = app.listen(PORT, () => {
-  console.log(`⚡️[server]: RoomsWallah API is running at http://localhost:${PORT}`);
+  console.log(`⚡️[server]: CheckRooms API is running at http://localhost:${PORT}`);
+  startBoostExpiryScheduler();
 });
 
 // Graceful shutdown listener
 const shutdown = () => {
-  console.log("📡 Gracefully shutting down RoomsWallah server...");
+  console.log("📡 Gracefully shutting down CheckRooms server...");
   server.close(async () => {
     console.log("⚡️[server]: HTTP server closed.");
     try {

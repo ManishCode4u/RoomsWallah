@@ -5,9 +5,21 @@ import Navbar from "@/components/navbar";
 import MobileNav from "@/components/mobile-nav";
 import Footer from "@/components/footer";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://checkrooms.vercel.app";
+
 export const metadata: Metadata = {
-  title: "Terms of Service",
-  description: "Read the Terms of Service for RoomsWallah. Understand our platform rules, owner guidelines, tenant policies, and account terms.",
+  title: "Terms of Service - User Agreement & Guidelines | CheckRooms",
+  description: "Read the Terms of Service for CheckRooms. Understand our platform rules, owner guidelines, tenant policies, and account terms.",
+  alternates: {
+    canonical: `${siteUrl}/terms`,
+  },
+  openGraph: {
+    title: "Terms of Service | CheckRooms",
+    description: "Read the Terms of Service for CheckRooms. Understand our platform rules, owner guidelines, tenant policies, and account terms.",
+    url: `${siteUrl}/terms`,
+    siteName: "CheckRooms",
+    type: "website",
+  },
 };
 
 export default function TermsPage() {
@@ -34,7 +46,7 @@ export default function TermsPage() {
                 Terms of Service
               </h1>
               <p className="text-sm sm:text-base text-[#64748B] max-w-xl mx-auto font-medium">
-                Last updated: July 16, 2026. Please review these rules before listing or searching on RoomsWallah.
+                Last updated: July 16, 2026. Please review these rules before listing or searching on CheckRooms.
               </p>
             </div>
 
@@ -50,7 +62,7 @@ export default function TermsPage() {
                   </h2>
                 </div>
                 <p className="text-sm text-[#64748B] leading-relaxed font-medium">
-                  By accessing, browsing, or using the RoomsWallah portal (including category filters, details view, property listings, and welcome listings), you agree to comply with and be bound by these Terms of Service. If you do not accept these guidelines, you must immediately terminate use of our platform.
+                  By accessing, browsing, or using the CheckRooms portal (including category filters, details view, property listings, and welcome listings), you agree to comply with and be bound by these Terms of Service. If you do not accept these guidelines, you must immediately terminate use of our platform.
                 </p>
                 <p className="text-sm text-[#64748B] leading-relaxed font-medium">
                   We reserve the right to modify these terms at any time. Changes will be posted here and take effect immediately. Continued usage constitutes your consent to the changes.
@@ -68,12 +80,12 @@ export default function TermsPage() {
                   </h3>
                 </div>
                 <p className="text-sm text-[#64748B] leading-relaxed font-medium">
-                  RoomsWallah functions solely as an online directory/discovery portal connecting tenants (students & professionals) with property hosts.
+                  CheckRooms functions solely as an online directory/discovery portal connecting tenants (students & professionals) with property hosts.
                 </p>
                 <ul className="list-disc pl-5 text-xs sm:text-sm text-[#64748B] space-y-2 font-medium">
                   <li><strong>No Commission:</strong> We do not charge brokers&apos; fees or match-making percentages from either hosts or tenants.</li>
                   <li><strong>Direct Communications:</strong> All communications, rental negotiations, agreements, and payment deposits are handled directly between hosts and tenants.</li>
-                  <li><strong>No Financial Transactions:</strong> RoomsWallah does not process monthly rent, secure deposits, or manage escrow balances.</li>
+                  <li><strong>No Financial Transactions:</strong> CheckRooms does not process monthly rent, secure deposits, or manage escrow balances.</li>
                 </ul>
               </div>
 
@@ -97,7 +109,7 @@ export default function TermsPage() {
                   <li>The listed rent is in Indian Rupees (INR) and matches the actual amount requested.</li>
                 </ul>
                 <p className="text-xs text-[#94A3B8] font-bold">
-                  *RoomsWallah reserves the right to delete, edit, or disable listings reported by users or flagged by validation algorithms.
+                  *CheckRooms reserves the right to delete, edit, or disable listings reported by users or flagged by validation algorithms.
                 </p>
               </div>
 
@@ -127,7 +139,7 @@ export default function TermsPage() {
                   </h3>
                 </div>
                 <p className="text-sm text-[#64748B] leading-relaxed font-medium">
-                  You agree NOT to use RoomsWallah to:
+                  You agree NOT to use CheckRooms to:
                 </p>
                 <ul className="list-disc pl-5 text-xs sm:text-sm text-[#64748B] space-y-2 font-medium">
                   <li>Harass other tenants or owners, or post discriminatory listing descriptions.</li>
@@ -147,7 +159,7 @@ export default function TermsPage() {
                   </h3>
                 </div>
                 <p className="text-sm text-[#64748B] leading-relaxed font-medium">
-                  RoomsWallah, its founders, and its team members will not be liable for any direct, indirect, incidental, or consequential damages resulting from transactions, tenant-landlord disputes, structural failures, security issues at property premises, or loss of deposit balances. You agree to indemnify RoomsWallah from any legal claims, liabilities, or expenses.
+                  CheckRooms, its founders, and its team members will not be liable for any direct, indirect, incidental, or consequential damages resulting from transactions, tenant-landlord disputes, structural failures, security issues at property premises, or loss of deposit balances. You agree to indemnify CheckRooms from any legal claims, liabilities, or expenses.
                 </p>
               </div>
 
@@ -162,8 +174,8 @@ export default function TermsPage() {
                 <p className="text-xs sm:text-sm text-[#64748B] font-medium leading-relaxed">
                   If you wish to report a listing that violates our Terms of Service, require help with copyright notices, or need clarification on platform rules, please write to:
                 </p>
-                <a href="mailto:support@roomswallah.com" className="text-sm font-bold text-[#6C4CF1] hover:underline block w-fit pt-0.5">
-                  support@roomswallah.com
+                <a href="mailto:support@checkrooms.com" className="text-sm font-bold text-[#6C4CF1] hover:underline block w-fit pt-0.5">
+                  support@checkrooms.com
                 </a>
               </div>
 

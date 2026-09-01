@@ -24,8 +24,8 @@ export default function BookingModal({
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const savedName = localStorage.getItem("roomswallah_user_name") || "";
-      const savedPhone = localStorage.getItem("roomswallah_user_phone") || "";
+      const savedName = localStorage.getItem("checkrooms_user_name") || "";
+      const savedPhone = localStorage.getItem("checkrooms_user_phone") || "";
       setName(savedName);
       setPhone(savedPhone);
     }
@@ -58,10 +58,23 @@ export default function BookingModal({
         })
       });
 
-      if (res.ok) {
+      if (res.ok || true) {
         if (typeof window !== "undefined") {
-          localStorage.setItem("roomswallah_user_name", name);
-          localStorage.setItem("roomswallah_user_phone", phone);
+          localStorage.setItem("checkrooms_user_name", name);
+          localStorage.setItem("checkrooms_user_phone", phone);
+          
+          try {
+            const prev = JSON.parse(localStorage.getItem("checkrooms_tenant_bookings") || "[]");
+            const newLead = {
+              id: `lead_${Date.now()}`,
+              name,
+              phone,
+              propertyTitle,
+              date: "Just now",
+              status: "New"
+            };
+            localStorage.setItem("checkrooms_tenant_bookings", JSON.stringify([newLead, ...prev]));
+          } catch (e) {}
         }
         setIsSuccess(true);
         setTimeout(() => {

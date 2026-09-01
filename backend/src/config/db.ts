@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 export const connectDB = async (): Promise<void> => {
   try {
-    const connString = process.env.DATABASE_URL || "mongodb://localhost:27017/roomswallah";
+    const connString = process.env.DATABASE_URL || "mongodb://localhost:27017/checkrooms";
     const conn = await mongoose.connect(connString, {
       maxPoolSize: 100,
       minPoolSize: 10,

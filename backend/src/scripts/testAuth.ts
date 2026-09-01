@@ -35,7 +35,7 @@ const runTests = async () => {
   console.log("🚀 Starting Authentication and Authorization Integration Tests...");
   
   // Connect to DB
-  const connString = process.env.DATABASE_URL || "mongodb://localhost:27017/roomswallah";
+  const connString = process.env.DATABASE_URL || "mongodb://localhost:27017/checkrooms";
   await mongoose.connect(connString);
   console.log("📡 Connected to Database");
 
@@ -50,9 +50,9 @@ const runTests = async () => {
     body: {
       fullName: "Test Owner",
       email: "test@testauth.com",
-      mobile: "+919876543210",
-      password: "weak",
-      confirmPassword: "weak"
+      mobile: "9876543210",
+      password: "123",
+      confirmPassword: "123"
     },
     headers: { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0" },
     socket: { remoteAddress: "127.0.0.1" }
@@ -73,7 +73,7 @@ const runTests = async () => {
     body: {
       fullName: "Test Owner",
       email: "test@testauth.com",
-      mobile: "+919876543210",
+      mobile: "9876543210",
       password: "SecurePassword123!",
       confirmPassword: "SecurePassword123!"
     },
@@ -103,10 +103,10 @@ const runTests = async () => {
   }
 
   // Test 3: Login Attempt
-  console.log("\n🧪 Test 3: Local Login with Email/Password");
+  console.log("\n🧪 Test 3: Local Login with Mobile/Password");
   const req3: any = {
     body: {
-      email: "test@testauth.com",
+      mobile: "9876543210",
       password: "SecurePassword123!"
     },
     headers: { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/120.0" },
@@ -260,7 +260,7 @@ const runTests = async () => {
   }
   const req10: any = {
     body: {
-      email: "test@testauth.com",
+      mobile: "9876543210",
       password: "SecurePassword123!"
     },
     headers: { "user-agent": "Mozilla/5.0" },

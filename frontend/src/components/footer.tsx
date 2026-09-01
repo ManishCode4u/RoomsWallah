@@ -12,7 +12,7 @@ export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   const socialLinks = [
-    { icon: Instagram, href: "https://instagram.com/roomswallah", name: "Instagram" },
+    { icon: Instagram, href: "https://instagram.com/checkrooms", name: "Instagram" },
   ];
 
   return (
@@ -28,22 +28,9 @@ export default function Footer() {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#6C4CF1] to-[#8E75FF] flex items-center justify-center text-white shadow-md shadow-[#6C4CF1]/20 group-hover:scale-105 transition-transform duration-300 shrink-0">
                 <Home className="w-5.5 h-5.5 stroke-[2.5]" />
               </div>
-              <span className="relative inline-flex items-center font-poppins font-black text-2xl tracking-tight select-none">
-                <span className="relative inline-block text-white">
-                  R
-                  <svg 
-                    className="absolute -bottom-[1px] left-[1px] w-[2.2em] h-[0.4em] text-white" 
-                    viewBox="0 0 100 20" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="4" 
-                    strokeLinecap="round"
-                  >
-                    <path d="M 5 2 C 10 18, 70 18, 95 2" />
-                  </svg>
-                </span>
-                <span className="text-white">ooms</span>
-                <span className="text-[#6C4CF1]">Wallah</span>
+              <span className="inline-flex items-center font-poppins font-black text-2xl tracking-tight select-none transform scale-y-[1.18] origin-left">
+                <span className="text-white">Check</span>
+                <span className="text-[#6C4CF1]">Rooms</span>
               </span>
             </Link>
             
@@ -58,8 +45,8 @@ export default function Footer() {
               </div>
               <div className="flex flex-col text-left">
                 <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide leading-none mb-1">Email Us</span>
-                <a href="mailto:hello@roomswallah.com" className="text-white hover:text-[#6C4CF1] font-bold text-[13px] transition-colors">
-                  hello@roomswallah.com
+                <a href="mailto:hello@checkrooms.com" className="text-white hover:text-[#6C4CF1] font-bold text-[13px] transition-colors">
+                  hello@checkrooms.com
                 </a>
               </div>
             </div>
@@ -186,7 +173,7 @@ export default function Footer() {
 
         {/* Copyright info */}
         <div className="pt-5 text-center text-xs text-slate-500 font-bold">
-          &copy; {currentYear} RoomsWallah. All rights reserved.
+          &copy; {currentYear} CheckRooms. All rights reserved.
         </div>
 
       </div>

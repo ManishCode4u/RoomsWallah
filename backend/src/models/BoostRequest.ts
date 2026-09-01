@@ -6,7 +6,10 @@ export interface IBoostRequest extends Document {
   plan: string;
   amount: number;
   screenshot: string;
-  status: "Pending" | "Approved" | "Rejected";
+  status: "Pending" | "Approved" | "Rejected" | "Expired";
+  durationDays?: number;
+  expiresAt?: Date;
+  notifiedExpiry?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -20,9 +23,12 @@ const BoostRequestSchema = new Schema<IBoostRequest>(
     screenshot: { type: String, required: true, trim: true },
     status: { 
       type: String, 
-      enum: ["Pending", "Approved", "Rejected"], 
+      enum: ["Pending", "Approved", "Rejected", "Expired"], 
       default: "Pending" 
-    }
+    },
+    durationDays: { type: Number, default: 7 },
+    expiresAt: { type: Date },
+    notifiedExpiry: { type: Boolean, default: false }
   },
   {
     timestamps: true
@@ -33,6 +39,7 @@ const BoostRequestSchema = new Schema<IBoostRequest>(
 BoostRequestSchema.index({ owner: 1 });
 BoostRequestSchema.index({ status: 1 });
 BoostRequestSchema.index({ listing: 1 });
+BoostRequestSchema.index({ expiresAt: 1 });
 
 export const BoostRequest = model<IBoostRequest>("BoostRequest", BoostRequestSchema);
 export default BoostRequest;

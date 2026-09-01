@@ -19,6 +19,10 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "checkrooms-backend.onrender.com",
+      },
+      {
+        protocol: "https",
         hostname: "roomswallah-backend.onrender.com",
       },
     ],

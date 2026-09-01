@@ -1,8 +1,8 @@
 {
-  "name": "roomswallah-backend",
+  "name": "checkrooms-backend",
   "version": "1.0.0",
   "type": "module",
-  "description": "Backend API for RoomsWallah",
+  "description": "Backend API for CheckRooms",
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc",

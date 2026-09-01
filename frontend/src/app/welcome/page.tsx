@@ -33,7 +33,7 @@ export default function WelcomePage() {
   const translations = {
     en: {
       selectRole: "Choose Your Account Type",
-      subtitle: "Select how you would like to access RoomsWallah",
+      subtitle: "Select how you would like to access CheckRooms",
       ownerTitle: "Are you Owner?",
       ownerDesc: "List rooms/PGs & manage bookings",
       tenantTitle: "Are you Tenant / Student?",
@@ -58,11 +58,11 @@ export default function WelcomePage() {
       loginPhonePass: "Login with Phone / Password",
       backOptions: "← Back to options",
       footerSafe: "All your personal details are safe with us.",
-      footerAccept: "If you continue, you are accepting RoomsWallah Terms & Conditions and Privacy Policy"
+      footerAccept: "If you continue, you are accepting CheckRooms Terms & Conditions and Privacy Policy"
     },
     hi: {
       selectRole: "खाता प्रकार चुनें",
-      subtitle: "चुनें कि आप RoomsWallah का उपयोग कैसे करना चाहते हैं",
+      subtitle: "चुनें कि आप CheckRooms का उपयोग कैसे करना चाहते हैं",
       ownerTitle: "क्या आप मकान मालिक हैं?",
       ownerDesc: "कमरे/पीजी लिस्ट करें और बुकिंग मैनेज करें",
       tenantTitle: "क्या आप किराएदार / छात्र हैं?",
@@ -87,7 +87,7 @@ export default function WelcomePage() {
       loginPhonePass: "फ़ोन / पासवर्ड से लॉगिन करें",
       backOptions: "← विकल्पों पर वापस जाएं",
       footerSafe: "आपके सभी व्यक्तिगत विवरण हमारे पास सुरक्षित हैं।",
-      footerAccept: "यदि आप जारी रखते हैं, तो आप RoomsWallah के नियम और शर्तें तथा गोपनीयता नीति स्वीकार कर रहे हैं"
+      footerAccept: "यदि आप जारी रखते हैं, तो आप CheckRooms के नियम और शर्तें तथा गोपनीयता नीति स्वीकार कर रहे हैं"
     }
   };
 
@@ -96,11 +96,11 @@ export default function WelcomePage() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       // Clear legacy dummy mock keys permanently from browser local storage
-      localStorage.removeItem("roomswallah_properties");
-      localStorage.removeItem("roomswallah_reports");
-      localStorage.removeItem("roomswallah_messages");
-      localStorage.removeItem("roomswallah_owners");
-      localStorage.removeItem("roomswallah_advertisements");
+      localStorage.removeItem("checkrooms_properties");
+      localStorage.removeItem("checkrooms_reports");
+      localStorage.removeItem("checkrooms_messages");
+      localStorage.removeItem("checkrooms_owners");
+      localStorage.removeItem("checkrooms_advertisements");
 
       // Capture Google login redirect queries
       const urlParams = new URLSearchParams(window.location.search);
@@ -136,8 +136,8 @@ export default function WelcomePage() {
         router.push("/welcome/user-dashboard");
         return;
       }
-      const savedPhone = localStorage.getItem("roomswallah_remembered_phone") || "";
-      const savedPassword = localStorage.getItem("roomswallah_remembered_password") || "";
+      const savedPhone = localStorage.getItem("checkrooms_remembered_phone") || "";
+      const savedPassword = localStorage.getItem("checkrooms_remembered_password") || "";
       if (savedPhone && savedPassword) {
         setPhone(savedPhone);
         setPassword(savedPassword);
@@ -155,7 +155,7 @@ export default function WelcomePage() {
       try {
         if (activeTab === "login") {
           // tenant login
-          const users = JSON.parse(localStorage.getItem("roomswallah_users") || "[]");
+          const users = JSON.parse(localStorage.getItem("checkrooms_users") || "[]");
           const found = users.find((u: any) => u.phone === phone);
           if (found && found.password === password) {
             localStorage.setItem("user_logged_in", "true");
@@ -175,7 +175,7 @@ export default function WelcomePage() {
             alert("Please fill in all details.");
             return;
           }
-          const users = JSON.parse(localStorage.getItem("roomswallah_users") || "[]");
+          const users = JSON.parse(localStorage.getItem("checkrooms_users") || "[]");
           const exists = users.some((u: any) => u.phone === phone);
           if (exists) {
             alert("A user with this phone number already exists.");
@@ -193,7 +193,7 @@ export default function WelcomePage() {
             avatar: userAvatar
           };
           users.push(newUser);
-          localStorage.setItem("roomswallah_users", JSON.stringify(users));
+          localStorage.setItem("checkrooms_users", JSON.stringify(users));
 
           // Log in automatically
           localStorage.setItem("user_logged_in", "true");
@@ -238,11 +238,11 @@ export default function WelcomePage() {
 
             // Remember Me persistence
             if (rememberMe) {
-              localStorage.setItem("roomswallah_remembered_phone", phone);
-              localStorage.setItem("roomswallah_remembered_password", password);
+              localStorage.setItem("checkrooms_remembered_phone", phone);
+              localStorage.setItem("checkrooms_remembered_password", password);
             } else {
-              localStorage.removeItem("roomswallah_remembered_phone");
-              localStorage.removeItem("roomswallah_remembered_password");
+              localStorage.removeItem("checkrooms_remembered_phone");
+              localStorage.removeItem("checkrooms_remembered_password");
             }
           }
           alert("Login Successful! Redirecting to dashboard...");
@@ -707,14 +707,14 @@ export default function WelcomePage() {
           <span className="text-[11px] text-slate-400 font-semibold block leading-normal px-4">
             {lang === "en" ? (
               <>
-                If you continue, you are accepting RoomsWallah{" "}
+                If you continue, you are accepting CheckRooms{" "}
                 <Link href="/terms" className="text-blue-500 hover:underline">Terms and Conditions</Link>{" "}
                 and{" "}
                 <Link href="/privacy-policy" className="text-blue-500 hover:underline">Privacy Policy</Link>
               </>
             ) : (
               <>
-                यदि आप जारी रखते हैं, तो आप RoomsWallah के{" "}
+                यदि आप जारी रखते हैं, तो आप CheckRooms के{" "}
                 <Link href="/terms" className="text-blue-500 hover:underline">नियम और शर्तें</Link>{" "}
                 तथा{" "}
                 <Link href="/privacy-policy" className="text-blue-500 hover:underline">गोपनीयता नीति</Link>{" "}

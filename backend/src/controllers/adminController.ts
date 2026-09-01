@@ -327,8 +327,8 @@ export const getGuide = async (req: Request, res: Response): Promise<void> => {
       res.status(200).json(JSON.parse(data));
     } else {
       res.status(200).json({
-        title: "How to List Your Room on RoomsWallah",
-        description: "Watch this step-by-step video guide to learn how you can list your room, PG, hostel or flat on RoomsWallah in just 2 minutes.",
+        title: "How to List Your Room on CheckRooms",
+        description: "Watch this step-by-step video guide to learn how you can list your room, PG, hostel or flat on CheckRooms in just 2 minutes.",
         videoUrl: ""
       });
     }
@@ -348,7 +348,7 @@ export const updateGuide = async (req: Request, res: Response): Promise<void> =>
     const { title, description, videoUrl } = req.body;
     
     const guideData = {
-      title: title || "How to List Your Room on RoomsWallah",
+      title: title || "How to List Your Room on CheckRooms",
       description: description || "",
       videoUrl: videoUrl || ""
     };
@@ -390,6 +390,8 @@ export const getAdminBoostRequests = async (req: Request, res: Response): Promis
   }
 };
 
+import { calculateBoostDuration, checkAndExpireBoosts } from "../utils/boostManager.js";
+
 // @desc    Verify (Approve or Reject) boost request (Admin)
 // @route   PATCH /api/admin/boost-requests/:id/verify
 // @access  Public / Admin
@@ -406,9 +408,6 @@ export const verifyBoostRequest = async (req: Request, res: Response): Promise<v
       res.status(404).json({ message: "Boost request not found" });
       return;
     }
-
-    boostRequest.status = status;
-    await boostRequest.save();
 
     const SLOTS_FILE = path.join(process.cwd(), "uploads", "slots.json");
     
@@ -435,36 +434,76 @@ export const verifyBoostRequest = async (req: Request, res: Response): Promise<v
 
     let slots = getSlots();
     const listingIdStr = boostRequest.listing.toString();
+    const targetListing = await Listing.findById(boostRequest.listing);
 
     if (status === "Approved") {
-      // Add listing to slots if not already present
-      const alreadyPromoted = slots.some((slot: any) => slot.listingId === listingIdStr);
-      if (!alreadyPromoted) {
-        slots.push({
-          status: "Active",
-          listingId: listingIdStr
+      const { durationDays, expiresAt } = calculateBoostDuration(boostRequest.amount, boostRequest.plan);
+      
+      boostRequest.status = "Approved";
+      boostRequest.durationDays = durationDays;
+      boostRequest.expiresAt = expiresAt;
+      boostRequest.notifiedExpiry = false;
+      await boostRequest.save();
+
+      // Add / Update slot
+      slots = slots.filter((slot: any) => slot.listingId !== listingIdStr);
+      slots.push({
+        status: "Active",
+        listingId: listingIdStr,
+        ownerId: boostRequest.owner.toString(),
+        plan: boostRequest.plan,
+        amount: boostRequest.amount,
+        durationDays: durationDays,
+        approvedAt: new Date().toISOString(),
+        expiresAt: expiresAt.toISOString(),
+        notifiedExpiry: false
+      });
+      saveSlots(slots);
+
+      // Update Listing in DB
+      if (targetListing) {
+        targetListing.isBoosted = true;
+        targetListing.boostExpiresAt = expiresAt;
+        targetListing.boostPlan = boostRequest.plan;
+        await targetListing.save();
+      }
+
+      // Send Approval Notification
+      try {
+        const dateFormatted = expiresAt.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+        await Notification.create({
+          owner: boostRequest.owner as any,
+          title: "Boost Request Approved! 🚀",
+          message: `Your boost request for "${targetListing?.title || "Property"}" (${boostRequest.plan} - ${durationDays} Days) has been approved! Your listing is boosted to #1 rank until ${dateFormatted}.`,
+          type: "success",
+          read: false
         });
-        saveSlots(slots);
+      } catch (err) {
+        console.error("Failed to trigger boost verification notification:", err);
       }
     } else {
-      // Rejected: Remove from slots if present
+      // Rejected
+      boostRequest.status = "Rejected";
+      await boostRequest.save();
+
       slots = slots.filter((slot: any) => slot.listingId !== listingIdStr);
       saveSlots(slots);
-    }
 
-    // Trigger Notification for the owner
-    try {
-      await Notification.create({
-        owner: boostRequest.owner as any,
-        title: status === "Approved" ? "Boost Request Approved! 🚀" : "Boost Request Rejected ❌",
-        message: status === "Approved" 
-          ? `Your boost request for listing has been approved. Your property is now boosted to the top of results!`
-          : `Your boost request was rejected. Please contact support if this was a mistake.`,
-        type: status === "Approved" ? "success" : "error",
-        read: false
-      });
-    } catch (err) {
-      console.error("Failed to trigger boost verification notification:", err);
+      if (targetListing) {
+        targetListing.isBoosted = false;
+        targetListing.boostExpiresAt = undefined;
+        await targetListing.save();
+      }
+
+      try {
+        await Notification.create({
+          owner: boostRequest.owner as any,
+          title: "Boost Request Rejected ❌",
+          message: `Your boost request for "${targetListing?.title || "Property"}" was not approved. Please check transaction details or contact support.`,
+          type: "error",
+          read: false
+        });
+      } catch (err) {}
     }
 
     res.status(200).json({
@@ -621,7 +660,7 @@ export const getAdminMe = async (req: Request, res: Response): Promise<void> => 
     success: true,
     admin: {
       name: "Admin Chief",
-      email: process.env.ADMIN_EMAIL || "admin@roomswallah.com",
+      email: process.env.ADMIN_EMAIL || "admin@checkrooms.com",
       avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin"
     }
   });

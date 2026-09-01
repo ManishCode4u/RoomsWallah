@@ -116,8 +116,8 @@ function RoomsPageContent() {
     const fetchProperties = async () => {
       let apiListings: PropertyListing[] = [];
       try {
-        const savedLat = localStorage.getItem("roomswallah_user_lat") || "";
-        const savedLon = localStorage.getItem("roomswallah_user_lon") || "";
+        const savedLat = localStorage.getItem("checkrooms_user_lat") || "";
+        const savedLon = localStorage.getItem("checkrooms_user_lon") || "";
         const queryParams = [];
         if (savedLat) queryParams.push(`lat=${savedLat}`);
         if (savedLon) queryParams.push(`lon=${savedLon}`);
@@ -138,7 +138,7 @@ function RoomsPageContent() {
       let localProps: PropertyListing[] = [];
       if (typeof window !== "undefined") {
         try {
-          localProps = JSON.parse(localStorage.getItem("roomswallah_properties") || "[]");
+          localProps = JSON.parse(localStorage.getItem("checkrooms_properties") || "[]");
         } catch (e) {}
       }
 
@@ -155,7 +155,7 @@ function RoomsPageContent() {
           if (Array.isArray(slotsData) && slotsData.length > 0) {
             promoSlots = slotsData;
             if (typeof window !== "undefined") {
-              localStorage.setItem("roomswallah_promotions", JSON.stringify(slotsData));
+              localStorage.setItem("checkrooms_promotions", JSON.stringify(slotsData));
             }
           }
         }
@@ -165,7 +165,7 @@ function RoomsPageContent() {
 
       if (promoSlots.length === 0 && typeof window !== "undefined") {
         try {
-          promoSlots = JSON.parse(localStorage.getItem("roomswallah_promotions") || "[]");
+          promoSlots = JSON.parse(localStorage.getItem("checkrooms_promotions") || "[]");
         } catch (e) {}
       }
       const activePromoted = new Set<string>(
@@ -213,18 +213,18 @@ function RoomsPageContent() {
       };
       cleanStaleSavedListings();
 
-      window.addEventListener("roomswallahPropertiesUpdated", fetchProperties);
+      window.addEventListener("checkroomsPropertiesUpdated", fetchProperties);
     }
 
     return () => {
       if (typeof window !== "undefined") {
-        window.removeEventListener("roomswallahPropertiesUpdated", fetchProperties);
+        window.removeEventListener("checkroomsPropertiesUpdated", fetchProperties);
       }
     };
   }, []);
 
   useEffect(() => {
-    document.title = showSavedOnly ? "Saved Properties | RoomsWallah" : "Rooms for Rent | RoomsWallah";
+    document.title = showSavedOnly ? "Saved Properties | CheckRooms" : "Rooms for Rent | CheckRooms";
   }, [showSavedOnly]);
 
   useEffect(() => {

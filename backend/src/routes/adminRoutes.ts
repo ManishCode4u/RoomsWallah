@@ -25,9 +25,10 @@ import { protectAdmin } from "../middleware/authMiddleware.js";
 
 const router = Router();
 
-// Public Admin Authentication Routes
+// Public Admin Authentication & Guide Routes
 router.post("/login", adminLogin);
 router.post("/logout", adminLogout);
+router.get("/guide", getGuide);
 
 // Authenticated Admin Route verification middleware
 router.use(protectAdmin);
@@ -58,7 +59,6 @@ router.route("/listings/:id")
   .delete(deleteListingByAdmin);
 
 router.route("/guide")
-  .get(getGuide)
   .post(updateGuide);
 
 // Boost requests admin review routes

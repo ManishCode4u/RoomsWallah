@@ -78,13 +78,13 @@ export default function AdminPage() {
   const [adminBoostRequests, setAdminBoostRequests] = useState<any[]>([]);
   const [activeBoostDropdownId, setActiveBoostDropdownId] = useState<string | null>(null);
   const [siteSettings, setSiteSettings] = useState({
-    siteName: "RoomsWallah",
-    supportEmail: "support@roomswallah.com",
+    siteName: "CheckRooms",
+    supportEmail: "support@checkrooms.com",
     supportPhone: "+91 99999 88888",
-    facebook: "https://facebook.com/roomswallah",
-    instagram: "https://instagram.com/roomswallah",
-    linkedin: "https://linkedin.com/company/roomswallah",
-    twitter: "https://twitter.com/roomswallah",
+    facebook: "https://facebook.com/checkrooms",
+    instagram: "https://instagram.com/checkrooms",
+    linkedin: "https://linkedin.com/company/checkrooms",
+    twitter: "https://twitter.com/checkrooms",
     logoUrl: "/assets/room1.png"
   });
   const [guideTitle, setGuideTitle] = useState("");
@@ -263,11 +263,11 @@ export default function AdminPage() {
     setMounted(true);
     if (typeof window !== "undefined") {
       // Clear legacy dummy mock keys permanently from browser local storage
-      localStorage.removeItem("roomswallah_properties");
-      localStorage.removeItem("roomswallah_reports");
-      localStorage.removeItem("roomswallah_messages");
-      localStorage.removeItem("roomswallah_owners");
-      localStorage.removeItem("roomswallah_advertisements");
+      localStorage.removeItem("checkrooms_properties");
+      localStorage.removeItem("checkrooms_reports");
+      localStorage.removeItem("checkrooms_messages");
+      localStorage.removeItem("checkrooms_owners");
+      localStorage.removeItem("checkrooms_advertisements");
 
       const checkAdminSession = async () => {
         const token = localStorage.getItem("admin_token");
@@ -313,14 +313,14 @@ export default function AdminPage() {
                 return found ? { ...mockSlot, ...found } : mockSlot;
               });
               setPromotions(merged);
-              localStorage.setItem("roomswallah_promotions", JSON.stringify(merged));
+              localStorage.setItem("checkrooms_promotions", JSON.stringify(merged));
               return;
             }
           }
         } catch (e) {
           console.error("Error loading promo slots from backend:", e);
         }
-        const promos = localStorage.getItem("roomswallah_promotions");
+        const promos = localStorage.getItem("checkrooms_promotions");
         if (promos) {
           try {
             const parsed = JSON.parse(promos);
@@ -354,7 +354,7 @@ export default function AdminPage() {
       };
       loadGuide();
 
-      const msgs = localStorage.getItem("roomswallah_messages");
+      const msgs = localStorage.getItem("checkrooms_messages");
       if (msgs) {
         try {
           setMessages(JSON.parse(msgs));
@@ -366,7 +366,7 @@ export default function AdminPage() {
         saveMessages(mockContactMessages);
       }
 
-      const reps = localStorage.getItem("roomswallah_reports");
+      const reps = localStorage.getItem("checkrooms_reports");
       if (reps) {
         try {
           setReports(JSON.parse(reps));
@@ -378,7 +378,7 @@ export default function AdminPage() {
         saveReports(mockReports);
       }
 
-      const settings = localStorage.getItem("roomswallah_settings");
+      const settings = localStorage.getItem("checkrooms_settings");
       if (settings) {
         try {
           setSiteSettings(JSON.parse(settings));
@@ -387,7 +387,7 @@ export default function AdminPage() {
         }
       }
 
-      const profile = localStorage.getItem("roomswallah_admin_profile");
+      const profile = localStorage.getItem("checkrooms_admin_profile");
       if (profile) {
         try {
           const parsed = JSON.parse(profile);
@@ -407,25 +407,25 @@ export default function AdminPage() {
   // Sync state helpers
   const saveProperties = (data: PropertyListing[]) => {
     setProperties(data);
-    localStorage.setItem("roomswallah_properties", JSON.stringify(data));
+    localStorage.setItem("checkrooms_properties", JSON.stringify(data));
     window.dispatchEvent(new Event("savedListingsUpdated"));
-    window.dispatchEvent(new Event("roomswallahPropertiesUpdated"));
+    window.dispatchEvent(new Event("checkroomsPropertiesUpdated"));
   };
 
   const saveOwners = (data: Owner[]) => {
     setOwners(data);
-    localStorage.setItem("roomswallah_owners", JSON.stringify(data));
+    localStorage.setItem("checkrooms_owners", JSON.stringify(data));
   };
 
   const saveAdvertisements = (data: Advertisement[]) => {
     setAdvertisements(data);
-    localStorage.setItem("roomswallah_advertisements", JSON.stringify(data));
+    localStorage.setItem("checkrooms_advertisements", JSON.stringify(data));
   };
 
   const savePromotions = async (data: PromotionSlot[]) => {
     setPromotions(data);
-    localStorage.setItem("roomswallah_promotions", JSON.stringify(data));
-    window.dispatchEvent(new Event("roomswallahPropertiesUpdated"));
+    localStorage.setItem("checkrooms_promotions", JSON.stringify(data));
+    window.dispatchEvent(new Event("checkroomsPropertiesUpdated"));
     try {
       await adminFetch(getApiUrl("/api/promotions/slots"), {
         method: "POST",
@@ -439,12 +439,12 @@ export default function AdminPage() {
 
   const saveMessages = (data: ContactMessage[]) => {
     setMessages(data);
-    localStorage.setItem("roomswallah_messages", JSON.stringify(data));
+    localStorage.setItem("checkrooms_messages", JSON.stringify(data));
   };
 
   const saveReports = (data: ListingReport[]) => {
     setReports(data);
-    localStorage.setItem("roomswallah_reports", JSON.stringify(data));
+    localStorage.setItem("checkrooms_reports", JSON.stringify(data));
   };
 
   // Login handler
@@ -697,10 +697,10 @@ export default function AdminPage() {
 
       if (typeof window !== "undefined") {
         try {
-          const localProps = JSON.parse(localStorage.getItem("roomswallah_properties") || "[]");
+          const localProps = JSON.parse(localStorage.getItem("checkrooms_properties") || "[]");
           const updated = localProps.filter((p: any) => p.id !== id && p._id !== id);
-          localStorage.setItem("roomswallah_properties", JSON.stringify(updated));
-          window.dispatchEvent(new Event("roomswallahPropertiesUpdated"));
+          localStorage.setItem("checkrooms_properties", JSON.stringify(updated));
+          window.dispatchEvent(new Event("checkroomsPropertiesUpdated"));
         } catch (e) {}
       }
 
@@ -814,9 +814,9 @@ export default function AdminPage() {
 
       if (typeof window !== "undefined") {
         try {
-          const localOwners = JSON.parse(localStorage.getItem("roomswallah_owners") || "[]");
+          const localOwners = JSON.parse(localStorage.getItem("checkrooms_owners") || "[]");
           const updated = localOwners.filter((o: any) => o.id !== ownerId && o._id !== ownerId);
-          localStorage.setItem("roomswallah_owners", JSON.stringify(updated));
+          localStorage.setItem("checkrooms_owners", JSON.stringify(updated));
         } catch (e) {}
       }
 
@@ -928,9 +928,9 @@ export default function AdminPage() {
 
       if (typeof window !== "undefined") {
         try {
-          const localAds = JSON.parse(localStorage.getItem("roomswallah_advertisements") || "[]");
+          const localAds = JSON.parse(localStorage.getItem("checkrooms_advertisements") || "[]");
           const updated = localAds.filter((a: any) => a.id !== id && a._id !== id);
-          localStorage.setItem("roomswallah_advertisements", JSON.stringify(updated));
+          localStorage.setItem("checkrooms_advertisements", JSON.stringify(updated));
         } catch (e) {}
       }
 
@@ -1050,9 +1050,9 @@ export default function AdminPage() {
 
       if (typeof window !== "undefined") {
         try {
-          const localPromos = JSON.parse(localStorage.getItem("roomswallah_promotions") || "[]");
+          const localPromos = JSON.parse(localStorage.getItem("checkrooms_promotions") || "[]");
           const updated = localPromos.filter((p: any) => p.id !== id && p._id !== id);
-          localStorage.setItem("roomswallah_promotions", JSON.stringify(updated));
+          localStorage.setItem("checkrooms_promotions", JSON.stringify(updated));
         } catch (e) {}
       }
 
@@ -1151,7 +1151,7 @@ export default function AdminPage() {
   // Save General settings
   const handleSettingsSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem("roomswallah_settings", JSON.stringify(siteSettings));
+    localStorage.setItem("checkrooms_settings", JSON.stringify(siteSettings));
     alert("Settings updated successfully!");
   };
 
@@ -1222,7 +1222,7 @@ export default function AdminPage() {
     e.preventDefault();
     const updatedProfile = { ...adminProfile, name: profileName, email: profileEmail, password: profilePassword };
     setAdminProfile(updatedProfile);
-    localStorage.setItem("roomswallah_admin_profile", JSON.stringify(updatedProfile));
+    localStorage.setItem("checkrooms_admin_profile", JSON.stringify(updatedProfile));
     setIsProfileUpdated(true);
     setTimeout(() => setIsProfileUpdated(false), 2000);
   };
@@ -1301,8 +1301,8 @@ export default function AdminPage() {
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#6C4CF1] to-[#8E75FF] flex items-center justify-center text-white mx-auto shadow-md shadow-[#6C4CF1]/20">
               <Home className="w-6 h-6 stroke-[2.5]" />
             </div>
-            <h1 className="font-poppins font-bold text-2xl tracking-tight text-slate-900">
-              Rooms<span className="text-[#6C4CF1]">Wallah</span> Admin
+            <h1 className="font-poppins font-black text-2xl tracking-tight text-slate-900 transform scale-y-[1.18] origin-center inline-block">
+              Check<span className="text-[#6C4CF1]">Rooms</span> Admin
             </h1>
             <p className="text-xs text-[#6C4CF1] font-semibold uppercase tracking-wider">
               Control Panel Access Gateway
@@ -1327,7 +1327,7 @@ export default function AdminPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@roomswallah.com"
+                placeholder="admin@checkrooms.com"
                 className="w-full px-4 py-3 rounded-2xl border border-[#ECECEC] focus:ring-2 focus:ring-[#6C4CF1]/10 focus:border-[#6C4CF1] outline-none transition-all text-xs font-semibold text-slate-800"
               />
             </div>
@@ -1415,8 +1415,8 @@ export default function AdminPage() {
               <Home className="w-5 h-5 stroke-[2.5]" />
             </div>
             <div className="flex flex-col">
-              <span className="font-poppins font-bold text-lg tracking-tight leading-none text-slate-900">
-                Rooms<span className="text-[#6C4CF1]">Wallah</span>
+              <span className="font-poppins font-black text-lg tracking-tight leading-none text-slate-900 transform scale-y-[1.18] origin-left inline-block">
+                Check<span className="text-[#6C4CF1]">Rooms</span>
               </span>
               <span className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-widest mt-1">
                 ADMIN CONSOLE
@@ -1497,7 +1497,7 @@ export default function AdminPage() {
               {activeTab === "dashboard" ? "Admin Dashboard" : activeTab.replace("-", " ")}
             </h2>
             <div className="flex items-center space-x-1.5 text-xs font-semibold text-[#94A3B8]">
-              <span>RoomsWallah</span>
+              <span>CheckRooms</span>
               <span>/</span>
               <span className="text-[#6C4CF1] capitalize">{activeTab}</span>
             </div>

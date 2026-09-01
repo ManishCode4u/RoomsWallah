@@ -6,7 +6,7 @@ dotenv.config();
 
 const checkListings = async () => {
   try {
-    const connString = process.env.DATABASE_URL || "mongodb://localhost:27017/roomswallah";
+    const connString = process.env.DATABASE_URL || "mongodb://localhost:27017/checkrooms";
     await mongoose.connect(connString);
     console.log("Connected to MongoDB...");
     

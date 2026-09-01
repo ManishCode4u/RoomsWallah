@@ -11,29 +11,15 @@ import {
 import { protectAdmin } from "../middleware/authMiddleware.js";
 
 const router = Router();
-const SLOTS_FILE = path.join(process.cwd(), "uploads", "slots.json");
-
-const getSlotsFromFile = () => {
-  try {
-    if (fs.existsSync(SLOTS_FILE)) {
-      return JSON.parse(fs.readFileSync(SLOTS_FILE, "utf-8"));
-    }
-  } catch (e) {}
-  return [];
-};
-
-const saveSlotsToFile = (slots: any) => {
-  try {
-    fs.writeFileSync(SLOTS_FILE, JSON.stringify(slots, null, 2));
-  } catch (e) {}
-};
+import { getActiveBoostSlots, saveRawSlots, readRawSlots } from "../utils/boostManager.js";
 
 router.route("/slots")
-  .get((req, res) => {
-    res.json(getSlotsFromFile());
+  .get(async (req, res) => {
+    const activeSlots = await getActiveBoostSlots();
+    res.json(activeSlots);
   })
   .post(protectAdmin, (req, res) => {
-    saveSlotsToFile(req.body);
+    saveRawSlots(req.body);
     res.json({ success: true });
   });
 

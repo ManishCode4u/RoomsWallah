@@ -16,19 +16,50 @@ const poppins = Poppins({
   display: "swap",
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://roomswallah.vercel.app";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://checkrooms.vercel.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
+  applicationName: "CheckRooms",
   title: {
-    default: "RoomsWallah – Find Rooms, Flats, PGs & Hostels Near You",
-    template: "%s | RoomsWallah",
+    default: "CheckRooms – Find Rooms, Flats, PGs & Hostels Near You (Zero Brokerage)",
+    template: "%s | CheckRooms",
   },
-  description: "Find rooms, flats, PGs and hostels near you on RoomsWallah. Browse property listings, explore locations and connect directly with property owners.",
-  keywords: ["rooms", "flats", "pg", "hostels", "rentals", "roommate finder", "student accommodation", "rooms near me"],
-  authors: [{ name: "RoomsWallah Team" }],
+  description: "Find verified rooms, flats, PGs, and hostels with zero brokerage on CheckRooms. Explore 1000+ budget-friendly accommodations with direct owner contact and genuine photos.",
+  keywords: [
+    "rooms for rent",
+    "pg near me",
+    "hostels for students",
+    "flats for rent",
+    "single room rent",
+    "shared room rent",
+    "roommate finder",
+    "rooms in greater noida",
+    "rooms in noida",
+    "rooms in delhi ncr",
+    "zero brokerage rooms",
+    "student accommodation india",
+    "paying guest",
+    "checkrooms"
+  ],
+  authors: [{ name: "CheckRooms Team", url: siteUrl }],
+  creator: "CheckRooms Team",
+  publisher: "CheckRooms",
+  category: "Real Estate & Rental Accommodation",
   alternates: {
     canonical: "./",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    nocache: false,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
   icons: {
     icon: "/assets/logo.png",
@@ -36,24 +67,27 @@ export const metadata: Metadata = {
     apple: "/assets/logo.png",
   },
   openGraph: {
-    title: "RoomsWallah – Find Rooms, Flats, PGs & Hostels Near You",
-    description: "Find rooms, flats, PGs and hostels near you on RoomsWallah. Browse property listings, explore locations and connect directly with property owners.",
+    title: "CheckRooms – Find Rooms, Flats, PGs & Hostels Near You (Zero Brokerage)",
+    description: "Find verified rooms, flats, PGs, and hostels with zero brokerage on CheckRooms. Connect directly with verified property owners.",
     url: "./",
-    siteName: "RoomsWallah",
+    siteName: "CheckRooms",
+    locale: "en_IN",
+    type: "website",
     images: [
       {
         url: `${siteUrl}/assets/logo.png`,
         width: 512,
         height: 512,
-        alt: "RoomsWallah Logo",
+        alt: "CheckRooms - Verified Rentals & Student Accommodations",
       },
     ],
-    type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "RoomsWallah – Find Rooms, Flats, PGs & Hostels Near You",
-    description: "Find rooms, flats, PGs and hostels near you on RoomsWallah. Browse property listings, explore locations and connect directly with property owners.",
+    title: "CheckRooms – Find Rooms, Flats, PGs & Hostels Near You",
+    description: "Find verified rooms, flats, PGs, and hostels with zero brokerage on CheckRooms. Connect directly with verified property owners.",
+    site: "@checkrooms",
+    creator: "@checkrooms",
     images: [`${siteUrl}/assets/logo.png`],
   },
 };
@@ -62,6 +96,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: "#6C4CF1",
 };
 
 export default function RootLayout({

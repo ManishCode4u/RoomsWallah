@@ -5,14 +5,49 @@ import Navbar from "@/components/navbar";
 import MobileNav from "@/components/mobile-nav";
 import Footer from "@/components/footer";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://checkrooms.vercel.app";
+
 export const metadata: Metadata = {
-  title: "About Us",
-  description: "Learn more about RoomsWallah, our mission, vision, and how we help students and tenants find the best rooms, flats, PGs, and hostels with zero hassle.",
+  title: "About Us - Our Mission & Story | CheckRooms",
+  description: "Learn more about CheckRooms, our mission, vision, and how we empower students and tenants across India to find rooms, flats, PGs, and hostels with zero brokerage.",
+  alternates: {
+    canonical: `${siteUrl}/about`,
+  },
+  openGraph: {
+    title: "About Us - Our Mission & Story | CheckRooms",
+    description: "Learn more about CheckRooms, our mission, vision, and how we empower students and tenants across India.",
+    url: `${siteUrl}/about`,
+    siteName: "CheckRooms",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "About Us | CheckRooms",
+    description: "Learn more about CheckRooms, our mission, vision, and how we empower students and tenants.",
+  },
 };
 
 export default function AboutPage() {
+  const aboutJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "AboutPage",
+    "name": "About CheckRooms",
+    "description": "Learn more about CheckRooms, our mission, vision, and how we empower students and tenants across India to find rooms, flats, PGs, and hostels with zero brokerage.",
+    "url": `${siteUrl}/about`,
+    "mainEntity": {
+      "@type": "Organization",
+      "name": "CheckRooms",
+      "url": siteUrl,
+      "logo": `${siteUrl}/assets/logo.png`,
+    }
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(aboutJsonLd) }}
+      />
       <Navbar />
 
       <main className="flex-grow pt-32 lg:pt-40 pb-16 bg-background">
@@ -31,10 +66,10 @@ export default function AboutPage() {
             {/* Title */}
             <div className="text-center space-y-3">
               <h1 className="font-poppins font-extrabold text-3xl sm:text-4xl text-foreground">
-                About RoomsWallah
+                About CheckRooms
               </h1>
               <p className="text-sm sm:text-base text-muted max-w-xl mx-auto">
-                Discover the story behind RoomsWallah and our promise to simplify living.
+                Discover the story behind CheckRooms and our promise to simplify living.
               </p>
             </div>
 
@@ -47,10 +82,10 @@ export default function AboutPage() {
                 </h2>
               </div>
               <p className="text-sm sm:text-base text-muted leading-relaxed">
-                RoomsWallah was founded by a group of former college students who experienced firsthand the immense frustration of finding quality off-campus housing. Between brokers charging exorbitant commissions, misleading photos, and outdated search tools, finding a room felt like a full-time chore.
+                CheckRooms was founded by a group of former college students who experienced firsthand the immense frustration of finding quality off-campus housing. Between brokers charging exorbitant commissions, misleading photos, and outdated search tools, finding a room felt like a full-time chore.
               </p>
               <p className="text-sm sm:text-base text-muted leading-relaxed">
-                We realized there had to be a better, cleaner, and modern way. RoomsWallah was born to bridge the gap—giving students and young working professionals direct access to verified spaces near universities and IT hubs, completely commission-free and broker-free.
+                We realized there had to be a better, cleaner, and modern way. CheckRooms was born to bridge the gap—giving students and young working professionals direct access to verified spaces near universities and IT hubs, completely commission-free and broker-free.
               </p>
             </div>
 

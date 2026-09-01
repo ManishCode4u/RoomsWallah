@@ -29,6 +29,9 @@ export interface IListing extends Document {
   availableRooms?: number;
   genderPreference?: "Boys Only" | "Girls Only" | "Family / Couple" | "Anyone";
   preferredTenants?: string[];
+  isBoosted?: boolean;
+  boostExpiresAt?: Date;
+  boostPlan?: string;
   createdAt: Date;
 }
 
@@ -69,7 +72,10 @@ const ListingSchema = new Schema<IListing>(
       enum: ["Boys Only", "Girls Only", "Family / Couple", "Anyone"], 
       default: "Anyone" 
     },
-    preferredTenants: [{ type: String }]
+    preferredTenants: [{ type: String }],
+    isBoosted: { type: Boolean, default: false },
+    boostExpiresAt: { type: Date },
+    boostPlan: { type: String, trim: true }
   },
   {
     timestamps: true
@@ -88,3 +94,4 @@ ListingSchema.index({ rating: -1 });
 ListingSchema.index({ title: "text", description: "text" });
 
 export const Listing = model<IListing>("Listing", ListingSchema);
+export default Listing;

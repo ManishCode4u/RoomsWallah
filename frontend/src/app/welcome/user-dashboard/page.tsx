@@ -145,7 +145,7 @@ export default function UserDashboard() {
     <div className="flex flex-col min-h-screen bg-[#F8F9FC]">
       <Navbar />
 
-      <main className="flex-grow pt-32 pb-20 font-poppins">
+      <main className="flex-grow pt-32 pb-20 font-manrope">
         <div className="max-w-[1280px] mx-auto px-4 sm:px-6 w-full space-y-8">
           
           {/* ========================================================================= */}
@@ -318,7 +318,7 @@ export default function UserDashboard() {
                           {/* Card Body */}
                           <div className="p-4 space-y-3 text-left">
                             <div>
-                              <h3 className="font-poppins font-bold text-base text-[#151538] group-hover:text-[#5B2BE0] transition-colors line-clamp-1">
+                              <h3 className="font-manrope font-bold text-base text-[#151538] group-hover:text-[#5B2BE0] transition-colors line-clamp-1">
                                 {p.title}
                               </h3>
                               <p className="text-xs text-[#666680] font-medium flex items-center gap-1.5 mt-1">
@@ -347,7 +347,7 @@ export default function UserDashboard() {
                             <div className="flex items-center justify-between pt-2 border-t border-[#F0F2F5]">
                               <div>
                                 <span className="text-[10px] font-bold text-[#8C8CA1] uppercase tracking-wider block">Monthly Rent</span>
-                                <span className="font-poppins font-black text-xl text-[#151538]">
+                                <span className="font-manrope font-black text-xl text-[#151538]">
                                   ₹{Number(p.rent).toLocaleString("en-IN")}
                                   <span className="text-xs font-semibold text-[#8C8CA1]">/mo</span>
                                 </span>
@@ -363,7 +363,7 @@ export default function UserDashboard() {
                         <div className="p-3 bg-[#FAF8FE] border-t border-[#E8E8F0]">
                           <Link
                             href={detailUrl}
-                            className="w-full bg-[#5B2BE0] hover:bg-[#4A20C0] text-white text-xs font-poppins font-bold py-2.5 px-4 rounded-xl transition-all duration-200 shadow-sm shadow-[#5B2BE0]/20 active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+                            className="w-full bg-[#5B2BE0] hover:bg-[#4A20C0] text-white text-xs font-manrope font-bold py-2.5 px-4 rounded-xl transition-all duration-200 shadow-sm shadow-[#5B2BE0]/20 active:scale-98 cursor-pointer flex items-center justify-center gap-2"
                           >
                             <span>View Details</span>
                             <ArrowRight className="w-3.5 h-3.5" />
@@ -380,7 +380,7 @@ export default function UserDashboard() {
                     <Heart className="w-8 h-8" />
                   </div>
                   <div className="space-y-1">
-                    <h3 className="font-poppins font-bold text-base text-[#151538]">Your Wishlist is Empty</h3>
+                    <h3 className="font-manrope font-bold text-base text-[#151538]">Your Wishlist is Empty</h3>
                     <p className="text-xs text-[#666680] font-medium leading-relaxed">
                       You haven't saved any listings yet. Browse through our premium verified listings to find your ideal room!
                     </p>
@@ -468,7 +468,7 @@ export default function UserDashboard() {
                           {/* Card Body */}
                           <div className="p-4 space-y-3 text-left">
                             <div>
-                              <h3 className="font-poppins font-bold text-base text-[#151538] group-hover:text-[#5B2BE0] transition-colors line-clamp-1">
+                              <h3 className="font-manrope font-bold text-base text-[#151538] group-hover:text-[#5B2BE0] transition-colors line-clamp-1">
                                 {p.title}
                               </h3>
                               <p className="text-xs text-[#666680] font-medium flex items-center gap-1.5 mt-1">
@@ -497,7 +497,7 @@ export default function UserDashboard() {
                             <div className="flex items-center justify-between pt-2 border-t border-[#F0F2F5]">
                               <div>
                                 <span className="text-[10px] font-bold text-[#8C8CA1] uppercase tracking-wider block">Monthly Rent</span>
-                                <span className="font-poppins font-black text-xl text-[#151538]">
+                                <span className="font-manrope font-black text-xl text-[#151538]">
                                   ₹{Number(p.rent).toLocaleString("en-IN")}
                                   <span className="text-xs font-semibold text-[#8C8CA1]">/mo</span>
                                 </span>
@@ -513,7 +513,7 @@ export default function UserDashboard() {
                         <div className="p-3 bg-[#FAF8FE] border-t border-[#E8E8F0]">
                           <Link
                             href={detailUrl}
-                            className="w-full bg-[#5B2BE0] hover:bg-[#4A20C0] text-white text-xs font-poppins font-bold py-2.5 px-4 rounded-xl transition-all duration-200 shadow-sm shadow-[#5B2BE0]/20 active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+                            className="w-full bg-[#5B2BE0] hover:bg-[#4A20C0] text-white text-xs font-manrope font-bold py-2.5 px-4 rounded-xl transition-all duration-200 shadow-sm shadow-[#5B2BE0]/20 active:scale-98 cursor-pointer flex items-center justify-center gap-2"
                           >
                             <span>View Details</span>
                             <ArrowRight className="w-3.5 h-3.5" />
@@ -539,7 +539,7 @@ export default function UserDashboard() {
             <div className="space-y-6 text-left">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-[#E8E8F0] rounded-[22px] p-5 sm:p-6 shadow-xs">
                 <div>
-                  <h3 className="font-poppins font-black text-xl text-[#151538]">
+                  <h3 className="font-manrope font-black text-xl text-[#151538]">
                     My Room Bookings & Scheduled Visits
                   </h3>
                   <p className="text-xs text-[#666680] mt-0.5">
@@ -596,14 +596,14 @@ export default function UserDashboard() {
                               <span className="bg-[#EFE7FF] text-[#5B2BE0] text-[9px] font-black px-2 py-0.5 rounded-md uppercase">
                                 {b.type}
                               </span>
-                              <h4 className="font-poppins font-bold text-sm text-[#151538] line-clamp-1 mt-1">
+                              <h4 className="font-manrope font-bold text-sm text-[#151538] line-clamp-1 mt-1">
                                 {b.title}
                               </h4>
                               <p className="text-[11px] text-[#666680] truncate flex items-center gap-1 mt-0.5">
                                 <MapPin className="w-3 h-3 text-[#8C8CA1] shrink-0" />
                                 <span>{b.location}</span>
                               </p>
-                              <span className="font-poppins font-black text-sm text-[#151538] block mt-1">
+                              <span className="font-manrope font-black text-sm text-[#151538] block mt-1">
                                 ₹{b.rent.toLocaleString()}<span className="text-xs font-normal text-[#8C8CA1]">/mo</span>
                               </span>
                             </div>
@@ -680,7 +680,7 @@ export default function UserDashboard() {
                     <CalendarDays className="w-8 h-8" />
                   </div>
                   <div className="space-y-1">
-                    <h3 className="font-poppins font-bold text-base text-[#151538]">No Scheduled Visits or Bookings</h3>
+                    <h3 className="font-manrope font-bold text-base text-[#151538]">No Scheduled Visits or Bookings</h3>
                     <p className="text-xs text-[#666680] max-w-xs mx-auto">
                       Schedule a free in-person property visit or reserve a room directly from our listings!
                     </p>
@@ -706,7 +706,7 @@ export default function UserDashboard() {
                   <div className="overflow-x-auto text-left">
                     <table className="w-full border-collapse">
                       <thead>
-                        <tr className="bg-slate-50/50 border-b border-[#ECECEC] text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider font-poppins">
+                        <tr className="bg-slate-50/50 border-b border-[#ECECEC] text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider font-manrope">
                           <th className="px-6 py-4">Reported Property</th>
                           <th className="px-6 py-4">Owner</th>
                           <th className="px-6 py-4">Reason</th>
@@ -714,7 +714,7 @@ export default function UserDashboard() {
                           <th className="px-6 py-4 text-right">Status</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[#F0F2F5] text-xs font-semibold text-[#1E2235] font-poppins">
+                      <tbody className="divide-y divide-[#F0F2F5] text-xs font-semibold text-[#1E2235] font-manrope">
                         {reports.map((rep) => (
                           <tr key={rep.id} className="hover:bg-slate-50/30 transition-colors">
                             <td className="px-6 py-4 font-bold text-[#1E2235]">

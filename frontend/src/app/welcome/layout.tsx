@@ -14,5 +14,9 @@ export default function WelcomeLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return (
+    <div className="font-manrope min-h-screen bg-[#F8F9FC] text-[#1E2235]">
+      {children}
+    </div>
+  );
 }

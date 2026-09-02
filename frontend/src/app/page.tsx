@@ -652,30 +652,30 @@ export default function HomeLayout() {
                 >
                   {filteredFeatured.map((prop: PropertyListing) => {
                     const isPromoted = promotedIds.has(prop.id);
-                    const typePath = (prop.type || "").toLowerCase();
+                    const typePath = (prop.type || "room").toLowerCase();
                     const detailsUrl = `/${typePath === "room" ? "rooms" : typePath === "hostel" ? "hostels" : typePath === "flat" ? "flats" : "pg"}/${prop.id}`;
                     const isSaved = savedIds.includes(prop.id);
                     return (
                       <Link
                         key={prop.id}
                         href={detailsUrl}
-                        className={`block w-[200px] sm:w-[230px] md:w-[260px] shrink-0 rounded-[6px] bg-white border border-neutral-100 shadow-xs hover:shadow-md hover:border-neutral-200/80 transition-all duration-300 overflow-hidden text-left snap-start group cursor-pointer relative ${
+                        className={`block w-[220px] sm:w-[250px] md:w-[280px] shrink-0 rounded-[20px] bg-white border border-[#ECECEC] shadow-sm hover:shadow-md hover:border-[#6C4CF1]/30 transition-all duration-300 overflow-hidden text-left snap-start group cursor-pointer relative hover:-translate-y-0.5 ${
                           isPromoted ? "ring-1 ring-amber-400" : ""
                         }`}
                       >
                         {/* Image Container */}
-                        <div className="aspect-square w-full relative overflow-hidden bg-slate-100 shrink-0">
+                        <div className="aspect-[4/3] w-full relative overflow-hidden bg-slate-100 shrink-0">
                           <Image
                             src={getImageUrl(prop.image)}
                             alt={prop.title}
                             fill
                             className="object-cover group-hover:scale-105 transition-transform duration-500"
-                            sizes="(max-width: 768px) 35vw, 15vw"
+                            sizes="(max-width: 768px) 40vw, 20vw"
                           />
                           
                           {/* Verified Badge */}
-                          <div className="absolute top-2.5 left-2.5 bg-[#10B981] text-white text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 z-10 shadow-sm">
-                            <CheckCircle className="w-2.5 h-2.5 text-white fill-white/20" />
+                          <div className="absolute top-2.5 left-2.5 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 z-10 shadow-sm">
+                            <CheckCircle className="w-3 h-3 text-white" />
                             <span>Verified</span>
                           </div>
 
@@ -683,60 +683,66 @@ export default function HomeLayout() {
                           <button
                             type="button"
                             onClick={(e) => toggleSaveProperty(prop.id, e)}
-                            className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full flex items-center justify-center border shadow-xs cursor-pointer active:scale-95 transition-all z-20 ${
+                            className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full flex items-center justify-center border shadow-xs cursor-pointer active:scale-90 transition-all z-20 backdrop-blur-xs ${
                               isSaved
                                 ? "bg-red-50 border-red-100 text-red-500"
-                                : "bg-white border-black/10 text-neutral-400"
+                                : "bg-white/90 border-black/10 text-neutral-500 hover:text-red-500"
                             }`}
                           >
                             <Heart className={`w-4 h-4 ${isSaved ? "fill-red-500 text-red-500" : ""}`} />
                           </button>
 
                           {/* Rent overlay on image */}
-                          <div className="absolute bottom-2.5 left-2.5 bg-black/60 backdrop-blur-xs text-white px-2.5 py-1 rounded-[4px] text-left z-10">
-                            <span className="text-[8px] font-bold block text-white/85 leading-none">Rent/mo</span>
-                            <span className="text-[13px] font-black block mt-0.5 leading-none">₹{prop.rent.toLocaleString("en-IN")}</span>
+                          <div className="absolute bottom-2.5 left-2.5 bg-black/70 backdrop-blur-xs text-white px-2.5 py-1 rounded-xl text-left z-10 border border-white/10">
+                            <span className="text-[9px] font-medium block text-white/80 leading-none">Rent</span>
+                            <span className="text-sm sm:text-base font-bold font-poppins block mt-0.5 leading-none">
+                              ₹{prop.rent.toLocaleString("en-IN")}<span className="text-[10px] font-normal text-white/80">/{prop.type === "hostel" ? "yr" : "mo"}</span>
+                            </span>
                           </div>
 
                           {isPromoted && (
-                            <div className="absolute bottom-2.5 right-2.5 bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider z-10">
-                              Ad
+                            <div className="absolute top-2.5 right-12 bg-amber-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider z-10 shadow-sm">
+                              Featured
                             </div>
                           )}
                         </div>
 
                         {/* Info Content Box */}
-                        <div className="p-3 flex-grow flex flex-col justify-between space-y-1">
-                          <div>
-                            {/* Owner badge info */}
-                            <div className="flex items-center gap-1">
-                              <span className="text-[9px] font-bold text-[#10B981] bg-[#ECFDF5] px-1.5 py-0.5 rounded-sm">Verified</span>
-                              <span className="text-[9px] text-neutral-500 font-semibold truncate max-w-[130px]">• {prop.ownerName || prop.tag || "Owner"}</span>
+                        <div className="p-3.5 flex-grow flex flex-col justify-between space-y-2 bg-white">
+                          <div className="space-y-1">
+                            {/* Chips */}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {prop.sharing && (
+                                <span className="text-[10px] font-bold text-[#6C4CF1] bg-[#F0EDFF] px-2 py-0.5 rounded-md">
+                                  {prop.sharing}
+                                </span>
+                              )}
+                              {prop.furnishing && (
+                                <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
+                                  {prop.furnishing}
+                                </span>
+                              )}
                             </div>
 
                             {/* Title */}
-                            <h3 className="font-poppins font-bold text-[13px] sm:text-[14px] text-neutral-900 truncate mt-1 leading-tight">
+                            <h3 className="font-poppins font-bold text-sm sm:text-[15px] text-[#1E2235] group-hover:text-[#6C4CF1] transition-colors line-clamp-1 leading-snug pt-0.5">
                               {prop.title}
                             </h3>
 
-                            {/* Sharing/Furnishing Subtitle */}
-                            <p className="text-[10px] text-neutral-500 mt-1 truncate">
-                              Rent: {prop.sharing || "Single"} • {prop.furnishing || "Semi-Furnished"}
-                            </p>
-
                             {/* Location */}
-                            <div className="flex items-center space-x-1 text-neutral-400 mt-2.5">
-                              <MapPin className="w-3 h-3 text-[#6C4CF1] shrink-0" />
-                              <span className="text-[9px] font-bold uppercase tracking-wider truncate">
+                            <div className="flex items-center space-x-1 text-slate-500 pt-0.5">
+                              <MapPin className="w-3.5 h-3.5 text-[#6C4CF1] shrink-0" />
+                              <span className="text-xs font-medium truncate">
                                 {prop.area}, {prop.city}
                               </span>
                             </div>
                           </div>
 
                           {/* Send Now Button */}
-                          <div className="mt-3.5">
-                            <div className="w-full bg-[#6C4CF1] group-hover:bg-[#5B3FE6] text-white text-[10px] font-bold py-2 rounded-[6px] text-center transition-all uppercase tracking-wider shadow-sm">
-                              View Details
+                          <div className="pt-2 border-t border-slate-100">
+                            <div className="w-full bg-[#6C4CF1] group-hover:bg-[#5B3FE6] text-white text-xs font-bold py-1.5 rounded-xl text-center transition-all shadow-sm flex items-center justify-center space-x-1">
+                              <span>View Details</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
                             </div>
                           </div>
                         </div>
@@ -786,13 +792,13 @@ export default function HomeLayout() {
               </Link>
             </div>
 
-            {/* Grid Layout: 2 columns on mobile, 3 on tablet, 4 on desktop */}
+            {/* Grid Layout: 1 column on tiny mobile, 2 on mobile, 3 on tablet, 4 on desktop */}
             {freshRecommendations.length > 0 ? (
               <>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 md:gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
                   {freshRecommendations.slice(0, 20).map((prop: PropertyListing) => {
                     const isPromoted = promotedIds.has(prop.id);
-                    const typePath = (prop.type || "").toLowerCase();
+                    const typePath = (prop.type || "room").toLowerCase();
                     const detailsUrl = `/${typePath === "room" ? "rooms" : typePath === "hostel" ? "hostels" : typePath === "flat" ? "flats" : "pg"}/${prop.id}`;
                     const isSaved = savedIds.includes(prop.id);
                     
@@ -800,23 +806,23 @@ export default function HomeLayout() {
                       <Link
                         key={prop.id}
                         href={detailsUrl}
-                        className={`block rounded-[6px] bg-white border border-neutral-100 shadow-xs hover:shadow-md hover:border-neutral-200/80 transition-all duration-300 overflow-hidden text-left group cursor-pointer relative ${
+                        className={`block rounded-[20px] bg-white border border-[#ECECEC] shadow-sm hover:shadow-lg hover:border-[#6C4CF1]/30 transition-all duration-300 overflow-hidden text-left group cursor-pointer relative hover:-translate-y-1 ${
                           isPromoted ? "ring-1 ring-amber-400" : ""
                         }`}
                       >
                         {/* Image Container */}
-                        <div className="aspect-square w-full relative overflow-hidden bg-slate-100 shrink-0">
+                        <div className="aspect-[4/3] w-full relative overflow-hidden bg-slate-100 shrink-0">
                           <Image
                             src={getImageUrl(prop.image)}
                             alt={prop.title}
                             fill
                             className="object-cover group-hover:scale-105 transition-transform duration-500"
-                            sizes="(max-width: 768px) 45vw, 20vw"
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                           />
                           
                           {/* Verified Badge */}
-                          <div className="absolute top-2.5 left-2.5 bg-[#10B981] text-white text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 z-10 shadow-sm">
-                            <CheckCircle className="w-2.5 h-2.5 text-white fill-white/20" />
+                          <div className="absolute top-2.5 left-2.5 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 z-10 shadow-sm">
+                            <CheckCircle className="w-3 h-3 text-white" />
                             <span>Verified</span>
                           </div>
 
@@ -824,60 +830,75 @@ export default function HomeLayout() {
                           <button
                             type="button"
                             onClick={(e) => toggleSaveProperty(prop.id, e)}
-                            className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full flex items-center justify-center border shadow-xs cursor-pointer active:scale-95 transition-all z-20 ${
+                            className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full flex items-center justify-center border shadow-xs cursor-pointer active:scale-90 transition-all z-20 backdrop-blur-xs ${
                               isSaved
                                 ? "bg-red-50 border-red-100 text-red-500"
-                                : "bg-white border-black/10 text-neutral-400"
+                                : "bg-white/90 border-black/10 text-neutral-500 hover:text-red-500"
                             }`}
                           >
                             <Heart className={`w-4 h-4 ${isSaved ? "fill-red-500 text-red-500" : ""}`} />
                           </button>
 
                           {/* Rent overlay on image */}
-                          <div className="absolute bottom-2.5 left-2.5 bg-black/60 backdrop-blur-xs text-white px-2.5 py-1 rounded-[4px] text-left z-10">
-                            <span className="text-[8px] font-bold block text-white/85 leading-none">Rent/mo</span>
-                            <span className="text-[13px] font-black block mt-0.5 leading-none">₹{prop.rent.toLocaleString("en-IN")}</span>
+                          <div className="absolute bottom-2.5 left-2.5 bg-black/70 backdrop-blur-xs text-white px-2.5 py-1 rounded-xl text-left z-10 border border-white/10">
+                            <span className="text-[9px] font-medium block text-white/80 leading-none">Rent</span>
+                            <span className="text-sm sm:text-base font-bold font-poppins block mt-0.5 leading-none">
+                              ₹{prop.rent.toLocaleString("en-IN")}<span className="text-[10px] font-normal text-white/80">/{prop.type === "hostel" ? "yr" : "mo"}</span>
+                            </span>
                           </div>
 
                           {isPromoted && (
-                            <div className="absolute bottom-2.5 right-2.5 bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider z-10">
-                              Ad
+                            <div className="absolute top-2.5 right-12 bg-amber-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider z-10 shadow-sm">
+                              Featured
                             </div>
                           )}
                         </div>
 
                         {/* Info Content Box */}
-                        <div className="p-3 flex-grow flex flex-col justify-between space-y-1">
-                          <div>
-                            {/* Owner badge info */}
-                            <div className="flex items-center gap-1">
-                              <span className="text-[9px] font-bold text-[#10B981] bg-[#ECFDF5] px-1.5 py-0.5 rounded-sm">Verified</span>
-                              <span className="text-[9px] text-neutral-500 font-semibold truncate max-w-[130px]">• {prop.ownerName || prop.tag || "Owner"}</span>
+                        <div className="p-4 flex-grow flex flex-col justify-between space-y-2.5 bg-white">
+                          <div className="space-y-1">
+                            {/* Chips */}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {prop.sharing && (
+                                <span className="text-[10px] font-bold text-[#6C4CF1] bg-[#F0EDFF] px-2 py-0.5 rounded-md">
+                                  {prop.sharing}
+                                </span>
+                              )}
+                              {prop.furnishing && (
+                                <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
+                                  {prop.furnishing}
+                                </span>
+                              )}
+                              {prop.tag && (
+                                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
+                                  {prop.tag}
+                                </span>
+                              )}
                             </div>
 
                             {/* Title */}
-                            <h3 className="font-poppins font-bold text-[13px] sm:text-[14px] text-neutral-900 truncate mt-1 leading-tight">
+                            <h3 className="font-poppins font-bold text-sm sm:text-base text-[#1E2235] group-hover:text-[#6C4CF1] transition-colors line-clamp-1 leading-snug pt-0.5">
                               {prop.title}
                             </h3>
 
-                            {/* Sharing/Furnishing Subtitle */}
-                            <p className="text-[10px] text-neutral-500 mt-1 truncate">
-                              Rent: {prop.sharing || "Single"} • {prop.furnishing || "Semi-Furnished"}
-                            </p>
-
                             {/* Location */}
-                            <div className="flex items-center space-x-1 text-neutral-400 mt-2.5">
-                              <MapPin className="w-3 h-3 text-[#6C4CF1] shrink-0" />
-                              <span className="text-[9px] font-bold uppercase tracking-wider truncate">
+                            <div className="flex items-center space-x-1 text-slate-500 pt-0.5">
+                              <MapPin className="w-3.5 h-3.5 text-[#6C4CF1] shrink-0" />
+                              <span className="text-xs font-medium truncate">
                                 {prop.area}, {prop.city}
                               </span>
                             </div>
                           </div>
 
                           {/* Send Now Button */}
-                          <div className="mt-3.5">
-                            <div className="w-full bg-[#6C4CF1] group-hover:bg-[#5B3FE6] text-white text-[10px] font-bold py-2 rounded-[6px] text-center transition-all uppercase tracking-wider shadow-sm">
-                              View Details
+                          <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between">
+                            <span className="text-[10px] font-semibold text-emerald-600 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                              Direct Owner
+                            </span>
+                            <div className="bg-[#6C4CF1] group-hover:bg-[#5B3FE6] text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-all shadow-sm flex items-center space-x-1">
+                              <span>Details</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
                             </div>
                           </div>
                         </div>

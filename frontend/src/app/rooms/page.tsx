@@ -12,7 +12,8 @@ import {
   ChevronDown,
   Home,
   SlidersHorizontal,
-  Sparkles
+  Sparkles,
+  CheckCircle
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -417,7 +418,7 @@ function RoomsPageContent() {
       <Navbar />
 
       <main className="flex-grow pt-32 lg:pt-40 pb-16 bg-[#F8F9FC]">
-        <div className="max-w-[1280px] mx-auto px-6 w-full space-y-6">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 w-full space-y-6">
           
           {/* ========================================================================= */}
           {/* PAGE HEADER: TITLE + BREADCRUMBS & COMPACT HEADER SEARCH */}
@@ -434,45 +435,45 @@ function RoomsPageContent() {
               </div>
             </div>
 
-            {/* Compact Header Search bar (Airbnb Inspired Layout) */}
+            {/* Compact Header Search bar (Modern Airbnb Inspired Layout) */}
             <div className={`flex-1 max-w-3xl lg:ml-6 ${showMobileSearch ? "block animate-fadeIn" : "hidden lg:block"}`}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-0 border-2 border-black md:border md:border-[#ECECEC] rounded-[4px] md:rounded-[24px] overflow-hidden bg-white shadow-soft">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-0 border border-[#ECECEC] rounded-2xl md:rounded-[24px] overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow">
                 {/* Input 1: City */}
-                <div className="relative h-14 flex items-center px-4 border-b border-black sm:border-[#ECECEC] sm:border-b-0 sm:border-r hover:bg-slate-50/50 transition-colors">
+                <div className="relative h-14 sm:h-16 flex items-center px-4 border-b border-[#F0F2F5] sm:border-b-0 sm:border-r hover:bg-slate-50/50 transition-colors">
                   <MapPin className="w-5 h-5 text-[#6C4CF1] shrink-0" />
                   <div className="flex flex-col text-left ml-2.5 flex-1 min-w-0">
-                    <span className="text-[10px] font-medium text-[#94A3B8] uppercase tracking-wider leading-none">City</span>
+                    <span className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider leading-none">City</span>
                     <input
                       type="text"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
                       placeholder="Type City..."
-                      className="bg-transparent text-sm sm:text-base font-normal text-[#1E2235] mt-1.5 outline-none w-full border-none p-0 focus:ring-0"
+                      className="bg-transparent text-sm sm:text-base font-semibold text-[#1E2235] mt-1 outline-none w-full border-none p-0 focus:ring-0"
                     />
                   </div>
                 </div>
 
                 {/* Input 2: Area */}
-                <div className="relative h-14 flex items-center px-4 border-b border-black sm:border-b-0 md:border-r md:border-[#ECECEC] hover:bg-slate-50/50 transition-colors">
+                <div className="relative h-14 sm:h-16 flex items-center px-4 border-b border-[#F0F2F5] sm:border-b-0 md:border-r md:border-[#ECECEC] hover:bg-slate-50/50 transition-colors">
                   <MapPin className="w-5 h-5 text-[#6C4CF1] shrink-0" />
                   <div className="flex flex-col text-left ml-2.5 flex-1 min-w-0">
-                    <span className="text-[10px] font-medium text-[#94A3B8] uppercase tracking-wider leading-none">Area</span>
+                    <span className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider leading-none">Area</span>
                     <input
                       type="text"
                       value={area}
                       onChange={(e) => setArea(e.target.value)}
                       placeholder="Type Area..."
-                      className="bg-transparent text-sm sm:text-base font-normal text-[#1E2235] mt-1.5 outline-none w-full border-none p-0 focus:ring-0"
+                      className="bg-transparent text-sm sm:text-base font-semibold text-[#1E2235] mt-1 outline-none w-full border-none p-0 focus:ring-0"
                     />
                   </div>
                 </div>
 
                 {/* Input 3: Property Type */}
-                <div className="relative h-14 flex items-center px-4 border-b border-black sm:border-[#ECECEC] sm:border-b-0 sm:border-r hover:bg-slate-50/50 transition-colors">
+                <div className="relative h-14 sm:h-16 flex items-center px-4 border-b border-[#F0F2F5] sm:border-b-0 sm:border-r hover:bg-slate-50/50 transition-colors">
                   <Home className="w-5 h-5 text-[#6C4CF1] shrink-0" />
                   <div className="flex flex-col text-left ml-2.5 flex-1 min-w-0">
-                    <span className="text-[10px] font-medium text-[#94A3B8] uppercase tracking-wider leading-none">Property Type</span>
-                    <span className="text-sm sm:text-base font-normal text-[#1E2235] truncate mt-1.5">
+                    <span className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider leading-none">Property Type</span>
+                    <span className="text-sm sm:text-base font-semibold text-[#1E2235] truncate mt-1">
                       {type === "room" ? "Room" : type === "pg" ? "PG" : type === "hostel" ? "Hostel" : type === "flat" ? "Flat" : "All Types"}
                     </span>
                   </div>
@@ -491,11 +492,11 @@ function RoomsPageContent() {
                 </div>
 
                 {/* Input 4: Budget */}
-                <div className="relative h-14 flex items-center px-4 border-b border-black sm:border-[#ECECEC] sm:border-b-0 hover:bg-slate-50/50 transition-colors md:col-span-1">
+                <div className="relative h-14 sm:h-16 flex items-center px-4 border-b border-[#F0F2F5] sm:border-b-0 hover:bg-slate-50/50 transition-colors md:col-span-1">
                   <span className="text-base font-bold text-[#6C4CF1] shrink-0 leading-none">₹</span>
                   <div className="flex flex-col text-left ml-2 flex-1 min-w-0">
-                    <span className="text-[10px] font-medium text-[#94A3B8] uppercase tracking-wider leading-none">Budget</span>
-                    <span className="text-sm sm:text-base font-normal text-[#1E2235] truncate mt-1.5">
+                    <span className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider leading-none">Budget</span>
+                    <span className="text-sm sm:text-base font-semibold text-[#1E2235] truncate mt-1">
                       {budget === "Any Budget" ? "Any Budget" : `Under ₹${parseInt(budget).toLocaleString("en-IN")}`}
                     </span>
                   </div>
@@ -516,7 +517,7 @@ function RoomsPageContent() {
                 {/* Search Button */}
                 <button 
                   onClick={handleSearchSubmit}
-                  className="bg-[#6C4CF1] hover:bg-[#5B3FE6] text-white flex items-center justify-center space-x-1.5 h-14 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all duration-200 col-span-1 cursor-pointer"
+                  className="bg-[#6C4CF1] hover:bg-[#5B3FE6] text-white flex items-center justify-center space-x-1.5 h-14 sm:h-16 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all duration-200 col-span-1 cursor-pointer"
                 >
                   <Search className="w-4.5 h-4.5 text-white" />
                   <span>Search</span>
@@ -531,7 +532,7 @@ function RoomsPageContent() {
           <div className="flex flex-col lg:flex-row gap-8 items-start">
             
             {/* 1. SIDEBAR FILTERS COLUMN */}
-            <aside className={`w-full lg:w-[290px] bg-white rounded-[32px] border border-[#ECECEC] p-7 shadow-[0px_4px_24px_rgba(0,0,0,0.02)] space-y-6 shrink-0 text-left ${showMobileFilters ? "block" : "hidden lg:block"}`}>
+            <aside className={`w-full lg:w-[290px] bg-white rounded-[32px] border border-[#ECECEC] p-7 shadow-[0px_4px_24px_rgba(0,0,0,0.02)] space-y-6 shrink-0 text-left lg:sticky lg:top-36 ${showMobileFilters ? "block" : "hidden lg:block"}`}>
               <div className="flex items-center justify-between pb-4 border-b border-[#F0F2F5]">
                 <h3 className="font-poppins font-bold text-base text-[#1E2235]">Filters</h3>
                 <div className="flex items-center space-x-2">
@@ -765,7 +766,7 @@ function RoomsPageContent() {
               </div>
 
               {/* Filter Count & Sorting header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 bg-white px-4 py-4 sm:px-6 sm:py-4.5 rounded-[24px] sm:rounded-[28px] border border-[#ECECEC] shadow-[0px_4px_24px_rgba(0,0,0,0.02)]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 bg-white px-5 py-4 sm:px-6 sm:py-5 rounded-[24px] sm:rounded-[28px] border border-[#ECECEC] shadow-[0px_4px_24px_rgba(0,0,0,0.02)]">
                 <span className="text-sm sm:text-base font-bold text-[#1E2235] text-left w-full sm:w-auto">
                   {showSavedOnly ? (
                     <>Saved <span className="text-[#6C4CF1]">{filteredProperties.length}</span> Propert{filteredProperties.length !== 1 ? "ies" : "y"}</>
@@ -788,26 +789,26 @@ function RoomsPageContent() {
                     <span>Filters</span>
                   </button>
 
-                  <span className="text-[10px] sm:text-xs text-[#94A3B8] font-semibold uppercase tracking-wider hidden sm:inline">Sort by:</span>
+                  <span className="text-xs text-[#94A3B8] font-bold uppercase tracking-wider hidden sm:inline">Sort by:</span>
                   <div className="relative flex-grow sm:flex-grow-0">
                     <select
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value)}
-                      className="bg-white border border-[#EBEFF8] shadow-sm rounded-xl px-3 py-1.5 text-xs sm:text-sm font-semibold text-[#64748B] hover:text-[#1E2235] focus:outline-none cursor-pointer pr-7 appearance-none w-full"
+                      className="bg-white border border-[#EBEFF8] shadow-sm rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold text-[#64748B] hover:text-[#1E2235] focus:outline-none cursor-pointer pr-8 appearance-none w-full"
                     >
                       <option value="Relevance">Relevance</option>
                       <option value="PriceLowHigh">Price: Low to High</option>
                       <option value="PriceHighLow">Price: High to Low</option>
                       <option value="Rating">Top Rated</option>
                     </select>
-                    <ChevronDown className="w-3.5 h-3.5 text-[#94A3B8] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <ChevronDown className="w-4 h-4 text-[#94A3B8] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
                 </div>
               </div>
 
               {/* Grid content */}
-               {filteredProperties.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 md:gap-6">
+              {filteredProperties.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
                   {filteredProperties.map((prop, idx) => {
                     const isPromoted = promotedIds.has(prop.id);
                     const typePath = (prop.type || "").toLowerCase();
@@ -820,57 +821,112 @@ function RoomsPageContent() {
                         href={detailsUrl}
                         initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, delay: Math.min(idx * 0.05, 0.4) }}
-                        className={`block transition-all duration-250 overflow-hidden text-left group cursor-pointer pointer-events-auto relative flex flex-col h-full border rounded-[4px] ${
-                          isPromoted 
-                            ? "bg-amber-50/10 border-amber-400/80 shadow-md shadow-amber-500/5 hover:border-amber-500 hover:shadow-lg" 
-                            : "bg-white border-slate-200 hover:border-slate-300 shadow-xs hover:shadow-sm"
+                        transition={{ duration: 0.35, delay: Math.min(idx * 0.04, 0.3) }}
+                        className={`group relative flex flex-col bg-white rounded-[24px] border transition-all duration-300 overflow-hidden shadow-[0px_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0px_16px_36px_rgba(108,76,241,0.08)] hover:-translate-y-1 cursor-pointer pointer-events-auto ${
+                          isPromoted
+                            ? "border-amber-300 ring-1 ring-amber-300/60"
+                            : "border-[#ECECEC] hover:border-[#6C4CF1]/40"
                         }`}
                       >
                         {/* Image Container */}
-                        <div className="aspect-square w-full relative overflow-hidden bg-slate-100 shrink-0">
+                        <div className="aspect-[16/11] sm:aspect-[4/3] w-full relative overflow-hidden bg-slate-100 shrink-0">
                           <Image
                             src={getImageUrl(prop.image)}
                             alt={prop.title}
                             fill
-                            className="object-cover group-hover:scale-105 transition-transform duration-500"
-                            sizes="(max-width: 768px) 45vw, 20vw"
+                            className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                           />
-                          
-                          {/* Floating Heart Icon Button (Wishlist) */}
+
+                          {/* Top Badges */}
+                          <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5 z-10">
+                            {isPromoted && (
+                              <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                                <Sparkles className="w-3 h-3 text-white fill-white/20 animate-pulse" />
+                                <span>Featured</span>
+                              </div>
+                            )}
+                            <div className="bg-emerald-500/95 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm">
+                              <CheckCircle className="w-3 h-3 text-white" />
+                              <span>Verified</span>
+                            </div>
+                          </div>
+
+                          {/* Floating Heart Button */}
                           <button
                             onClick={(e) => toggleSaveProperty(prop.id, e)}
-                            className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center border shadow-xs cursor-pointer active:scale-95 transition-all z-20 ${
+                            className={`absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center border shadow-sm cursor-pointer active:scale-90 transition-all z-20 backdrop-blur-xs ${
                               isSaved
-                                ? "bg-red-50 border-red-100 text-red-500"
-                                : "bg-white border-black/10 text-neutral-400"
+                                ? "bg-red-50/95 border-red-200 text-red-500"
+                                : "bg-white/90 border-black/5 text-neutral-500 hover:text-red-500 hover:bg-white"
                             }`}
+                            title={isSaved ? "Remove from saved" : "Save property"}
                           >
-                            <Heart className={`w-4 h-4 ${isSaved ? "fill-red-500 text-red-500" : ""}`} />
+                            <Heart className={`w-4.5 h-4.5 ${isSaved ? "fill-red-500 text-red-500" : ""}`} />
                           </button>
 
-                          {isPromoted && (
-                            <div className="absolute top-2.5 left-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[8px] font-black px-2 py-0.5 rounded-[4px] uppercase tracking-wider z-10 flex items-center gap-1 shadow-sm border border-amber-400/20">
-                              <Sparkles className="w-2.5 h-2.5 text-white fill-white/20 animate-pulse" />
-                              <span>Promoted</span>
+                          {/* Rent Overlay Pill */}
+                          <div className="absolute bottom-3 left-3 bg-black/70 backdrop-blur-md text-white px-3 py-1.5 rounded-xl text-left z-10 shadow-sm border border-white/10">
+                            <span className="text-[10px] font-medium text-white/80 block leading-none">Rent</span>
+                            <div className="flex items-baseline space-x-1 mt-0.5">
+                              <span className="text-base sm:text-lg font-bold leading-tight font-poppins">
+                                ₹{prop.rent.toLocaleString("en-IN")}
+                              </span>
+                              <span className="text-[10px] text-white/75 font-normal">
+                                /{prop.type === "hostel" ? "yr" : "mo"}
+                              </span>
                             </div>
-                          )}
+                          </div>
                         </div>
 
                         {/* Info Content Box */}
-                        <div className="p-3 flex-grow flex flex-col justify-between space-y-1 bg-white">
-                          <div>
-                            <p className="font-poppins font-bold text-[15px] sm:text-[16px] text-neutral-900 leading-none">
-                              ₹{prop.rent.toLocaleString("en-IN")}
-                            </p>
-                            <p className="text-[11px] sm:text-xs text-neutral-500 truncate mt-1.5 leading-tight">
+                        <div className="p-4 sm:p-5 flex-grow flex flex-col justify-between space-y-3 bg-white">
+                          <div className="space-y-2">
+                            {/* Badges / Meta Chips */}
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {prop.sharing && (
+                                <span className="text-[10px] sm:text-[11px] font-bold text-[#6C4CF1] bg-[#F0EDFF] px-2.5 py-0.5 rounded-md">
+                                  {prop.sharing}
+                                </span>
+                              )}
+                              {prop.furnishing && (
+                                <span className="text-[10px] sm:text-[11px] font-semibold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-md">
+                                  {prop.furnishing}
+                                </span>
+                              )}
+                              {prop.tag && (
+                                <span className="text-[10px] sm:text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md">
+                                  {prop.tag}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Title */}
+                            <h3 className="font-poppins font-bold text-base sm:text-[17px] text-[#1E2235] group-hover:text-[#6C4CF1] transition-colors line-clamp-1 leading-snug">
                               {prop.title}
-                            </p>
-                            <div className="flex items-center space-x-1 text-neutral-400 mt-3.5 leading-none">
-                              <MapPin className="w-3 h-3 shrink-0" />
-                              <span className="text-[9px] uppercase tracking-wide truncate">
+                            </h3>
+
+                            {/* Location */}
+                            <div className="flex items-center space-x-1.5 text-slate-500 leading-none">
+                              <MapPin className="w-3.5 h-3.5 text-[#6C4CF1] shrink-0" />
+                              <span className="text-xs sm:text-[13px] font-medium truncate">
                                 {prop.area}, {prop.city}
                               </span>
+                            </div>
+                          </div>
+
+                          {/* Bottom Action CTA */}
+                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                            <div className="text-left">
+                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Zero Brokerage</span>
+                              <span className="text-xs font-semibold text-emerald-600 flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                                Direct Owner
+                              </span>
+                            </div>
+                            <div className="bg-[#6C4CF1] group-hover:bg-[#5B3FE6] text-white text-xs font-bold px-3.5 py-2 rounded-xl flex items-center space-x-1 transition-all shadow-sm">
+                              <span>View Details</span>
+                              <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                             </div>
                           </div>
                         </div>
@@ -887,7 +943,6 @@ function RoomsPageContent() {
                   </p>
                 </div>
               )}
-
 
             </div>
           </div>

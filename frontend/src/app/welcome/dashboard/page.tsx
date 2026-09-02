@@ -45,7 +45,9 @@ import {
   Share2,
   Filter,
   User,
-  MessageSquare
+  MessageSquare,
+  FileText,
+  Info
 } from "lucide-react";
 import { getApiUrl, getImageUrl } from "@/data/api";
 
@@ -156,8 +158,29 @@ export default function OwnerDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Notifications states
-  const [notifications, setNotifications] = useState<any[]>([]);
+  // Notifications states (Persisted in localStorage permanently until explicitly dismissed by owner)
+  const [notifications, setNotifications] = useState<any[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("checkrooms_owner_notifications");
+        if (stored) return JSON.parse(stored);
+      } catch (e) {}
+    }
+    return [];
+  });
+
+  // Automatically sync notifications to localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("checkrooms_owner_notifications", JSON.stringify(notifications));
+    }
+  }, [notifications]);
+
+  const handleDeleteNotification = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
+
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
 
@@ -186,6 +209,12 @@ export default function OwnerDashboard() {
     }
     return "";
   });
+  const [profileAvatar, setProfileAvatar] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("owner_avatar") || "";
+    }
+    return "";
+  });
   const [isEditingProfile, setIsEditingProfile] = useState(false);
 
   // Inquiries & Leads List (Loaded from real database /api/listings/inquiries/my-inquiries)
@@ -194,10 +223,13 @@ export default function OwnerDashboard() {
 
   // Boost Modal State
   const [showBoostModal, setShowBoostModal] = useState(false);
+  const [showIncompleteProfileModal, setShowIncompleteProfileModal] = useState(false);
   const [boostingListing, setBoostingListing] = useState<Listing | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<"basic" | "premium">("basic");
   const [checkoutStep, setCheckoutStep] = useState<"select_listing" | "plans" | "payment" | "success">("select_listing");
   const [screenshotUrl, setScreenshotUrl] = useState("");
+  const [receiptFile, setReceiptFile] = useState<{ name: string; size: string; url: string } | null>(null);
+  const [receiptError, setReceiptError] = useState<string | null>(null);
   const [isSubmittingBoost, setIsSubmittingBoost] = useState(false);
 
   // Help & Support Contact Admin state
@@ -221,6 +253,9 @@ export default function OwnerDashboard() {
       setBoostingListing(firstAvailable || null);
     }
     setCheckoutStep("select_listing");
+    setScreenshotUrl("");
+    setReceiptFile(null);
+    setReceiptError(null);
     setShowBoostModal(true);
   };
 
@@ -566,8 +601,34 @@ export default function OwnerDashboard() {
     setFormErrors({});
   };
 
-  // Start new listing creation
+  // Check if owner profile is complete based on login method
+  const getProfileCompletionStatus = () => {
+    const loginMethod = typeof window !== "undefined" ? (localStorage.getItem("owner_login_method") || "") : "";
+    const cleanPhone = (profilePhone || "").replace(/\D/g, "");
+    const hasPhone = cleanPhone.length >= 10;
+    const hasName = Boolean(profileName && profileName.trim().length > 0 && profileName.trim().toLowerCase() !== "landlord");
+    const hasWhatsApp = Boolean(profileWhatsApp && profileWhatsApp.trim().replace(/\D/g, "").length >= 10);
+    const hasEmail = Boolean(profileEmail && profileEmail.trim().includes("@"));
+
+    // If owner logged in via Mobile Number, give 100% direct permission without any modal or block
+    const isMobileLogin = loginMethod === "phone" || (!loginMethod && hasPhone && (!profileEmail || profileEmail.length === 0));
+
+    if (isMobileLogin) {
+      return { hasName: true, hasPhone: true, hasWhatsApp: true, hasEmail: true, isComplete: true, isMobileLogin: true };
+    }
+
+    // For Email ID / Google login users, check if contact details (Phone & Name) are filled
+    const isComplete = Boolean(hasPhone && hasName);
+    return { hasName, hasPhone, hasWhatsApp, hasEmail, isComplete, isMobileLogin: false };
+  };
+
+  // Start new listing creation (Mobile login directly permitted; Email login prompted if phone missing)
   const handleStartAddListing = () => {
+    const status = getProfileCompletionStatus();
+    if (!status.isComplete && !status.isMobileLogin) {
+      setShowIncompleteProfileModal(true);
+      return;
+    }
     resetForm();
     setActiveScreen("step1");
   };
@@ -694,7 +755,7 @@ export default function OwnerDashboard() {
               <Home className="w-5 h-5 stroke-[2.4]" />
             </div>
             <div className="flex flex-col">
-              <span className="inline-flex items-center font-poppins font-black text-xl tracking-tight select-none transform scale-y-[1.12] origin-left leading-none">
+              <span className="inline-flex items-center font-poppins font-black text-xl tracking-tight select-none transform scale-y-[1.18] origin-left leading-none">
                 <span className="text-[#1E2235]">Check</span>
                 <span className="text-[#6C4CF1]">Rooms</span>
               </span>
@@ -755,7 +816,7 @@ export default function OwnerDashboard() {
               <span>Boost Listing</span>
             </button>
 
-            {/* 5. Customer Leads */}
+            {/* 5. Bookings */}
             <button
               onClick={() => { setActiveNav("bookings"); setActiveScreen("bookings"); }}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150 cursor-pointer ${
@@ -765,7 +826,7 @@ export default function OwnerDashboard() {
               }`}
             >
               <CalendarDays className="w-4.5 h-4.5 stroke-[2]" />
-              <span>Customer Leads</span>
+              <span>Bookings</span>
             </button>
 
             {/* 7. Profile Settings */}
@@ -815,7 +876,7 @@ export default function OwnerDashboard() {
               </div>
             </div>
 
-            <h4 className="font-poppins font-bold text-xs text-[#151538] mt-2">
+            <h4 className="font-manrope font-bold text-xs text-[#151538] mt-2">
               Boost Your Listing
             </h4>
             <p className="text-[10px] text-[#666680] mt-0.5 leading-snug">
@@ -824,7 +885,7 @@ export default function OwnerDashboard() {
 
             <button
               onClick={() => openBoostModalForListing()}
-              className="w-full bg-gradient-to-r from-[#FF7A00] via-[#FF6600] to-[#FF4D00] hover:from-[#FF6600] hover:to-[#E63900] text-white text-[10.5px] font-poppins font-extrabold py-2 px-3 rounded-full uppercase tracking-wider transition-all duration-200 shadow-md shadow-orange-500/25 active:scale-98 cursor-pointer mt-3 flex items-center justify-center gap-1.5"
+              className="w-full bg-gradient-to-r from-[#FF7A00] via-[#FF6600] to-[#FF4D00] hover:from-[#FF6600] hover:to-[#E63900] text-white text-[10.5px] font-manrope font-extrabold py-2 px-3 rounded-full uppercase tracking-wider transition-all duration-200 shadow-md shadow-orange-500/25 active:scale-98 cursor-pointer mt-3 flex items-center justify-center gap-1.5"
             >
               <Rocket className="w-3.5 h-3.5" />
               <span>BOOST LISTING</span>
@@ -833,7 +894,7 @@ export default function OwnerDashboard() {
 
           {/* Sidebar "Your Listings" Preview */}
           <div className="space-y-2.5 pt-1">
-            <h5 className="font-poppins font-bold text-xs text-[#151538] px-0.5">
+            <h5 className="font-manrope font-bold text-xs text-[#151538] px-0.5">
               Your Listings
             </h5>
             
@@ -859,7 +920,7 @@ export default function OwnerDashboard() {
                         {item.status}
                       </span>
                     </div>
-                    <p className="font-poppins font-bold text-[11px] text-[#151538] truncate mt-0.5">
+                    <p className="font-manrope font-bold text-[11px] text-[#151538] truncate mt-0.5">
                       {item.title}
                     </p>
                     <p className="text-[9.5px] text-[#666680] truncate">
@@ -946,7 +1007,7 @@ export default function OwnerDashboard() {
                   <div className="fixed left-3 right-3 top-16 sm:absolute sm:top-full sm:left-auto sm:right-0 sm:mt-2 sm:w-80 bg-white border border-[#E8E8F0] rounded-2xl shadow-2xl p-4 z-50 text-left space-y-3 max-h-[80vh] sm:max-h-96 flex flex-col">
                     <div className="flex items-center justify-between pb-2 border-b border-slate-100 shrink-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-poppins font-bold text-xs text-[#151538]">Notifications</span>
+                        <span className="font-manrope font-bold text-xs text-[#151538]">Notifications</span>
                         <span className="bg-[#EFE7FF] text-[#5B2BE0] text-[9px] font-bold px-1.5 py-0.5 rounded-full">
                           {notifications.length}
                         </span>
@@ -980,12 +1041,28 @@ export default function OwnerDashboard() {
                         </div>
                       ) : (
                         notifications.map(n => (
-                          <div key={n.id} className={`p-2.5 rounded-xl text-xs space-y-1 transition-all ${n.read ? "bg-slate-50 opacity-75" : "bg-[#F7F4FF] border border-[#E9E0FD]"}`}>
-                            <div className="flex items-start justify-between gap-1.5">
-                              <p className="font-semibold text-slate-800 leading-tight">{n.message}</p>
-                              {!n.read && (
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#5B2BE0] shrink-0 mt-1" />
-                              )}
+                          <div 
+                            key={n.id} 
+                            onClick={() => setNotifications(prev => prev.map(item => item.id === n.id ? { ...item, read: true } : item))}
+                            className={`p-2.5 rounded-xl text-xs space-y-1 transition-all group relative cursor-pointer ${
+                              n.read ? "bg-slate-50 opacity-80 hover:opacity-100" : "bg-[#F7F4FF] border border-[#E9E0FD]"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="font-semibold text-slate-800 leading-tight pr-2">{n.message}</p>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {!n.read && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-[#5B2BE0] shrink-0" />
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleDeleteNotification(n.id, e)}
+                                  className="w-5 h-5 rounded-md hover:bg-red-50 text-slate-400 hover:text-red-500 flex items-center justify-center transition-colors cursor-pointer"
+                                  title="Delete notification"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </div>
                             <span className="text-[10px] text-slate-400 block">{n.time}</span>
                           </div>
@@ -1003,13 +1080,19 @@ export default function OwnerDashboard() {
                 onClick={() => setShowProfileDropdown(!showProfileDropdown)}
                 className="flex items-center gap-3 cursor-pointer p-1 rounded-xl hover:bg-slate-50 transition-all select-none"
               >
-                <img
-                  src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80"
-                  alt={profileName}
-                  className="w-10 h-10 rounded-full object-cover border border-[#E8E8F0]"
-                />
+                {profileAvatar ? (
+                  <img
+                    src={profileAvatar}
+                    alt={profileName}
+                    className="w-10 h-10 rounded-full object-cover border border-[#E8E8F0] shadow-2xs shrink-0"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#5B2BE0] to-[#8C52FF] text-white font-black text-sm flex items-center justify-center shadow-xs border border-[#E8DCFE] shrink-0">
+                    {profileName.trim().charAt(0).toUpperCase() || "O"}
+                  </div>
+                )}
                 <div className="hidden sm:flex flex-col text-left">
-                  <span className="font-poppins font-bold text-xs text-[#151538] leading-tight">
+                  <span className="font-manrope font-bold text-xs text-[#151538] leading-tight">
                     {profileName}
                   </span>
                   <span className="text-[11px] text-[#666680] font-medium">
@@ -1072,7 +1155,7 @@ export default function OwnerDashboard() {
                 
                 {/* Left Text & Live Time Pill */}
                 <div className="space-y-1 sm:space-y-2 relative z-10 max-w-[65%] sm:max-w-xl">
-                  <h1 className="font-poppins font-extrabold text-base sm:text-2xl lg:text-3xl text-white tracking-tight leading-tight whitespace-nowrap flex items-center gap-1.5 overflow-hidden text-ellipsis">
+                  <h1 className="font-manrope font-extrabold text-base sm:text-2xl lg:text-3xl text-white tracking-tight leading-tight whitespace-nowrap flex items-center gap-1.5 overflow-hidden text-ellipsis">
                     <span>{dynamicGreeting.text}, {profileName.split(" ")[0]}!</span>
                     <span className="shrink-0 text-lg sm:text-2xl">🖐</span>
                   </h1>
@@ -1143,7 +1226,7 @@ export default function OwnerDashboard() {
                         : "text-[#666680] hover:text-[#151538]"
                     }`}
                   >
-                    <span>{tab === "Inquiry" ? "Customer Leads" : tab}</span>
+                    <span>{tab === "Inquiry" ? "Bookings" : tab}</span>
                     {dashboardTab === tab && (
                       <span className="absolute bottom-0 left-2 right-2 sm:left-0 sm:right-0 h-0.5 bg-[#5B2BE0] rounded-full" />
                     )}
@@ -1165,7 +1248,7 @@ export default function OwnerDashboard() {
                       <span className="text-xs font-bold text-[#666680] group-hover:text-[#5B2BE0] truncate transition-colors">Total Listings</span>
                       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                     </div>
-                    <h3 className="font-poppins font-black text-2xl sm:text-[28px] text-[#151538] leading-none my-1.5">
+                    <h3 className="font-manrope font-black text-2xl sm:text-[28px] text-[#151538] leading-none my-1.5">
                       {totalListingsCount}
                     </h3>
                     <p className="text-[11px] text-[#8C8CA1] font-semibold truncate flex items-center gap-1">
@@ -1188,11 +1271,11 @@ export default function OwnerDashboard() {
                       <span className="text-xs font-bold text-[#666680] group-hover:text-[#5B2BE0] truncate transition-colors">Total Inquiries</span>
                       <span className="bg-[#EAF8EF] text-[#16A34A] text-[9.5px] font-black px-1.5 py-0.2 rounded-md">Live</span>
                     </div>
-                    <h3 className="font-poppins font-black text-2xl sm:text-[28px] text-[#151538] leading-none my-1.5">
+                    <h3 className="font-manrope font-black text-2xl sm:text-[28px] text-[#151538] leading-none my-1.5">
                       {customerLeads.length > 0 ? customerLeads.length : totalInquiriesCount}
                     </h3>
                     <p className="text-[11px] text-[#8C8CA1] font-semibold truncate flex items-center gap-1">
-                      <span>Customer Leads & Bookings</span>
+                      <span>Total Bookings & Leads</span>
                       <span className="text-[#5B2BE0] font-bold group-hover:translate-x-0.5 transition-transform">→</span>
                     </p>
                   </div>
@@ -1207,7 +1290,7 @@ export default function OwnerDashboard() {
               {/* 3.5 CLEAN CENTERED "ADD NEW ROOM" CARD */}
               <div className="bg-gradient-to-br from-[#F0FDF4] via-[#F8FFF9] to-white border border-[#DCFCE7] hover:border-[#10B981]/50 rounded-[22px] p-5 sm:p-6 shadow-xs text-center flex flex-col items-center justify-center gap-3.5 transition-all duration-200">
                 <div className="space-y-1 max-w-lg mx-auto">
-                  <h3 className="font-poppins font-black text-base sm:text-lg text-[#151538] leading-tight">
+                  <h3 className="font-manrope font-black text-base sm:text-lg text-[#151538] leading-tight">
                     Have a Vacant Room or Property?
                   </h3>
                   <p className="text-xs sm:text-sm text-[#555570] font-medium leading-relaxed">
@@ -1218,7 +1301,7 @@ export default function OwnerDashboard() {
                 <button
                   type="button"
                   onClick={handleStartAddListing}
-                  className="w-full sm:w-auto min-w-[220px] sm:min-w-[260px] bg-[#10B981] hover:bg-[#059669] text-white font-poppins font-black text-sm sm:text-[15px] py-3.5 sm:py-4 px-8 rounded-xl shadow-md shadow-[#10B981]/25 hover:shadow-lg hover:shadow-[#10B981]/35 hover:-translate-y-0.5 active:translate-y-0 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2 mx-auto"
+                  className="w-full sm:w-auto min-w-[220px] sm:min-w-[260px] bg-[#10B981] hover:bg-[#059669] text-white font-manrope font-black text-sm sm:text-[15px] py-3.5 sm:py-4 px-8 rounded-xl shadow-md shadow-[#10B981]/25 hover:shadow-lg hover:shadow-[#10B981]/35 hover:-translate-y-0.5 active:translate-y-0 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2 mx-auto"
                 >
                   <Plus className="w-5 h-5 stroke-[3]" />
                   <span>+ Add Room Listing</span>
@@ -1229,17 +1312,17 @@ export default function OwnerDashboard() {
               {/* 4. MAIN TWO-COLUMN SECTION (Left: Recent Inquiries, Right: Boost Your Listing) */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
                 
-                {/* LEFT: Recent Inquiries (40% / 5 cols) - Connected to Customer Leads */}
+                {/* LEFT: Recent Inquiries (40% / 5 cols) - Connected to Bookings */}
                 <div className="lg:col-span-5 bg-white border border-[#E8E8F0] rounded-[20px] p-4.5 sm:p-5 shadow-xs text-left flex flex-col justify-between">
                   <div>
                     {/* Header */}
                     <div className="flex items-center justify-between pb-3.5 border-b border-[#F0F2F5]">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-poppins font-bold text-sm text-[#151538]">
+                        <h3 className="font-manrope font-bold text-sm text-[#151538]">
                           Recent Inquiries
                         </h3>
                         <span className="bg-[#EAF8EF] text-[#16A34A] text-[9.5px] font-extrabold px-2 py-0.5 rounded-full border border-[#A7F3D0]">
-                          {customerLeads.length} Leads
+                          {customerLeads.length} Bookings
                         </span>
                       </div>
                       <button 
@@ -1247,7 +1330,7 @@ export default function OwnerDashboard() {
                         onClick={() => { setActiveNav("bookings"); setActiveScreen("bookings"); }}
                         className="text-xs font-bold text-[#5B2BE0] hover:underline cursor-pointer flex items-center gap-0.5"
                       >
-                        <span>View All Leads</span>
+                        <span>View All</span>
                         <span>→</span>
                       </button>
                     </div>
@@ -1278,7 +1361,7 @@ export default function OwnerDashboard() {
                                 {inq.userName?.charAt(0).toUpperCase() || (inq.type === "whatsapp" ? "W" : inq.type === "call" ? "C" : "B")}
                               </div>
                               <div className="space-y-0.5 min-w-0">
-                                <h4 className="font-poppins font-bold text-xs text-[#151538] leading-tight truncate group-hover:text-[#5B2BE0] transition-colors">
+                                <h4 className="font-manrope font-bold text-xs text-[#151538] leading-tight truncate group-hover:text-[#5B2BE0] transition-colors">
                                   {inq.userName || "Guest User"}
                                 </h4>
                                 <p className="text-[10.5px] sm:text-[11px] text-[#666680] truncate">
@@ -1319,7 +1402,7 @@ export default function OwnerDashboard() {
                     onClick={() => { setActiveNav("bookings"); setActiveScreen("bookings"); }}
                     className="w-full bg-white hover:bg-[#F3EEFF] border border-[#5B2BE0] text-[#5B2BE0] text-xs font-bold py-2.5 rounded-xl transition-all mt-4 cursor-pointer flex items-center justify-center gap-1.5"
                   >
-                    <span>View All Inquiries & Customer Leads</span>
+                    <span>View All Bookings & Inquiries</span>
                     <span>→</span>
                   </button>
                 </div>
@@ -1344,7 +1427,7 @@ export default function OwnerDashboard() {
                       </div>
                     </div>
 
-                    <h3 className="font-poppins font-black text-lg sm:text-xl text-[#151538] tracking-tight mt-2.5">
+                    <h3 className="font-manrope font-black text-lg sm:text-xl text-[#151538] tracking-tight mt-2.5">
                       Boost Your Listing
                     </h3>
 
@@ -1415,7 +1498,7 @@ export default function OwnerDashboard() {
                   <div className="mt-5 sm:mt-6 relative z-10">
                     <button
                       onClick={() => openBoostModalForListing()}
-                      className="w-full sm:w-auto bg-gradient-to-r from-[#FF7A00] via-[#FF6600] to-[#FF4D00] hover:from-[#FF6600] hover:to-[#E63900] text-white text-xs sm:text-[13px] font-poppins font-extrabold py-3.5 px-8 rounded-full uppercase tracking-wider transition-all duration-300 shadow-[0_8px_22px_rgba(255,107,0,0.35)] hover:shadow-[0_12px_28px_rgba(255,107,0,0.45)] hover:-translate-y-0.5 active:translate-y-0 active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+                      className="w-full sm:w-auto bg-gradient-to-r from-[#FF7A00] via-[#FF6600] to-[#FF4D00] hover:from-[#FF6600] hover:to-[#E63900] text-white text-xs sm:text-[13px] font-manrope font-extrabold py-3.5 px-8 rounded-full uppercase tracking-wider transition-all duration-300 shadow-[0_8px_22px_rgba(255,107,0,0.35)] hover:shadow-[0_12px_28px_rgba(255,107,0,0.45)] hover:-translate-y-0.5 active:translate-y-0 active:scale-98 cursor-pointer flex items-center justify-center gap-2"
                     >
                       <Rocket className="w-4 h-4 text-white" />
                       <span>BOOST LISTING</span>
@@ -1432,7 +1515,7 @@ export default function OwnerDashboard() {
                 
                 {/* Header */}
                 <div className="flex items-center justify-between pb-1 sm:pb-2">
-                  <h3 className="font-poppins font-bold text-sm sm:text-base text-[#151538]">
+                  <h3 className="font-manrope font-bold text-sm sm:text-base text-[#151538]">
                     Your Listings Overview
                   </h3>
                   <button
@@ -1445,7 +1528,7 @@ export default function OwnerDashboard() {
                 </div>
 
                 {/* DESKTOP TABLE (Hidden on Mobile) */}
-                <div className="hidden md:block overflow-x-auto no-scrollbar">
+                <div className="hidden md:block overflow-visible min-h-[160px]">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
                       <tr className="border-b border-[#F0F2F5] text-[#8C8CA1] font-semibold text-[11px]">
@@ -1481,7 +1564,7 @@ export default function OwnerDashboard() {
                                   className="w-12 h-12 rounded-lg object-cover border border-[#E8E8F0] shrink-0"
                                 />
                                 <div>
-                                  <h4 className="font-poppins font-bold text-xs text-[#151538] leading-tight">
+                                  <h4 className="font-manrope font-bold text-xs text-[#151538] leading-tight">
                                     {item.title}
                                   </h4>
                                   <span className="text-[10px] text-[#8C8CA1] font-medium">
@@ -1533,79 +1616,97 @@ export default function OwnerDashboard() {
                               </span>
                             </td>
 
-                            {/* Actions (Three-dot dropdown) */}
+                            {/* Actions (Clean 3-Dot Dropdown Menu) */}
                             <td className="py-3.5 px-3 text-right relative">
-                              <button
-                                onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
-                                className="p-1.5 rounded-lg hover:bg-slate-100 text-[#8C8CA1] hover:text-[#151538] transition-colors cursor-pointer"
-                              >
-                                <MoreVertical className="w-4 h-4" />
-                              </button>
+                              <div className="relative inline-block text-left">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenMenuId(openMenuId === `overview_${item.id}` ? null : `overview_${item.id}`);
+                                  }}
+                                  className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-[#8C8CA1] hover:text-[#151538] transition-colors cursor-pointer"
+                                  title="Actions"
+                                >
+                                  <MoreVertical className="w-4.5 h-4.5" />
+                                </button>
 
-                              {openMenuId === item.id && (
-                                <>
-                                  {/* Backdrop to close dropdown on outside click anywhere */}
-                                  <div 
-                                    className="fixed inset-0 z-40 bg-transparent" 
-                                    onClick={() => setOpenMenuId(null)} 
-                                  />
-                                  <div className="absolute right-3 top-10 w-36 bg-white border border-[#E8E8F0] rounded-xl shadow-xl p-1 z-50 text-left space-y-0.5">
-                                    <button
-                                      onClick={() => {
+                                {openMenuId === `overview_${item.id}` && (
+                                  <>
+                                    {/* Backdrop */}
+                                    <div 
+                                      className="fixed inset-0 z-40 bg-transparent" 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
                                         setOpenMenuId(null);
-                                        router.push(`/${item.type === "flat" ? "flats" : item.type === "pg" ? "pg" : "rooms"}/${item.id}`);
-                                      }}
-                                      className="w-full px-2.5 py-1.5 text-[11px] font-semibold text-[#151538] hover:bg-[#F3EEFF] rounded-lg flex items-center gap-1.5 cursor-pointer"
-                                    >
-                                      <Eye className="w-3.5 h-3.5 text-[#5B2BE0]" />
-                                      <span>View</span>
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        setOpenMenuId(null);
-                                        handleEditListing(item);
-                                      }}
-                                      className="w-full px-2.5 py-1.5 text-[11px] font-semibold text-[#151538] hover:bg-[#F3EEFF] rounded-lg flex items-center gap-1.5 cursor-pointer"
-                                    >
-                                      <Edit3 className="w-3.5 h-3.5 text-[#5B2BE0]" />
-                                      <span>Edit</span>
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        setOpenMenuId(null);
-                                        setBoostingListing(item);
-                                        setShowBoostModal(true);
-                                        setCheckoutStep("plans");
-                                      }}
-                                      className="w-full px-2.5 py-1.5 text-[11px] font-semibold text-[#5B2BE0] hover:bg-[#F3EEFF] rounded-lg flex items-center gap-1.5 cursor-pointer"
-                                    >
-                                      <Rocket className="w-3.5 h-3.5 text-[#5B2BE0]" />
-                                      <span>Boost</span>
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        setOpenMenuId(null);
-                                        handleToggleStatus(item.id);
-                                      }}
-                                      className="w-full px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 rounded-lg flex items-center gap-1.5 cursor-pointer"
-                                    >
-                                      <span className={`w-2 h-2 rounded-full ${item.status === "Active" ? "bg-amber-500" : "bg-emerald-500"}`} />
-                                      <span>{item.status === "Active" ? "Deactivate" : "Activate"}</span>
-                                    </button>
-                                    <div className="border-t border-slate-100 my-0.5" />
-                                    <button
-                                      onClick={() => {
-                                        setOpenMenuId(null);
-                                        handleDeleteListing(item.id);
-                                      }}
-                                      className="w-full px-2.5 py-1.5 text-[11px] font-semibold text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-1.5 cursor-pointer"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                      <span>Delete</span>
-                                    </button>
-                                  </div>
-                                </>
-                              )}
+                                      }} 
+                                    />
+                                    <div className="absolute right-0 top-full mt-1.5 w-44 bg-white border border-[#E8E8F0] rounded-2xl shadow-xl p-1.5 z-50 text-left space-y-0.5 animate-fadeIn">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setOpenMenuId(null);
+                                          router.push(`/${item.type === "flat" ? "flats" : item.type === "pg" ? "pg" : "rooms"}/${item.id}`);
+                                        }}
+                                        className="w-full px-3 py-2 text-xs font-semibold text-[#151538] hover:bg-[#F3EEFF] hover:text-[#5B2BE0] rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer"
+                                      >
+                                        <Eye className="w-4 h-4 text-[#5B2BE0]" />
+                                        <span>View Listing</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setOpenMenuId(null);
+                                          handleEditListing(item);
+                                        }}
+                                        className="w-full px-3 py-2 text-xs font-semibold text-[#151538] hover:bg-[#F3EEFF] hover:text-[#5B2BE0] rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer"
+                                      >
+                                        <Edit3 className="w-4 h-4 text-[#5B2BE0]" />
+                                        <span>Edit Listing</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setOpenMenuId(null);
+                                          openBoostModalForListing(item);
+                                        }}
+                                        className="w-full px-3 py-2 text-xs font-semibold text-[#FF7A00] hover:bg-orange-50 rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer"
+                                      >
+                                        <Rocket className="w-4 h-4 text-[#FF7A00]" />
+                                        <span>Boost Listing</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setOpenMenuId(null);
+                                          handleToggleStatus(item.id);
+                                        }}
+                                        className="w-full px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer"
+                                      >
+                                        <span className={`w-2 h-2 rounded-full ${item.status === "Active" ? "bg-amber-500" : "bg-emerald-500"}`} />
+                                        <span>{item.status === "Active" ? "Deactivate" : "Activate"}</span>
+                                      </button>
+                                      <div className="border-t border-slate-100 my-1" />
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setOpenMenuId(null);
+                                          handleDeleteListing(item.id);
+                                        }}
+                                        className="w-full px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer"
+                                      >
+                                        <Trash2 className="w-4 h-4 text-red-600" />
+                                        <span>Delete</span>
+                                      </button>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
                             </td>
 
                           </tr>
@@ -1627,7 +1728,7 @@ export default function OwnerDashboard() {
                     listings.map((item) => (
                     <div 
                       key={item.id} 
-                      className="p-3 rounded-2xl bg-slate-50/70 border border-[#E8E8F0] space-y-2.5 relative"
+                      className="p-3.5 rounded-2xl bg-slate-50/70 border border-[#E8E8F0] space-y-2.5 relative"
                     >
                       <div className="flex items-start gap-3">
                         <img
@@ -1635,7 +1736,7 @@ export default function OwnerDashboard() {
                           alt={item.title}
                           className="w-16 h-16 rounded-xl object-cover border border-[#E8E8F0] shrink-0"
                         />
-                        <div className="flex-1 min-w-0 pr-6">
+                        <div className="flex-1 min-w-0 pr-2">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md ${
                               item.status === "Active" 
@@ -1653,7 +1754,7 @@ export default function OwnerDashboard() {
                             </span>
                           </div>
 
-                          <h4 className="font-poppins font-bold text-xs text-[#151538] truncate mt-1">
+                          <h4 className="font-manrope font-bold text-xs text-[#151538] truncate mt-1">
                             {item.title}
                           </h4>
                           <p className="text-[10.5px] text-[#666680] truncate">
@@ -1665,70 +1766,88 @@ export default function OwnerDashboard() {
                         </div>
 
                         {/* Mobile Actions 3-dot */}
-                        <div className="absolute top-2.5 right-2">
+                        <div className="relative shrink-0">
                           <button
-                            onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
-                            className="p-1 rounded-lg text-[#8C8CA1] hover:text-[#151538]"
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuId(openMenuId === `mob_${item.id}` ? null : `mob_${item.id}`);
+                            }}
+                            className="w-8 h-8 rounded-lg bg-white border border-[#E8E8F0] text-[#666680] hover:text-[#151538] shadow-xs flex items-center justify-center cursor-pointer"
+                            title="Options"
                           >
                             <MoreVertical className="w-4 h-4" />
                           </button>
 
-                          {openMenuId === item.id && (
+                          {openMenuId === `mob_${item.id}` && (
                             <>
                               <div 
-                                className="fixed inset-0 z-40" 
-                                onClick={() => setOpenMenuId(null)} 
+                                className="fixed inset-0 z-40 bg-black/10" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenMenuId(null);
+                                }} 
                               />
-                              <div className="absolute right-0 top-7 w-40 bg-white border border-[#E8E8F0] rounded-xl shadow-2xl p-1 z-50 text-left space-y-0.5">
+                              <div className="absolute right-0 top-full mt-1.5 w-44 bg-white border border-[#E8E8F0] rounded-2xl shadow-2xl p-1.5 z-50 text-left space-y-0.5 animate-fadeIn">
                                 <button
-                                  onClick={() => {
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenMenuId(null);
+                                    router.push(`/${item.type === "flat" ? "flats" : item.type === "pg" ? "pg" : "rooms"}/${item.id}`);
+                                  }}
+                                  className="w-full px-3 py-2 text-xs font-semibold text-[#151538] hover:bg-[#F3EEFF] hover:text-[#5B2BE0] rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer"
+                                >
+                                  <Eye className="w-4 h-4 text-[#5B2BE0]" />
+                                  <span>View on Site</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     setOpenMenuId(null);
                                     handleEditListing(item);
                                   }}
-                                  className="w-full px-2.5 py-1.5 text-[11px] font-semibold text-[#151538] hover:bg-[#F3EEFF] hover:text-[#5B2BE0] rounded-lg flex items-center gap-1.5 cursor-pointer"
+                                  className="w-full px-3 py-2 text-xs font-semibold text-[#151538] hover:bg-[#F3EEFF] hover:text-[#5B2BE0] rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer"
                                 >
-                                  <Edit3 className="w-3.5 h-3.5 text-[#5B2BE0]" />
+                                  <Edit3 className="w-4 h-4 text-[#5B2BE0]" />
                                   <span>Edit Listing</span>
                                 </button>
                                 <button
-                                  onClick={() => {
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenMenuId(null);
+                                    openBoostModalForListing(item);
+                                  }}
+                                  className="w-full px-3 py-2 text-xs font-semibold text-[#FF7A00] hover:bg-orange-50 rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer"
+                                >
+                                  <Rocket className="w-4 h-4 text-[#FF7A00]" />
+                                  <span>Boost Listing</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     setOpenMenuId(null);
                                     handleToggleStatus(item.id);
                                   }}
-                                  className="w-full px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 rounded-lg flex items-center gap-1.5 cursor-pointer"
+                                  className="w-full px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer"
                                 >
                                   <span className={`w-2 h-2 rounded-full ${item.status === "Active" ? "bg-amber-500" : "bg-emerald-500"}`} />
                                   <span>{item.status === "Active" ? "Deactivate" : "Activate"}</span>
                                 </button>
+                                <div className="border-t border-slate-100 my-1" />
                                 <button
-                                  onClick={() => {
-                                    setOpenMenuId(null);
-                                    router.push(`/${item.type === "flat" ? "flats" : item.type === "pg" ? "pg" : "rooms"}/${item.id}`);
-                                  }}
-                                  className="w-full px-2.5 py-1.5 text-[11px] font-semibold text-[#151538] hover:bg-[#F3EEFF] rounded-lg flex items-center gap-1.5 cursor-pointer"
-                                >
-                                  <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
-                                  <span>View on Site</span>
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setOpenMenuId(null);
-                                    openBoostModalForListing(item);
-                                  }}
-                                  className="w-full px-2.5 py-1.5 text-[11px] font-semibold text-[#FF7A00] hover:bg-orange-50 rounded-lg flex items-center gap-1.5 cursor-pointer"
-                                >
-                                  <Rocket className="w-3.5 h-3.5 text-[#FF7A00]" />
-                                  <span>Boost</span>
-                                </button>
-                                <div className="border-t border-slate-100 my-0.5" />
-                                <button
-                                  onClick={() => {
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     setOpenMenuId(null);
                                     handleDeleteListing(item.id);
                                   }}
-                                  className="w-full px-2.5 py-1.5 text-[11px] font-semibold text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-1.5 cursor-pointer"
+                                  className="w-full px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer"
                                 >
-                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <Trash2 className="w-4 h-4 text-red-600" />
                                   <span>Delete</span>
                                 </button>
                               </div>
@@ -1737,8 +1856,8 @@ export default function OwnerDashboard() {
                         </div>
                       </div>
 
-                      {/* Clean footer in mobile card (views/comments icon removed) */}
-                      <div className="flex items-center justify-between pt-2 border-t border-[#E8E8F0]/70 text-[10.5px] text-[#666680] font-medium px-1">
+                      {/* Clean footer in mobile card */}
+                      <div className="flex items-center justify-between text-[10.5px] text-[#666680] font-medium pt-1.5 border-t border-[#E8E8F0]/70 px-0.5">
                         <span>Sharing: <b className="text-[#151538]">{item.sharing || "Single"}</b></span>
                         <span className="text-[#8C8CA1]">ID: {item.id}</span>
                       </div>
@@ -1784,7 +1903,7 @@ export default function OwnerDashboard() {
                     <span className="text-[#5B2BE0]">My Listings</span>
                   </div>
                   <div className="flex items-center gap-2.5">
-                    <h1 className="font-poppins font-black text-2xl sm:text-3xl text-[#151538] tracking-tight">
+                    <h1 className="font-manrope font-black text-2xl sm:text-3xl text-[#151538] tracking-tight">
                       My Properties & Listings
                     </h1>
                     <span className="bg-[#EFE7FF] text-[#5B2BE0] font-black text-xs px-2.5 py-1 rounded-full">
@@ -1800,7 +1919,7 @@ export default function OwnerDashboard() {
                 <div className="flex items-center gap-2.5 shrink-0">
                   <button
                     onClick={() => openBoostModalForListing()}
-                    className="bg-gradient-to-r from-[#FF7A00] via-[#FF6600] to-[#FF4D00] hover:from-[#FF6600] hover:to-[#E63900] text-white text-xs font-poppins font-extrabold py-3 px-5 rounded-full uppercase tracking-wider transition-all duration-200 shadow-[0_8px_20px_rgba(255,107,0,0.3)] hover:shadow-[0_12px_26px_rgba(255,107,0,0.4)] active:scale-98 cursor-pointer flex items-center gap-2"
+                    className="bg-gradient-to-r from-[#FF7A00] via-[#FF6600] to-[#FF4D00] hover:from-[#FF6600] hover:to-[#E63900] text-white text-xs font-manrope font-extrabold py-3 px-5 rounded-full uppercase tracking-wider transition-all duration-200 shadow-[0_8px_20px_rgba(255,107,0,0.3)] hover:shadow-[0_12px_26px_rgba(255,107,0,0.4)] active:scale-98 cursor-pointer flex items-center gap-2"
                   >
                     <Rocket className="w-4 h-4" />
                     <span>BOOST A PROPERTY</span>
@@ -1822,7 +1941,7 @@ export default function OwnerDashboard() {
                 <div className="bg-white border border-[#E8E8F0] rounded-2xl p-4 shadow-xs flex items-center justify-between">
                   <div>
                     <span className="text-[11px] font-bold text-[#8C8CA1] uppercase tracking-wider">Total Properties</span>
-                    <h4 className="font-poppins font-black text-2xl text-[#151538] mt-0.5">{listings.length}</h4>
+                    <h4 className="font-manrope font-black text-2xl text-[#151538] mt-0.5">{listings.length}</h4>
                   </div>
                   <div className="w-10 h-10 rounded-xl bg-[#F3EEFF] text-[#5B2BE0] flex items-center justify-center font-bold">
                     <House className="w-5 h-5 stroke-[2]" />
@@ -1832,7 +1951,7 @@ export default function OwnerDashboard() {
                 <div className="bg-white border border-[#E8E8F0] rounded-2xl p-4 shadow-xs flex items-center justify-between">
                   <div>
                     <span className="text-[11px] font-bold text-[#8C8CA1] uppercase tracking-wider">Active Online</span>
-                    <h4 className="font-poppins font-black text-2xl text-[#16A34A] mt-0.5">
+                    <h4 className="font-manrope font-black text-2xl text-[#16A34A] mt-0.5">
                       {listings.filter(l => l.status === "Active").length}
                     </h4>
                   </div>
@@ -1844,7 +1963,7 @@ export default function OwnerDashboard() {
                 <div className="bg-white border border-[#E8E8F0] rounded-2xl p-4 shadow-xs flex items-center justify-between">
                   <div>
                     <span className="text-[11px] font-bold text-[#8C8CA1] uppercase tracking-wider">Boosted / Top #1</span>
-                    <h4 className="font-poppins font-black text-2xl text-[#FF7A00] mt-0.5">
+                    <h4 className="font-manrope font-black text-2xl text-[#FF7A00] mt-0.5">
                       {listings.filter(l => l.isBoosted || (l.views && l.views > 350)).length}
                     </h4>
                   </div>
@@ -1856,7 +1975,7 @@ export default function OwnerDashboard() {
                 <div className="bg-white border border-[#E8E8F0] rounded-2xl p-4 shadow-xs flex items-center justify-between">
                   <div>
                     <span className="text-[11px] font-bold text-[#8C8CA1] uppercase tracking-wider">Total Inquiries</span>
-                    <h4 className="font-poppins font-black text-2xl text-[#5B2BE0] mt-0.5">
+                    <h4 className="font-manrope font-black text-2xl text-[#5B2BE0] mt-0.5">
                       {listings.reduce((acc, curr) => acc + (curr.inquiries || 15), 0)}
                     </h4>
                   </div>
@@ -2004,7 +2123,7 @@ export default function OwnerDashboard() {
                     <Search className="w-7 h-7" />
                   </div>
                   <div>
-                    <h3 className="font-poppins font-bold text-lg text-[#151538]">No listings found</h3>
+                    <h3 className="font-manrope font-bold text-lg text-[#151538]">No listings found</h3>
                     <p className="text-xs text-[#666680] mt-1 max-w-sm mx-auto">
                       {listingSearchQuery || listingTypeFilter !== "all" || listingStatusFilter !== "all"
                         ? "No properties match your current filter criteria. Try resetting filters."
@@ -2106,7 +2225,7 @@ export default function OwnerDashboard() {
                             <div className="p-4 space-y-3">
                               <div>
                                 <div className="flex items-start justify-between gap-2">
-                                  <h3 className="font-poppins font-bold text-base text-[#151538] group-hover:text-[#5B2BE0] transition-colors line-clamp-1">
+                                  <h3 className="font-manrope font-bold text-base text-[#151538] group-hover:text-[#5B2BE0] transition-colors line-clamp-1">
                                     {item.title}
                                   </h3>
                                 </div>
@@ -2136,7 +2255,7 @@ export default function OwnerDashboard() {
                               <div className="flex items-center justify-between pt-2 border-t border-[#F0F2F5]">
                                 <div>
                                   <span className="text-[10px] font-bold text-[#8C8CA1] uppercase tracking-wider block">Monthly Rent</span>
-                                  <span className="font-poppins font-black text-xl text-[#151538]">
+                                  <span className="font-manrope font-black text-xl text-[#151538]">
                                     ₹{item.rent.toLocaleString()}
                                     <span className="text-xs font-semibold text-[#8C8CA1]">/mo</span>
                                   </span>
@@ -2152,7 +2271,7 @@ export default function OwnerDashboard() {
                           <div className="p-3 bg-[#FAF8FE] border-t border-[#E8E8F0] flex items-center gap-2 relative">
                             <button
                               onClick={() => openBoostModalForListing(item)}
-                              className="flex-1 bg-gradient-to-r from-[#FF7A00] via-[#FF6600] to-[#FF4D00] hover:from-[#FF6600] hover:to-[#E63900] text-white text-[11px] font-poppins font-extrabold py-2.5 px-4 rounded-full uppercase tracking-wider transition-all duration-200 shadow-md shadow-orange-500/25 active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                              className="flex-1 bg-gradient-to-r from-[#FF7A00] via-[#FF6600] to-[#FF4D00] hover:from-[#FF6600] hover:to-[#E63900] text-white text-[11px] font-manrope font-extrabold py-2.5 px-4 rounded-full uppercase tracking-wider transition-all duration-200 shadow-md shadow-orange-500/25 active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
                             >
                               <Rocket className="w-4 h-4" />
                               <span>BOOST LISTING</span>
@@ -2274,7 +2393,7 @@ export default function OwnerDashboard() {
                                     className="w-12 h-12 rounded-xl object-cover border border-[#E8E8F0] shrink-0"
                                   />
                                   <div>
-                                    <h4 className="font-poppins font-bold text-sm text-[#151538] group-hover:text-[#5B2BE0] transition-colors">
+                                    <h4 className="font-manrope font-bold text-sm text-[#151538] group-hover:text-[#5B2BE0] transition-colors">
                                       {item.title}
                                     </h4>
                                     <span className="text-[10px] text-[#8C8CA1] font-semibold">ID: {item.id}</span>
@@ -2289,7 +2408,7 @@ export default function OwnerDashboard() {
                                 <span className="text-slate-800 font-medium">{item.location}</span>
                               </td>
                               <td className="py-3.5 px-4">
-                                <span className="font-poppins font-black text-sm text-[#151538]">
+                                <span className="font-manrope font-black text-sm text-[#151538]">
                                   ₹{item.rent.toLocaleString()}
                                 </span>
                                 <span className="text-[10px] text-[#8C8CA1] block">/month</span>
@@ -2360,17 +2479,17 @@ export default function OwnerDashboard() {
           {activeScreen === "bookings" && (
             <div className="space-y-6 text-left max-w-4xl mx-auto">
               
-              {/* 1. CUSTOMER LEADS CARD (MATCHING USER SCREENSHOT EXACTLY) */}
+              {/* 1. BOOKINGS & INQUIRIES CARD */}
               <div className="bg-white border border-[#E8E8F0] rounded-[24px] p-6 sm:p-8 shadow-xs text-left space-y-6">
                 
                 {/* Header */}
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-1">
-                    <h2 className="font-poppins font-black text-2xl sm:text-3xl text-[#151538] tracking-tight">
-                      Customer Leads
+                    <h2 className="font-manrope font-black text-2xl sm:text-3xl text-[#151538] tracking-tight">
+                      Bookings & Inquiries
                     </h2>
                     <p className="text-xs sm:text-[13px] text-[#8C8CA1] font-medium">
-                      Track clicks on your phone and WhatsApp contact nodes
+                      Track tenant bookings, phone calls, and direct WhatsApp inquiries
                     </p>
                   </div>
                   <span className="bg-[#EAF8EF] text-[#16A34A] font-black text-xs px-3.5 py-1.5 rounded-full uppercase tracking-wider shrink-0">
@@ -2385,7 +2504,7 @@ export default function OwnerDashboard() {
                       
                       {/* Top Row: Property Title & Date/Time Stacked */}
                       <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-poppins font-bold text-base sm:text-[17px] text-[#151538]">
+                        <h3 className="font-manrope font-bold text-base sm:text-[17px] text-[#151538]">
                           {lead.propertyTitle}
                         </h3>
                         <div className="text-right shrink-0">
@@ -2451,7 +2570,7 @@ export default function OwnerDashboard() {
                 {/* Header */}
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-1">
-                    <h2 className="font-poppins font-black text-2xl sm:text-3xl text-[#151538] tracking-tight">
+                    <h2 className="font-manrope font-black text-2xl sm:text-3xl text-[#151538] tracking-tight">
                       Boost Purchase History
                     </h2>
                     <p className="text-xs sm:text-[13px] text-[#8C8CA1] font-medium">
@@ -2484,7 +2603,7 @@ export default function OwnerDashboard() {
                             className="w-13 h-13 rounded-2xl object-cover border border-[#E8E8F0] shrink-0"
                           />
                           <div>
-                            <h4 className="font-poppins font-bold text-sm text-[#151538]">{item.propertyTitle}</h4>
+                            <h4 className="font-manrope font-bold text-sm text-[#151538]">{item.propertyTitle}</h4>
                             <div className="flex flex-wrap items-center gap-2 mt-1">
                               <span className="bg-[#EFE7FF] text-[#5B2BE0] font-bold text-[10px] px-2 py-0.5 rounded-md">
                                 ⚡ {item.plan}
@@ -2540,7 +2659,7 @@ export default function OwnerDashboard() {
                     </span>
                     <span className="text-xs text-slate-400 font-semibold">• CheckRooms Property Lister</span>
                   </div>
-                  <h2 className="font-poppins font-black text-lg sm:text-xl text-[#151538] mt-1">
+                  <h2 className="font-manrope font-black text-lg sm:text-xl text-[#151538] mt-1">
                     {activeScreen === "step1" && "1. Basic Property Information"}
                     {activeScreen === "step2" && "2. Location & Address Details"}
                     {activeScreen === "step3" && "3. Pricing, Room Type & Tenant Preference"}
@@ -3512,32 +3631,37 @@ export default function OwnerDashboard() {
                 <div className="bg-white border border-[#E8E8F0] rounded-[24px] p-6 sm:p-8 shadow-xs text-left space-y-6">
                   
                   {/* Top Header */}
-                  <div className="flex items-center justify-between pb-4 border-b border-[#F0F2F5]">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h2 className="font-poppins font-black text-xl text-[#151538]">Owner Profile</h2>
-                        <span className="bg-[#EAF8EF] text-[#16A34A] text-[10px] font-extrabold px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 border border-[#A7F3D0]">
-                          <CheckCircle2 className="w-3 h-3" />
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-4 border-b border-[#F0F2F5]">
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <h2 className="font-manrope font-black text-xl sm:text-2xl text-[#151538] leading-tight">
+                          Owner Profile
+                        </h2>
+                        <span className="bg-[#EAF8EF] text-[#16A34A] text-[10.5px] font-extrabold px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 border border-[#A7F3D0] shrink-0">
+                          <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.5]" />
                           <span>Saved & Verified</span>
                         </span>
                       </div>
-                      <p className="text-xs text-[#666680] mt-0.5">Your verified landlord credentials and public contact info</p>
+                      <p className="text-xs sm:text-[13px] text-[#666680] font-medium leading-relaxed">
+                        Your verified landlord credentials and public contact info
+                      </p>
                     </div>
                     
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between sm:justify-end gap-2.5 pt-1 sm:pt-0 shrink-0">
                       <button 
                         type="button"
                         onClick={() => setIsEditingProfile(true)}
-                        className="bg-[#5B2BE0] hover:bg-[#4A20C0] text-white text-xs font-bold py-2.5 px-4 rounded-xl flex items-center gap-1.5 shadow-sm shadow-[#5B2BE0]/20 transition-all cursor-pointer active:scale-98"
+                        className="bg-[#5B2BE0] hover:bg-[#4A20C0] text-white text-xs sm:text-[13px] font-bold py-2.5 px-4.5 rounded-xl flex items-center justify-center gap-1.5 shadow-sm shadow-[#5B2BE0]/20 transition-all cursor-pointer active:scale-98"
                       >
-                        <Edit3 className="w-3.5 h-3.5" />
+                        <Edit3 className="w-3.5 h-3.5 stroke-[2.2]" />
                         <span>Edit Profile</span>
                       </button>
                       <button 
                         onClick={() => setActiveScreen("dashboard")} 
-                        className="p-1.5 rounded-full hover:bg-slate-100 cursor-pointer"
+                        className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                        title="Back to Dashboard"
                       >
-                        <X className="w-5 h-5 text-slate-500" />
+                        <X className="w-5 h-5" />
                       </button>
                     </div>
                   </div>
@@ -3545,15 +3669,23 @@ export default function OwnerDashboard() {
                   {/* Landlord Profile Banner */}
                   <div className="bg-gradient-to-br from-[#F8F4FF] via-[#FAF7FF] to-[#F3EEFF] border border-[#E9DCFF] rounded-2xl p-5 flex flex-col sm:flex-row items-center sm:items-start gap-4">
                     <div className="relative shrink-0">
-                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#5B2BE0] to-[#8C52FF] text-white text-2xl font-black flex items-center justify-center shadow-md shadow-[#5B2BE0]/20">
-                        {profileName.trim().charAt(0).toUpperCase() || "O"}
-                      </div>
+                      {profileAvatar ? (
+                        <img
+                          src={profileAvatar}
+                          alt={profileName}
+                          className="w-16 h-16 rounded-2xl object-cover border-2 border-white shadow-md shadow-[#5B2BE0]/20"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#5B2BE0] to-[#8C52FF] text-white text-2xl font-black flex items-center justify-center shadow-md shadow-[#5B2BE0]/20">
+                          {profileName.trim().charAt(0).toUpperCase() || "O"}
+                        </div>
+                      )}
                       <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#16A34A] text-white rounded-full flex items-center justify-center border-2 border-white shadow-xs">
                         <Check className="w-3 h-3 stroke-[3]" />
                       </div>
                     </div>
                     <div className="text-center sm:text-left flex-1 min-w-0">
-                      <h3 className="font-poppins font-black text-lg text-[#151538] truncate">{profileName}</h3>
+                      <h3 className="font-manrope font-black text-lg text-[#151538] truncate">{profileName}</h3>
                       <p className="text-xs text-[#5B2BE0] font-bold">CheckRooms Verified Property Partner</p>
                       
                       <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2.5">
@@ -3582,7 +3714,7 @@ export default function OwnerDashboard() {
                         <span className="text-[10.5px] font-extrabold uppercase tracking-wider">Full Name</span>
                         <User className="w-3.5 h-3.5 text-slate-400" />
                       </div>
-                      <p className="font-poppins font-bold text-sm text-[#151538]">{profileName}</p>
+                      <p className="font-manrope font-bold text-sm text-[#151538]">{profileName}</p>
                     </div>
 
                     {/* Phone Number */}
@@ -3591,7 +3723,7 @@ export default function OwnerDashboard() {
                         <span className="text-[10.5px] font-extrabold uppercase tracking-wider">Phone Number</span>
                         <span className="text-[9.5px] font-bold text-[#16A34A] bg-[#EAF8EF] px-1.5 py-0.5 rounded">Calls Active</span>
                       </div>
-                      <p className="font-poppins font-bold text-sm text-[#151538] flex items-center gap-1.5">
+                      <p className="font-manrope font-bold text-sm text-[#151538] flex items-center gap-1.5">
                         <Phone className="w-3.5 h-3.5 text-[#5B2BE0]" />
                         <span>{profilePhone}</span>
                       </p>
@@ -3603,7 +3735,7 @@ export default function OwnerDashboard() {
                         <span className="text-[10.5px] font-extrabold uppercase tracking-wider">WhatsApp Number</span>
                         <span className="text-[9.5px] font-bold text-[#128C7E] bg-[#25D366]/10 px-1.5 py-0.5 rounded">Tenant Leads</span>
                       </div>
-                      <p className="font-poppins font-bold text-sm text-[#151538] flex items-center gap-1.5">
+                      <p className="font-manrope font-bold text-sm text-[#151538] flex items-center gap-1.5">
                         <MessageSquare className="w-3.5 h-3.5 text-[#25D366]" />
                         <span>{profileWhatsApp}</span>
                       </p>
@@ -3615,7 +3747,7 @@ export default function OwnerDashboard() {
                         <span className="text-[10.5px] font-extrabold uppercase tracking-wider">Email Address</span>
                         <Mail className="w-3.5 h-3.5 text-slate-400" />
                       </div>
-                      <p className="font-poppins font-bold text-sm text-[#151538] truncate">{profileEmail}</p>
+                      <p className="font-manrope font-bold text-sm text-[#151538] truncate">{profileEmail}</p>
                     </div>
 
                   </div>
@@ -3636,7 +3768,7 @@ export default function OwnerDashboard() {
                 <div className="bg-white border border-[#E8E8F0] rounded-[24px] p-6 sm:p-8 shadow-xs text-left space-y-6">
                   <div className="flex items-center justify-between pb-4 border-b border-[#F0F2F5]">
                     <div>
-                      <h2 className="font-poppins font-black text-xl text-[#151538]">Edit Profile Settings</h2>
+                      <h2 className="font-manrope font-black text-xl text-[#151538]">Edit Profile Settings</h2>
                       <p className="text-xs text-[#666680] mt-0.5">Update your landlord contact details and business info</p>
                     </div>
                     <button 
@@ -3657,6 +3789,7 @@ export default function OwnerDashboard() {
                         localStorage.setItem("owner_email", profileEmail);
                         localStorage.setItem("checkrooms_user_name", profileName);
                         localStorage.setItem("checkrooms_user_phone", profilePhone);
+                        if (profileAvatar) localStorage.setItem("owner_avatar", profileAvatar);
                       }
 
                       try {
@@ -3666,7 +3799,8 @@ export default function OwnerDashboard() {
                           body: JSON.stringify({
                             fullName: profileName,
                             mobile: profilePhone,
-                            email: profileEmail
+                            email: profileEmail,
+                            avatar: profileAvatar
                           })
                         });
                       } catch (err) {
@@ -3688,6 +3822,57 @@ export default function OwnerDashboard() {
                     }}
                     className="space-y-4"
                   >
+                    {/* Profile Photo Upload */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-[#151538]">Profile Photo</label>
+                      <div className="flex items-center gap-3">
+                        {profileAvatar ? (
+                          <img
+                            src={profileAvatar}
+                            alt="Avatar preview"
+                            className="w-12 h-12 rounded-full object-cover border border-[#E8E8F0] shadow-xs"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-[#5B2BE0] text-white font-bold text-base flex items-center justify-center shadow-xs">
+                            {profileName.trim().charAt(0).toUpperCase() || "O"}
+                          </div>
+                        )}
+                        <label className="px-3.5 py-2 rounded-xl border border-[#E8E8F0] bg-slate-50 hover:bg-[#F3EEFF] text-xs font-bold text-[#5B2BE0] cursor-pointer transition-colors flex items-center gap-1.5">
+                          <Camera className="w-3.5 h-3.5" />
+                          <span>{profileAvatar ? "Change Photo" : "Upload Photo"}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const url = URL.createObjectURL(file);
+                                setProfileAvatar(url);
+                                if (typeof window !== "undefined") {
+                                  localStorage.setItem("owner_avatar", url);
+                                }
+                              }
+                            }}
+                            className="hidden"
+                          />
+                        </label>
+                        {profileAvatar && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setProfileAvatar("");
+                              if (typeof window !== "undefined") {
+                                localStorage.removeItem("owner_avatar");
+                              }
+                            }}
+                            className="text-xs font-bold text-red-500 hover:text-red-700 hover:underline"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-[#151538]">Full Name</label>
                       <input
@@ -3760,7 +3945,7 @@ export default function OwnerDashboard() {
                       <div className="w-8 h-8 rounded-xl bg-red-100 text-red-600 flex items-center justify-center">
                         <Trash2 className="w-4 h-4" />
                       </div>
-                      <h4 className="font-poppins font-black text-base text-red-600">
+                      <h4 className="font-manrope font-black text-base text-red-600">
                         Delete Account & Data
                       </h4>
                     </div>
@@ -3803,7 +3988,7 @@ export default function OwnerDashboard() {
                       <MessageSquare className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="font-poppins font-black text-xl text-[#151538]">
+                      <h3 className="font-manrope font-black text-xl text-[#151538]">
                         Help & Support
                       </h3>
                       <p className="text-xs text-[#8C8CA1] font-medium">Get assistance with listings, boosts, and payments</p>
@@ -3824,7 +4009,7 @@ export default function OwnerDashboard() {
                   <div className="flex items-start gap-3">
                     <div className="w-1.5 h-10 bg-[#5B2BE0] rounded-full shrink-0 mt-0.5" />
                     <div>
-                      <h4 className="font-poppins font-black text-base text-[#151538] flex items-center gap-2">
+                      <h4 className="font-manrope font-black text-base text-[#151538] flex items-center gap-2">
                         <span>Contact Admin</span>
                         <span>💬</span>
                       </h4>
@@ -3839,7 +4024,7 @@ export default function OwnerDashboard() {
                       <div className="w-12 h-12 rounded-full bg-[#16A34A] text-white flex items-center justify-center mx-auto shadow-md shadow-emerald-500/20">
                         <Check className="w-6 h-6 stroke-[3]" />
                       </div>
-                      <h5 className="font-poppins font-bold text-sm text-[#151538]">
+                      <h5 className="font-manrope font-bold text-sm text-[#151538]">
                         Message Sent to Administrator!
                       </h5>
                       <p className="text-xs text-emerald-800 max-w-md mx-auto">
@@ -3987,22 +4172,24 @@ export default function OwnerDashboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
           <div className="bg-white border border-[#E8E8F0] rounded-[28px] max-w-lg w-full p-6 sm:p-8 shadow-2xl relative text-left space-y-5 max-h-[90vh] overflow-y-auto no-scrollbar">
             
-            <div className="flex items-center justify-between pb-3 border-b border-[#F0F2F5]">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-[#EFE7FF] text-[#5B2BE0] flex items-center justify-center">
-                  <Rocket className="w-4 h-4" />
+            {checkoutStep !== "success" && (
+              <div className="flex items-center justify-between pb-3 border-b border-[#F0F2F5]">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-[#EFE7FF] text-[#5B2BE0] flex items-center justify-center">
+                    <Rocket className="w-4 h-4" />
+                  </div>
+                  <h3 className="font-manrope font-bold text-base text-[#151538]">
+                    Boost Your Listing
+                  </h3>
                 </div>
-                <h3 className="font-poppins font-bold text-base text-[#151538]">
-                  Boost Your Listing
-                </h3>
+                <button 
+                  onClick={() => setShowBoostModal(false)} 
+                  className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center cursor-pointer"
+                >
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
               </div>
-              <button 
-                onClick={() => setShowBoostModal(false)} 
-                className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center cursor-pointer"
-              >
-                <X className="w-5 h-5 text-slate-500" />
-              </button>
-            </div>
+            )}
 
             {/* ========================================================================= */}
             {/* STEP 1: SELECT PROPERTY TO BOOST */}
@@ -4012,7 +4199,7 @@ export default function OwnerDashboard() {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="w-5 h-5 rounded-full bg-[#5B2BE0] text-white text-[10px] font-black flex items-center justify-center">1</span>
-                    <h4 className="font-poppins font-bold text-sm text-[#151538]">
+                    <h4 className="font-manrope font-bold text-sm text-[#151538]">
                       Select Property to Boost
                     </h4>
                   </div>
@@ -4063,7 +4250,7 @@ export default function OwnerDashboard() {
                                 </span>
                               )}
                             </div>
-                            <h5 className="font-poppins font-bold text-xs text-[#151538] truncate mt-1">
+                            <h5 className="font-manrope font-bold text-xs text-[#151538] truncate mt-1">
                               {item.title}
                             </h5>
                             <p className="text-[11px] text-[#666680] truncate flex items-center gap-1 mt-0.5">
@@ -4074,7 +4261,7 @@ export default function OwnerDashboard() {
                         </div>
 
                         <div className="text-right shrink-0">
-                          <span className="font-poppins font-black text-xs text-[#151538] block">
+                          <span className="font-manrope font-black text-xs text-[#151538] block">
                             ₹{item.rent.toLocaleString()}
                           </span>
                           <span className="text-[9.5px] text-[#8C8CA1] block">/month</span>
@@ -4137,7 +4324,7 @@ export default function OwnerDashboard() {
                       />
                       <div className="min-w-0 text-left">
                         <span className="text-[9px] font-extrabold text-[#5B2BE0] uppercase tracking-wider block">Selected Property</span>
-                        <h5 className="font-poppins font-bold text-xs text-[#151538] truncate">{boostingListing.title}</h5>
+                        <h5 className="font-manrope font-bold text-xs text-[#151538] truncate">{boostingListing.title}</h5>
                         <p className="text-[10.5px] text-[#666680] truncate">{boostingListing.location} • ₹{boostingListing.rent.toLocaleString()}/mo</p>
                       </div>
                     </div>
@@ -4168,7 +4355,7 @@ export default function OwnerDashboard() {
                       <span className="text-[9.5px] font-bold text-[#5B2BE0] uppercase tracking-wider">⚡ Standard Boost</span>
                       <span className="bg-[#EFE7FF] text-[#5B2BE0] text-[8.5px] font-extrabold px-2 py-0.5 rounded-full">7 DAYS</span>
                     </div>
-                    <h4 className="font-poppins font-black text-xl text-[#151538] mt-1.5">₹19</h4>
+                    <h4 className="font-manrope font-black text-xl text-[#151538] mt-1.5">₹19</h4>
                     <p className="text-[11px] text-[#666680] mt-1 leading-snug">7 Days Priority #1 Listing on Homepage & Category Search</p>
                   </div>
 
@@ -4184,7 +4371,7 @@ export default function OwnerDashboard() {
                       <span className="text-[9.5px] font-bold text-[#FF7A00] uppercase tracking-wider">🚀 Ultra Boost</span>
                       <span className="bg-gradient-to-r from-[#FF7A00] to-[#FF4D00] text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">1 MONTH (30 DAYS)</span>
                     </div>
-                    <h4 className="font-poppins font-black text-xl text-[#151538] mt-1.5">₹49</h4>
+                    <h4 className="font-manrope font-black text-xl text-[#151538] mt-1.5">₹49</h4>
                     <p className="text-[11px] text-[#666680] mt-1 leading-snug">1 Full Month (30 Days) Top Rank + Golden Badge + Instant Alerts</p>
                   </div>
                 </div>
@@ -4223,7 +4410,7 @@ export default function OwnerDashboard() {
                         className="w-10 h-10 rounded-lg object-cover border border-[#E8E8F0] shrink-0"
                       />
                       <div className="min-w-0">
-                        <h5 className="font-poppins font-bold text-xs text-[#151538] truncate">{boostingListing.title}</h5>
+                        <h5 className="font-manrope font-bold text-xs text-[#151538] truncate">{boostingListing.title}</h5>
                         <span className="text-[10px] font-extrabold text-[#5B2BE0]">
                           {selectedPlan === "basic" ? "Standard Boost (₹19 - 7 Days)" : "Ultra Boost (₹49 - 1 Month)"}
                         </span>
@@ -4305,46 +4492,96 @@ export default function OwnerDashboard() {
                   </button>
                 </div>
 
-                {/* Upload screenshot (Mandatory) */}
+                {/* Upload screenshot (Strictly Mandatory) */}
                 <div className="space-y-2 text-left">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-[#151538]">
-                      Upload Payment Screenshot / Receipt <span className="text-red-500">*</span>
+                    <label className="text-xs font-bold text-[#151538] flex items-center gap-1">
+                      <span>Upload Payment Receipt</span>
+                      <span className="text-red-500 font-black">* (Required)</span>
                     </label>
-                    {screenshotUrl && (
-                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                        ✓ Receipt Attached
+                    {receiptFile && (
+                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1">
+                        <Check className="w-3 h-3 stroke-[3]" />
+                        <span>Receipt Ready</span>
                       </span>
                     )}
                   </div>
-                  <label className={`border-2 border-dashed ${
-                    !screenshotUrl ? "border-[#6C4CF1]/40 hover:border-[#6C4CF1] bg-[#FAF8FE]" : "border-emerald-500 bg-emerald-50/40"
-                  } rounded-xl p-3.5 flex flex-col sm:flex-row items-center justify-center gap-2.5 cursor-pointer transition-all`}>
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                      screenshotUrl ? "bg-emerald-100 text-emerald-700" : "bg-[#6C4CF1]/10 text-[#6C4CF1]"
-                    }`}>
-                      <Camera className="w-4 h-4" />
+
+                  {receiptFile ? (
+                    <div className="bg-[#FAF9FE] border border-[#E8DCFE] rounded-2xl p-3 sm:p-3.5 flex items-center justify-between gap-3 shadow-2xs">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-[#F3EEFF] text-[#5B2BE0] flex items-center justify-center shrink-0">
+                          <FileText className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <h5 className="font-manrope font-bold text-xs sm:text-[13px] text-[#151538] truncate">
+                            {receiptFile.name}
+                          </h5>
+                          <p className="text-[10.5px] text-[#8C8CA1] font-medium">
+                            {receiptFile.size}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="w-6 h-6 rounded-full bg-[#16A34A] text-white flex items-center justify-center text-xs shadow-xs">
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReceiptFile(null);
+                            setScreenshotUrl("");
+                          }}
+                          className="text-[11px] font-bold text-red-500 hover:text-red-700 hover:underline cursor-pointer ml-1"
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </div>
-                    <div className="text-center sm:text-left">
-                      <p className={`text-xs font-bold ${screenshotUrl ? "text-emerald-700" : "text-[#6C4CF1]"}`}>
-                        {screenshotUrl ? "Receipt attached! Click to change" : "Click to upload UPI payment receipt / screenshot"}
-                      </p>
-                      <p className="text-[10px] text-slate-400">PNG, JPG, JPEG (Required for verification)</p>
-                    </div>
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      onChange={(e) => {
-                        if (e.target.files?.[0]) {
-                          setScreenshotUrl(URL.createObjectURL(e.target.files[0]));
-                        }
-                      }}
-                      className="hidden" 
-                    />
-                  </label>
-                  {!screenshotUrl && (
+                  ) : (
+                    <label className="border-2 border-dashed border-[#5B2BE0]/35 hover:border-[#5B2BE0] bg-[#FAF8FE] rounded-2xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:bg-[#F5EFFF]/50">
+                      <div className="w-10 h-10 rounded-xl bg-[#5B2BE0]/10 text-[#5B2BE0] flex items-center justify-center">
+                        <Camera className="w-5 h-5" />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs sm:text-[13px] font-bold text-[#5B2BE0]">
+                          Click to upload payment screenshot / receipt
+                        </p>
+                        <p className="text-[10.5px] text-slate-400 mt-0.5">PNG, JPG, JPEG (Required for verification)</p>
+                      </div>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const sizeInKB = Math.round(file.size / 1024);
+                            const sizeStr = sizeInKB > 1024 ? `${(sizeInKB / 1024).toFixed(1)} MB` : `${sizeInKB} KB`;
+                            const url = URL.createObjectURL(file);
+                            setScreenshotUrl(url);
+                            setReceiptFile({
+                              name: file.name,
+                              size: sizeStr,
+                              url: url
+                            });
+                            setReceiptError(null);
+                          }
+                        }}
+                        className="hidden" 
+                      />
+                    </label>
+                  )}
+
+                  {receiptError && (
+                    <p className="text-xs text-red-600 font-bold flex items-center gap-1.5 justify-center bg-red-50 border border-red-200 py-2 px-3 rounded-xl mt-1">
+                      <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                      <span>{receiptError}</span>
+                    </p>
+                  )}
+
+                  {!receiptFile && !receiptError && (
                     <p className="text-[10.5px] text-amber-600 font-semibold flex items-center gap-1">
-                      <span>⚠️ Please attach your payment screenshot before submitting.</span>
+                      <span>⚠️ Please upload payment proof before submitting.</span>
                     </p>
                   )}
                 </div>
@@ -4359,10 +4596,10 @@ export default function OwnerDashboard() {
                   </button>
                   <button
                     type="button"
-                    disabled={!screenshotUrl || isSubmittingBoost}
+                    disabled={!receiptFile || !screenshotUrl || isSubmittingBoost}
                     onClick={async () => {
-                      if (!screenshotUrl) {
-                        alert("Please upload your payment screenshot/receipt before submitting!");
+                      if (!receiptFile || !screenshotUrl) {
+                        setReceiptError("Payment receipt / screenshot upload karna zaroori hai!");
                         return;
                       }
 
@@ -4415,79 +4652,139 @@ export default function OwnerDashboard() {
                       setIsSubmittingBoost(false);
                       setCheckoutStep("success");
                     }}
-                    className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-[#FF7A00] via-[#FF6600] to-[#FF4D00] hover:from-[#FF6600] hover:to-[#E63900] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-extrabold transition-all duration-200 shadow-md shadow-orange-500/25 active:scale-98 cursor-pointer text-center"
+                    className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-extrabold transition-all duration-200 text-center ${
+                      !receiptFile || !screenshotUrl
+                        ? "bg-slate-200 text-slate-400 cursor-not-allowed opacity-60"
+                        : "bg-gradient-to-r from-[#FF7A00] via-[#FF6600] to-[#FF4D00] hover:from-[#FF6600] hover:to-[#E63900] text-white shadow-md shadow-orange-500/25 active:scale-98 cursor-pointer"
+                    }`}
                   >
-                    {isSubmittingBoost ? "Submitting..." : "Submit Payment Proof"}
+                    {isSubmittingBoost ? "Submitting..." : "Submit Receipt"}
                   </button>
                 </div>
               </div>
             )}
 
             {/* ========================================================================= */}
-            {/* STEP 4: SUCCESS */}
+            {/* STEP 4: SUCCESS (EXACT MATCH TO REFERENCE DESIGN) */}
             {/* ========================================================================= */}
             {checkoutStep === "success" && (
-              <div className="text-center py-4 space-y-4">
-                {/* Success Animated Icon */}
-                <div className="w-16 h-16 rounded-3xl bg-[#EAF8EF] border-2 border-emerald-300 text-[#16A34A] flex items-center justify-center mx-auto shadow-md shadow-emerald-500/15">
-                  <CheckCircle2 className="w-9 h-9 stroke-[2.2]" />
+              <div className="relative text-center py-2 space-y-4 animate-fadeIn">
+                
+                {/* Top-Right Close Button */}
+                <button 
+                  type="button"
+                  onClick={() => setShowBoostModal(false)} 
+                  className="absolute -top-3 sm:-top-4 -right-2 sm:-right-4 w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors cursor-pointer z-20"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+
+                {/* 1. Green Checkmark with Floating Confetti Diamonds */}
+                <div className="relative mx-auto w-28 h-24 flex items-center justify-center select-none pt-1">
+                  {/* Confetti Particles */}
+                  <span className="absolute top-2 left-6 w-2 h-2 rounded-[2px] bg-[#F59E0B] rotate-45 animate-pulse" />
+                  <span className="absolute top-1 right-8 w-2 h-2 rounded-[2px] bg-[#8B5CF6] rotate-45" />
+                  <span className="absolute top-12 -right-1 w-2.5 h-2.5 rounded-[2px] bg-[#EC4899] rotate-45" />
+                  <span className="absolute top-9 left-2 w-2 h-2 rounded-[2px] bg-[#06B6D4] rotate-45" />
+                  <span className="absolute top-6 right-3 w-1.5 h-1.5 rounded-full bg-[#10B981]" />
+                  <span className="absolute bottom-2 left-5 w-2 h-2 rounded-[2px] bg-[#F97316] rotate-45" />
+                  <span className="absolute bottom-3 right-6 w-1.5 h-1.5 rounded-full bg-[#8B5CF6]" />
+
+                  {/* Green Circle with Animated Draw Checkmark */}
+                  <div className="w-20 h-20 rounded-full bg-[#DCFCE7] text-[#16A34A] flex items-center justify-center shadow-xs">
+                    <svg 
+                      viewBox="0 0 24 24" 
+                      className="w-10 h-10 text-[#16A34A] animate-check-draw" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      strokeWidth="3.5" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"
+                    >
+                      <path d="M4.5 12.5L9.5 17.5L19.5 6.5" />
+                    </svg>
+                  </div>
                 </div>
 
-                {/* Main Heading */}
-                <div className="space-y-1">
-                  <h4 className="font-poppins font-black text-xl text-[#151538]">
-                    Boost Request Submitted!
-                  </h4>
-                  <p className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1 w-fit mx-auto flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Verification Time: <b>1 - 2 Hours</b></span>
+                {/* 2. Main Title & Subtitle */}
+                <div className="space-y-1 text-center">
+                  <h3 className="font-manrope font-bold text-2xl text-[#1E2235] tracking-tight">
+                    Payment Submitted!
+                  </h3>
+                  <p className="text-xs sm:text-[13px] text-[#666680] leading-relaxed">
+                    Your payment receipt has been submitted successfully.<br />
+                    We will verify your payment within 1-2 hours.
                   </p>
                 </div>
 
-                {/* Structured Details Card */}
-                <div className="bg-[#FAF8FE] border border-[#E8DCFE] rounded-2xl p-4 text-left space-y-3 shadow-xs">
-                  {boostingListing && (
-                    <div className="flex items-center gap-3 pb-3 border-b border-[#EDE4FE]">
-                      <img
-                        src={boostingListing.image}
-                        alt={boostingListing.title}
-                        className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0"
-                      />
-                      <div className="min-w-0">
-                        <h5 className="font-poppins font-bold text-xs text-[#151538] truncate">{boostingListing.title}</h5>
-                        <p className="text-[11px] text-[#666680] truncate">{boostingListing.location}</p>
+                {/* 3. Three-Step Horizontal Progress Stepper */}
+                <div className="relative py-2 my-2">
+                  {/* Connecting Line */}
+                  <div className="absolute left-12 right-12 top-6.5 h-[1.5px] bg-[#E8E8F0] -z-0" />
+
+                  <div className="grid grid-cols-3 gap-2 relative z-10 text-center">
+                    {/* Step 1: Payment Submitted */}
+                    <div className="flex flex-col items-center">
+                      <div className="w-9 h-9 rounded-full bg-[#16A34A] text-white flex items-center justify-center shadow-xs">
+                        <FileText className="w-4 h-4" />
                       </div>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="bg-white p-2.5 rounded-xl border border-purple-100">
-                      <span className="text-[10px] font-bold text-[#8C8CA1] uppercase tracking-wider block">Selected Plan</span>
-                      <span className="font-bold text-[#5B2BE0] block truncate">
-                        {selectedPlan === "basic" ? "Standard (7 Days)" : "Ultra (1 Month)"}
-                      </span>
+                      <h5 className="font-manrope font-bold text-[11px] sm:text-xs text-[#1E2235] mt-2">
+                        1. Payment Submitted
+                      </h5>
+                      <p className="text-[9.5px] sm:text-[10px] text-[#8C8CA1] mt-0.5 leading-tight">
+                        Receipt submitted<br />successfully
+                      </p>
                     </div>
 
-                    <div className="bg-white p-2.5 rounded-xl border border-purple-100">
-                      <span className="text-[10px] font-bold text-[#8C8CA1] uppercase tracking-wider block">Amount Paid</span>
-                      <span className="font-black text-[#151538] block">
-                        ₹{selectedPlan === "basic" ? "19" : "49"}
-                      </span>
+                    {/* Step 2: Under Verification */}
+                    <div className="flex flex-col items-center">
+                      <div className="w-9 h-9 rounded-full bg-[#5B2BE0] text-white flex items-center justify-center shadow-xs">
+                        <Clock className="w-4 h-4" />
+                      </div>
+                      <h5 className="font-manrope font-bold text-[11px] sm:text-xs text-[#1E2235] mt-2">
+                        2. Under Verification
+                      </h5>
+                      <p className="text-[9.5px] sm:text-[10px] text-[#8C8CA1] mt-0.5 leading-tight">
+                        We verify within<br />1-2 hours
+                      </p>
+                    </div>
+
+                    {/* Step 3: Boost Live */}
+                    <div className="flex flex-col items-center">
+                      <div className="w-9 h-9 rounded-full bg-[#E8E8F0] text-[#8C8CA1] flex items-center justify-center">
+                        <Rocket className="w-4 h-4" />
+                      </div>
+                      <h5 className="font-manrope font-bold text-[11px] sm:text-xs text-[#1E2235] mt-2">
+                        3. Boost Live
+                      </h5>
+                      <p className="text-[9.5px] sm:text-[10px] text-[#8C8CA1] mt-0.5 leading-tight">
+                        Your listing goes<br />live after approval
+                      </p>
                     </div>
                   </div>
+                </div>
 
-                  <p className="text-[11.5px] text-[#555570] leading-relaxed">
-                    Aapka payment receipt receive ho gaya hai. <b>1-2 hours ke andar</b> verify hokar aapki listing automatically <b>#1 search ranking</b> par boost ho jayegi.
+                {/* 4. Info Callout Banner */}
+                <div className="bg-[#F3EEFF] border border-[#E8DCFE]/60 rounded-2xl p-3.5 sm:p-4 flex items-center gap-3 text-left">
+                  <div className="w-6 h-6 rounded-full bg-[#5B2BE0] text-white flex items-center justify-center shrink-0 text-xs font-serif font-bold">
+                    i
+                  </div>
+                  <p className="text-xs sm:text-[12.5px] text-[#4A4A68] font-medium leading-relaxed">
+                    You will receive a notification once your payment is verified and your listing is boosted.
                   </p>
                 </div>
 
-                {/* Action CTA Button */}
-                <button
-                  onClick={() => setShowBoostModal(false)}
-                  className="w-full bg-gradient-to-r from-[#FF7A00] via-[#FF6600] to-[#FF4D00] hover:from-[#FF6600] hover:to-[#E63900] text-white text-xs sm:text-sm font-extrabold py-3.5 px-8 rounded-xl cursor-pointer shadow-md shadow-orange-500/25 active:scale-98 transition-all"
-                >
-                  Done & View Dashboard
-                </button>
+                {/* 5. Primary Action Button */}
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowBoostModal(false)}
+                    className="w-full bg-[#5B2BE0] hover:bg-[#4D22C4] text-white font-manrope font-bold text-sm py-3.5 px-6 rounded-2xl cursor-pointer shadow-md shadow-[#5B2BE0]/20 active:scale-98 transition-all"
+                  >
+                    Okay, Got It
+                  </button>
+                </div>
+
               </div>
             )}
 
@@ -4495,6 +4792,150 @@ export default function OwnerDashboard() {
         </div>
       )}
 
+
+      {/* ========================================================================= */}
+      {/* 7.4 INCOMPLETE PROFILE MODAL (Requires full owner info before listing) */}
+      {/* ========================================================================= */}
+      {showIncompleteProfileModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div 
+            onClick={() => setShowIncompleteProfileModal(false)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity" 
+          />
+          <div className="relative bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl z-10 text-left space-y-5 border border-[#E8E8F0]">
+            {/* Header */}
+            <div className="flex items-start justify-between pb-3 border-b border-[#F0F2F5]">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-[#F3EEFF] text-[#5B2BE0] flex items-center justify-center shrink-0 shadow-sm shadow-[#5B2BE0]/20">
+                  <UserRound className="w-6 h-6 stroke-[2.2]" />
+                </div>
+                <div>
+                  <h3 className="font-manrope font-black text-lg text-[#151538] leading-tight">
+                    Complete Your Profile First
+                  </h3>
+                  <p className="text-xs text-[#8C8CA1] font-semibold mt-0.5">
+                    Required to post & manage room listings
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowIncompleteProfileModal(false)}
+                className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Explanation */}
+            <p className="text-xs sm:text-[13px] text-[#555570] leading-relaxed">
+              When tenants browse your listing, they connect with you directly via <b>Phone Call</b> and <b>WhatsApp</b>. Please fill in your complete landlord contact details to continue.
+            </p>
+
+            {/* Field Status Checklist */}
+            {(() => {
+              const status = getProfileCompletionStatus();
+              return (
+                <div className="bg-[#FAF8FE] border border-[#E9DCFF] rounded-2xl p-4 space-y-2.5 text-xs">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#5B2BE0] block mb-1">
+                    Profile Checklist
+                  </span>
+
+                  {/* Name */}
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Full Name</span>
+                    </span>
+                    {status.hasName ? (
+                      <span className="text-[10.5px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                        ✓ Complete ({profileName})
+                      </span>
+                    ) : (
+                      <span className="text-[10.5px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-md border border-red-200">
+                        ✗ Missing Name
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Phone */}
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                      <Phone className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Calling Number</span>
+                    </span>
+                    {status.hasPhone ? (
+                      <span className="text-[10.5px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                        ✓ Complete ({profilePhone})
+                      </span>
+                    ) : (
+                      <span className="text-[10.5px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-md border border-red-200">
+                        ✗ Missing Phone
+                      </span>
+                    )}
+                  </div>
+
+                  {/* WhatsApp */}
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                      <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
+                      <span>WhatsApp Number</span>
+                    </span>
+                    {status.hasWhatsApp ? (
+                      <span className="text-[10.5px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                        ✓ Complete ({profileWhatsApp})
+                      </span>
+                    ) : (
+                      <span className="text-[10.5px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-md border border-red-200">
+                        ✗ Missing WhatsApp
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Email */}
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                      <Mail className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Email Address</span>
+                    </span>
+                    {status.hasEmail ? (
+                      <span className="text-[10.5px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                        ✓ Complete
+                      </span>
+                    ) : (
+                      <span className="text-[10.5px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-md border border-red-200">
+                        ✗ Missing Email
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Actions */}
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowIncompleteProfileModal(false)}
+                className="w-24 sm:w-28 py-3 rounded-xl border border-[#E8E8F0] hover:bg-slate-50 text-slate-600 text-xs sm:text-sm font-bold transition-all cursor-pointer text-center"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowIncompleteProfileModal(false);
+                  setActiveScreen("profile");
+                  setIsEditingProfile(true);
+                }}
+                className="flex-1 py-3 px-4 rounded-xl bg-[#5B2BE0] hover:bg-[#4D22C4] text-white text-xs sm:text-sm font-extrabold transition-all duration-200 shadow-md shadow-[#5B2BE0]/20 active:scale-98 cursor-pointer text-center flex items-center justify-center gap-2"
+              >
+                <span>Complete Profile Now</span>
+                <span>→</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 7.5 DELETE ACCOUNT CONFIRMATION MODAL */}
@@ -4512,7 +4953,7 @@ export default function OwnerDashboard() {
                   <Trash2 className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-poppins font-black text-lg text-[#151538]">Delete Account?</h3>
+                  <h3 className="font-manrope font-black text-lg text-[#151538]">Delete Account?</h3>
                   <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider">Permanent Action</span>
                 </div>
               </div>
@@ -4588,7 +5029,7 @@ export default function OwnerDashboard() {
                     <Home className="w-5 h-5 stroke-[2.4]" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="inline-flex items-center font-poppins font-black text-xl tracking-tight select-none transform scale-y-[1.12] origin-left leading-none">
+                    <span className="inline-flex items-center font-poppins font-black text-xl tracking-tight select-none transform scale-y-[1.18] origin-left leading-none">
                       <span className="text-[#1E2235]">Check</span>
                       <span className="text-[#6C4CF1]">Rooms</span>
                     </span>
@@ -4608,7 +5049,7 @@ export default function OwnerDashboard() {
                   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
                   { id: "listings", label: "My Listings", icon: House },
                   { id: "boost", label: "Boost Listing", icon: Rocket },
-                  { id: "bookings", label: "Customer Leads", icon: CalendarDays },
+                  { id: "bookings", label: "Bookings", icon: CalendarDays },
                   { id: "settings", label: "Profile Settings", icon: Settings },
                   { id: "help", label: "Help & Support", icon: CircleHelp },
                 ].map(item => {

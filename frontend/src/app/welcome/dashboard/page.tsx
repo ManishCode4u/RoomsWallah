@@ -229,6 +229,8 @@ export default function OwnerDashboard() {
   const [checkoutStep, setCheckoutStep] = useState<"select_listing" | "plans" | "payment" | "success">("select_listing");
   const [screenshotUrl, setScreenshotUrl] = useState("");
   const [receiptFile, setReceiptFile] = useState<{ name: string; size: string; url: string } | null>(null);
+  const [receiptRawFile, setReceiptRawFile] = useState<File | null>(null);
+  const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
   const [receiptError, setReceiptError] = useState<string | null>(null);
   const [isSubmittingBoost, setIsSubmittingBoost] = useState(false);
 
@@ -255,6 +257,7 @@ export default function OwnerDashboard() {
     setCheckoutStep("select_listing");
     setScreenshotUrl("");
     setReceiptFile(null);
+    setReceiptRawFile(null);
     setReceiptError(null);
     setShowBoostModal(true);
   };
@@ -488,6 +491,32 @@ export default function OwnerDashboard() {
     } catch (e) {
       console.error("Error loading boost requests:", e);
     }
+
+    // 5. Fetch real notifications from database /api/notifications
+    try {
+      const nRes = await ownerFetch(getApiUrl("/api/notifications"));
+      if (nRes.ok) {
+        const nData = await nRes.json();
+        if (Array.isArray(nData)) {
+          const mappedNotifs = nData.map((n: any) => ({
+            id: n._id || n.id,
+            title: n.title,
+            message: n.message,
+            time: n.createdAt ? new Date(n.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "Recently",
+            read: Boolean(n.read),
+            type: n.type || "info"
+          }));
+
+          setNotifications((prev) => {
+            const dbIds = new Set(mappedNotifs.map((m: any) => m.id));
+            const localRemaining = prev.filter((p: any) => !dbIds.has(p.id));
+            return [...mappedNotifs, ...localRemaining];
+          });
+        }
+      }
+    } catch (e) {
+      console.error("Error loading notifications from server:", e);
+    }
   };
 
   useEffect(() => {
@@ -500,6 +529,13 @@ export default function OwnerDashboard() {
       }
     }
     loadOwnerData();
+
+    // Auto-poll every 15 seconds to receive instant approval notifications & live updates
+    const interval = setInterval(() => {
+      loadOwnerData();
+    }, 15000);
+
+    return () => clearInterval(interval);
   }, [router]);
 
   // Upload handler for listing photos
@@ -4603,19 +4639,41 @@ export default function OwnerDashboard() {
                       <input 
                         type="file" 
                         accept="image/*" 
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (file) {
                             const sizeInKB = Math.round(file.size / 1024);
                             const sizeStr = sizeInKB > 1024 ? `${(sizeInKB / 1024).toFixed(1)} MB` : `${sizeInKB} KB`;
-                            const url = URL.createObjectURL(file);
-                            setScreenshotUrl(url);
+                            const localUrl = URL.createObjectURL(file);
+                            setReceiptRawFile(file);
+                            setScreenshotUrl(localUrl);
                             setReceiptFile({
                               name: file.name,
                               size: sizeStr,
-                              url: url
+                              url: localUrl
                             });
                             setReceiptError(null);
+                            setIsUploadingReceipt(true);
+
+                            try {
+                              const formData = new FormData();
+                              formData.append("image", file);
+                              const res = await ownerFetch(getApiUrl("/api/upload"), {
+                                method: "POST",
+                                body: formData
+                              });
+                              if (res.ok) {
+                                const data = await res.json();
+                                if (data && data.imageUrl) {
+                                  const permanentUrl = data.imageUrl.startsWith("http") ? data.imageUrl : getApiUrl(data.imageUrl);
+                                  setScreenshotUrl(permanentUrl);
+                                }
+                              }
+                            } catch (err) {
+                              console.error("Failed to upload receipt image to server:", err);
+                            } finally {
+                              setIsUploadingReceipt(false);
+                            }
                           }
                         }}
                         className="hidden" 
@@ -4647,9 +4705,9 @@ export default function OwnerDashboard() {
                   </button>
                   <button
                     type="button"
-                    disabled={!receiptFile || !screenshotUrl || isSubmittingBoost}
+                    disabled={!receiptFile || isSubmittingBoost || isUploadingReceipt}
                     onClick={async () => {
-                      if (!receiptFile || !screenshotUrl) {
+                      if (!receiptFile) {
                         setReceiptError("Payment receipt / screenshot upload karna zaroori hai!");
                         return;
                       }
@@ -4659,6 +4717,29 @@ export default function OwnerDashboard() {
                       const planName = selectedPlan === "basic" ? "Standard Boost (₹19 - 7 Days)" : "Ultra Boost (₹49 - 1 Month)";
                       const planAmount = selectedPlan === "basic" ? 19 : 49;
 
+                      let finalScreenshotUrl = screenshotUrl;
+
+                      // If screenshotUrl is still a blob URL or empty, upload the raw file now
+                      if ((!finalScreenshotUrl || finalScreenshotUrl.startsWith("blob:")) && receiptRawFile) {
+                        try {
+                          const formData = new FormData();
+                          formData.append("image", receiptRawFile);
+                          const uploadRes = await ownerFetch(getApiUrl("/api/upload"), {
+                            method: "POST",
+                            body: formData
+                          });
+                          if (uploadRes.ok) {
+                            const uploadData = await uploadRes.json();
+                            if (uploadData && uploadData.imageUrl) {
+                              finalScreenshotUrl = uploadData.imageUrl.startsWith("http") ? uploadData.imageUrl : getApiUrl(uploadData.imageUrl);
+                              setScreenshotUrl(finalScreenshotUrl);
+                            }
+                          }
+                        } catch (e) {
+                          console.error("Receipt upload retry error:", e);
+                        }
+                      }
+
                       try {
                         if (targetListing?.id) {
                           const res = await ownerFetch(getApiUrl(`/api/listings/${targetListing.id}/boost`), {
@@ -4667,14 +4748,16 @@ export default function OwnerDashboard() {
                             body: JSON.stringify({
                               plan: planName,
                               amount: planAmount,
-                              screenshot: screenshotUrl
+                              screenshot: finalScreenshotUrl
                             })
                           });
                           if (res.ok) {
                             await loadOwnerData();
                           }
                         }
-                      } catch (err) {}
+                      } catch (err) {
+                        console.error("Boost submit error:", err);
+                      }
 
                       const newBoostRecord: BoostHistoryRecord = {
                         id: `bh_${Date.now()}`,
@@ -4693,7 +4776,8 @@ export default function OwnerDashboard() {
                       setNotifications((prev) => [
                         {
                           id: `notif_${Date.now()}`,
-                          message: `Boost request submitted for ${targetListing?.title || "Property"} (${planName}). Verification will be completed within 1-2 hours!`,
+                          title: "Boost Request Submitted ⏳",
+                          message: `Boost request submitted for "${targetListing?.title || "Property"}" (${planName}). Verification will be completed within 1-2 hours!`,
                           time: "Just now",
                           read: false
                         },
@@ -4704,12 +4788,12 @@ export default function OwnerDashboard() {
                       setCheckoutStep("success");
                     }}
                     className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-extrabold transition-all duration-200 text-center ${
-                      !receiptFile || !screenshotUrl
+                      !receiptFile || isSubmittingBoost || isUploadingReceipt
                         ? "bg-slate-200 text-slate-400 cursor-not-allowed opacity-60"
                         : "bg-gradient-to-r from-[#FF7A00] via-[#FF6600] to-[#FF4D00] hover:from-[#FF6600] hover:to-[#E63900] text-white shadow-md shadow-orange-500/25 active:scale-98 cursor-pointer"
                     }`}
                   >
-                    {isSubmittingBoost ? "Submitting..." : "Submit Receipt"}
+                    {isSubmittingBoost ? "Submitting..." : isUploadingReceipt ? "Uploading Receipt..." : "Submit Receipt"}
                   </button>
                 </div>
               </div>

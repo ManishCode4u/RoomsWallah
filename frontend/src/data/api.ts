@@ -54,8 +54,8 @@ export const getImageUrl = (url: string | undefined | null): string => {
   
   const trimmed = url.trim();
 
-  // If already an absolute HTTP/HTTPS URL (e.g. Cloudinary, Unsplash, external CDN)
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+  // If already an absolute HTTP/HTTPS or blob URL
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("blob:") || trimmed.startsWith("data:")) {
     return trimmed;
   }
 

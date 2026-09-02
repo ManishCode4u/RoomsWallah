@@ -773,11 +773,11 @@ export default function OwnerDashboard() {
     }
   };
 
-  // Calculate dynamic stats
+  // Calculate dynamic stats from REAL data (100% real numbers, zero fake fallbacks)
   const totalListingsCount = listings.length;
-  const totalViewsCount = listings.reduce((acc, curr) => acc + (curr.views || 300), 0);
-  const totalInquiriesCount = listings.reduce((acc, curr) => acc + (curr.inquiries || 20), 0);
-  const totalBookingsCount = 24;
+  const totalViewsCount = listings.reduce((acc, curr) => acc + (Number(curr.views) || 0), 0);
+  const totalInquiriesCount = customerLeads.length > 0 ? customerLeads.length : listings.reduce((acc, curr) => acc + (Number(curr.inquiries) || 0), 0);
+  const totalBookingsCount = customerLeads.filter(l => l.type === "booking").length;
 
   return (
     <div className="min-h-screen bg-[#FFFFFF] font-sans flex text-[#151538] select-none">
@@ -2456,8 +2456,8 @@ export default function OwnerDashboard() {
                               </td>
                               <td className="py-3.5 px-4">
                                 <div className="text-[11px] text-[#666680] font-medium space-y-0.5">
-                                  <div>Views: <b className="text-[#151538]">{item.views || 320}</b></div>
-                                  <div>Inquiries: <b className="text-[#151538]">{item.inquiries || 18}</b></div>
+                                  <div>Views: <b className="text-[#151538]">{item.views || 0}</b></div>
+                                  <div>Inquiries: <b className="text-[#151538]">{item.inquiries || 0}</b></div>
                                 </div>
                               </td>
                               <td className="py-3.5 px-4">
@@ -2539,68 +2539,78 @@ export default function OwnerDashboard() {
                 </div>
 
                 {/* List Items */}
-                <div className="divide-y divide-[#F0F2F5] pt-1">
-                  {customerLeads.map((lead) => (
-                    <div key={lead.id} className="py-5 first:pt-2 last:pb-2 space-y-2">
-                      
-                      {/* Top Row: Property Title & Date/Time Stacked */}
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-manrope font-bold text-base sm:text-[17px] text-[#151538]">
-                          {lead.propertyTitle}
-                        </h3>
-                        <div className="text-right shrink-0">
-                          <span className="text-xs font-bold text-slate-500 block">{lead.date}</span>
-                          <span className="text-[11px] font-medium text-slate-400 block">{lead.time}</span>
-                        </div>
-                      </div>
-
-                      {/* Middle Row: User Icon + Name and Phone with Icon */}
-                      <div className="flex flex-wrap items-center gap-4 text-xs font-bold text-[#151538]">
-                        <div className="flex items-center gap-1.5">
-                          <User className="w-3.5 h-3.5 text-[#5B2BE0] fill-[#5B2BE0]" />
-                          <span>{lead.userName || "Guest User"}</span>
-                        </div>
-
-                        {lead.phone && (
-                          <a 
-                            href={`tel:${lead.phone}`}
-                            className="flex items-center gap-1.5 text-slate-700 hover:text-[#5B2BE0] transition-colors"
-                          >
-                            <Phone className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
-                            <span>{lead.phone}</span>
-                          </a>
-                        )}
-                      </div>
-
-                      {/* Bottom Row: Type label & Badge */}
-                      <div className="flex items-center gap-2 pt-0.5">
-                        <span className="text-xs text-slate-400 font-medium">Type:</span>
+                {customerLeads.length === 0 ? (
+                  <div className="py-12 text-center text-slate-400 space-y-2">
+                    <MessageSquare className="w-9 h-9 mx-auto text-slate-300 stroke-[1.5]" />
+                    <p className="text-sm font-bold text-slate-700">No Inquiries or Bookings Yet</p>
+                    <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                      When prospective tenants contact you via Call, WhatsApp, or Booking Request, they will appear here in real-time.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-[#F0F2F5] pt-1">
+                    {customerLeads.map((lead) => (
+                      <div key={lead.id} className="py-5 first:pt-2 last:pb-2 space-y-2">
                         
-                        {lead.type === "whatsapp" && (
-                          <span className="inline-flex items-center gap-1.5 bg-[#EAF8EF] text-[#16A34A] border border-[#A7F3D0]/60 text-[10px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-wide">
-                            <MessageSquare className="w-3 h-3 text-[#16A34A]" />
-                            <span>WHATSAPP</span>
-                          </span>
-                        )}
+                        {/* Top Row: Property Title & Date/Time Stacked */}
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="font-manrope font-bold text-base sm:text-[17px] text-[#151538]">
+                            {lead.propertyTitle}
+                          </h3>
+                          <div className="text-right shrink-0">
+                            <span className="text-xs font-bold text-slate-500 block">{lead.date}</span>
+                            <span className="text-[11px] font-medium text-slate-400 block">{lead.time}</span>
+                          </div>
+                        </div>
 
-                        {lead.type === "call" && (
-                          <span className="inline-flex items-center gap-1.5 bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]/60 text-[10px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-wide">
-                            <Phone className="w-3 h-3 text-[#2563EB]" />
-                            <span>PHONE CALL</span>
-                          </span>
-                        )}
+                        {/* Middle Row: User Icon + Name and Phone with Icon */}
+                        <div className="flex flex-wrap items-center gap-4 text-xs font-bold text-[#151538]">
+                          <div className="flex items-center gap-1.5">
+                            <User className="w-3.5 h-3.5 text-[#5B2BE0] fill-[#5B2BE0]" />
+                            <span>{lead.userName || "Guest User"}</span>
+                          </div>
 
-                        {lead.type === "booking" && (
-                          <span className="inline-flex items-center gap-1.5 bg-[#FAF5FF] text-[#7C3AED] border border-[#E9D5FF]/60 text-[10px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-wide">
-                            <Sparkles className="w-3 h-3 text-[#7C3AED]" />
-                            <span>BOOKING REQUEST</span>
-                          </span>
-                        )}
+                          {lead.phone && (
+                            <a 
+                              href={`tel:${lead.phone}`}
+                              className="flex items-center gap-1.5 text-slate-700 hover:text-[#5B2BE0] transition-colors"
+                            >
+                              <Phone className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
+                              <span>{lead.phone}</span>
+                            </a>
+                          )}
+                        </div>
+
+                        {/* Bottom Row: Type label & Badge */}
+                        <div className="flex items-center gap-2 pt-0.5">
+                          <span className="text-xs text-slate-400 font-medium">Type:</span>
+                          
+                          {lead.type === "whatsapp" && (
+                            <span className="inline-flex items-center gap-1.5 bg-[#EAF8EF] text-[#16A34A] border border-[#A7F3D0]/60 text-[10px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-wide">
+                              <MessageSquare className="w-3 h-3 text-[#16A34A]" />
+                              <span>WHATSAPP</span>
+                            </span>
+                          )}
+
+                          {lead.type === "call" && (
+                            <span className="inline-flex items-center gap-1.5 bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]/60 text-[10px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-wide">
+                              <Phone className="w-3 h-3 text-[#2563EB]" />
+                              <span>PHONE CALL</span>
+                            </span>
+                          )}
+
+                          {lead.type === "booking" && (
+                            <span className="inline-flex items-center gap-1.5 bg-[#FAF5FF] text-[#7C3AED] border border-[#E9D5FF]/60 text-[10px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-wide">
+                              <Sparkles className="w-3 h-3 text-[#7C3AED]" />
+                              <span>BOOKING REQUEST</span>
+                            </span>
+                          )}
+                        </div>
+
                       </div>
-
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
 
               </div>
 

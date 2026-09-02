@@ -33,7 +33,7 @@ import {
   AlertTriangle
 } from "lucide-react";
 import { PropertyListing } from "@/data/listings";
-import { getApiUrl } from "@/data/api";
+import { getApiUrl, getImageUrl } from "@/data/api";
 import BookingModal from "./booking-modal";
 import Navbar from "./navbar";
 import MobileNav from "./mobile-nav";
@@ -154,9 +154,10 @@ export default function PropertyDetailsView({
     setTouchEnd(null);
   };
 
-  const thumbnails = (property as any).images && (property as any).images.length > 0
+  const rawThumbnails = (property as any).images && (property as any).images.length > 0
     ? (property as any).images
     : [property.image];
+  const thumbnails = rawThumbnails.map((img: string) => getImageUrl(img));
 
   const handlePrev = () => {
     setActiveIndex((prev) => (prev === 0 ? thumbnails.length - 1 : prev - 1));

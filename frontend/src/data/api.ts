@@ -1,6 +1,6 @@
 /**
  * Dynamically resolves the API base URL.
- * Connects directly to the backend URL (Render in production, localhost:5000 in development).
+ * Connects directly to the backend URL (Render in production, localhost:5000 / network IP:5000 in development).
  */
 function isValidBackendUrl(url: string | undefined): boolean {
   if (!url) return false;
@@ -20,8 +20,14 @@ export const getApiUrl = (path: string): string => {
   let backendUrl = "https://roomswallah-backend.onrender.com";
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname;
-    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname.startsWith("192.168.")) {
-      backendUrl = "http://localhost:5000";
+    if (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname.startsWith("192.168.") ||
+      hostname.startsWith("10.") ||
+      hostname.startsWith("172.")
+    ) {
+      backendUrl = `http://${hostname}:5000`;
     }
   } else {
     const envUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -39,16 +45,36 @@ export const getApiUrl = (path: string): string => {
 };
 
 /**
- * Dynamically resolves listing image URLs for local development and production.
+ * Dynamically resolves listing image URLs for local development, mobile testing, and production.
  */
-export const getImageUrl = (url: string): string => {
-  if (!url) return "";
+export const getImageUrl = (url: string | undefined | null): string => {
+  if (!url || typeof url !== "string" || url.trim() === "") {
+    return "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&auto=format&fit=crop&q=80";
+  }
   
+  const trimmed = url.trim();
+
+  // If already an absolute HTTP/HTTPS URL (e.g. Cloudinary, Unsplash, external CDN)
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+
+  // If already a local frontend asset in /assets/ or /
+  if (trimmed.startsWith("/assets/") || trimmed.startsWith("assets/")) {
+    return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  }
+
   let backendUrl = "https://roomswallah-backend.onrender.com";
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname;
-    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname.startsWith("192.168.")) {
-      backendUrl = "http://localhost:5000";
+    if (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname.startsWith("192.168.") ||
+      hostname.startsWith("10.") ||
+      hostname.startsWith("172.")
+    ) {
+      backendUrl = `http://${hostname}:5000`;
     }
   } else {
     const envUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -61,12 +87,7 @@ export const getImageUrl = (url: string): string => {
 
   // Normalize by removing trailing slash(es)
   backendUrl = backendUrl.replace(/\/+$/, "");
+  const cleanPath = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
 
-  if (url.startsWith("http://localhost:5000/") || url.startsWith(`${backendUrl}/`)) {
-    return url;
-  }
-  if (url.startsWith("/uploads/")) {
-    return `${backendUrl}${url}`;
-  }
-  return url;
+  return `${backendUrl}${cleanPath}`;
 };

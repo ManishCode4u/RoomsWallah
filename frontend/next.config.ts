@@ -2,24 +2,16 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
+    unoptimized: true,
     dangerouslyAllowSVG: true,
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "api.dicebear.com",
+        hostname: "**",
       },
       {
         protocol: "http",
         hostname: "**",
-        port: "5000",
-      },
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-      },
-      {
-        protocol: "https",
-        hostname: "roomswallah-backend.onrender.com",
       },
     ],
   },

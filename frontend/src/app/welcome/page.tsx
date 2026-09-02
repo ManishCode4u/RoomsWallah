@@ -129,7 +129,9 @@ export default function WelcomePage() {
         return;
       }
 
-      if (localStorage.getItem("owner_logged_in") === "true") {
+      const isOwnerLoggedIn = localStorage.getItem("owner_logged_in") === "true";
+      const ownerToken = localStorage.getItem("owner_token");
+      if (isOwnerLoggedIn && ownerToken) {
         router.push("/welcome/dashboard");
         return;
       }

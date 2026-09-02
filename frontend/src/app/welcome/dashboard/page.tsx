@@ -187,9 +187,9 @@ export default function OwnerDashboard() {
   // Profile data (fetched dynamically from backend / localStorage)
   const [profileName, setProfileName] = useState(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("owner_name") || localStorage.getItem("checkrooms_user_name") || "Landlord";
+      return localStorage.getItem("owner_name") || localStorage.getItem("checkrooms_user_name") || "";
     }
-    return "Landlord";
+    return "";
   });
   const [profileEmail, setProfileEmail] = useState(() => {
     if (typeof window !== "undefined") {
@@ -491,8 +491,16 @@ export default function OwnerDashboard() {
   };
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const isOwnerLoggedIn = localStorage.getItem("owner_logged_in") === "true";
+      const ownerToken = localStorage.getItem("owner_token");
+      if (!isOwnerLoggedIn && !ownerToken) {
+        router.push("/welcome");
+        return;
+      }
+    }
     loadOwnerData();
-  }, []);
+  }, [router]);
 
   // Upload handler for listing photos
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -721,13 +729,46 @@ export default function OwnerDashboard() {
     setActiveScreen("dashboard");
   };
 
-  // Handle Logout
-  const handleLogout = () => {
+  // Handle Logout (Completely wipe session & redirect)
+  const handleLogout = async () => {
     if (confirm("Are you sure you want to log out from CheckRooms Owner Dashboard?")) {
+      try {
+        await ownerFetch(getApiUrl("/api/auth/logout"), {
+          method: "POST"
+        });
+      } catch (err) {}
+
       if (typeof window !== "undefined") {
+        // Clear all owner session keys from localStorage
+        localStorage.removeItem("owner_logged_in");
         localStorage.removeItem("owner_token");
+        localStorage.removeItem("owner_name");
         localStorage.removeItem("owner_email");
+        localStorage.removeItem("owner_phone");
+        localStorage.removeItem("owner_whatsapp");
+        localStorage.removeItem("owner_avatar");
+        localStorage.removeItem("owner_login_method");
+        localStorage.removeItem("checkrooms_owner_token");
+        localStorage.removeItem("checkrooms_user_name");
+        localStorage.removeItem("checkrooms_user_phone");
+        localStorage.removeItem("checkrooms_owner_notifications");
+        localStorage.removeItem("checkrooms_customer_leads");
+        localStorage.removeItem("checkrooms_boost_history");
+        localStorage.removeItem("checkrooms_properties");
       }
+
+      // Reset component state completely
+      setProfileName("");
+      setProfileEmail("");
+      setProfilePhone("");
+      setProfileWhatsApp("");
+      setProfileAvatar("");
+      setListings([]);
+      setInquiriesList([]);
+      setCustomerLeads([]);
+      setBoostHistory([]);
+      setNotifications([]);
+
       router.push("/welcome");
     }
   };
